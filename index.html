@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LUMÉA — Compléments alimentaires 100% naturels & purs</title>
+<meta name="description" content="LUMÉA crée des compléments alimentaires 100% naturels, bio et sans additifs pour révéler votre vitalité. Spiruline, magnésium, sommeil, immunité — découvrez et faites le quiz bien-être." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🌿</text></svg>" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<div class="scroll-progress"></div>
+
+<div class="announcement-bar">
+  <span>🌿 <strong>Livraison offerte</strong> dès 49€ d'achat — Code <strong>BIENVENUE10</strong> pour -10% sur votre 1ère commande</span>
+  <button class="announcement-close" aria-label="Fermer">✕</button>
+</div>
+
+<header class="site-header">
+  <nav class="nav-wrap">
+    <a href="index.html" class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21c-4-2-7-6-7-11a7 7 0 0 1 14 0c0 5-3 9-7 11Z"/><path d="M12 21V9"/><path d="M12 12c-2-2-5-2-7-1"/><path d="M12 9c2-2 5-2 7-1"/></svg>
+      LUMÉA
+    </a>
+    <div class="nav-overlay"></div>
+    <div class="nav-menu">
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Accueil</a></li>
+        <li><a href="produits.html">Produits</a></li>
+        <li><a href="notre-histoire.html">Notre Histoire</a></li>
+        <li><a href="quiz.html">Quiz Bien-être</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+    <div class="nav-actions">
+      <button class="icon-btn cart-btn" data-cart-open aria-label="Ouvrir le panier">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="22" height="22"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 2H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
+        <span class="cart-count" data-cart-count>0</span>
+      </button>
+      <button class="nav-toggle" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-blob b1"></div>
+      <div class="hero-blob b2"></div>
+      <div class="hero-blob b3"></div>
+      <canvas id="heroParticles"></canvas>
+    </div>
+    <div class="container hero-inner">
+      <div class="hero-content">
+        <span class="eyebrow">100% naturel · Bio · Sans additifs</span>
+        <h1 class="hero-title">
+          <span class="line"><span>La nature,</span></span>
+          <span class="line"><span>à l'état pur,</span></span>
+          <span class="line"><span>pour votre vitalité.</span></span>
+        </h1>
+        <p class="hero-desc">Des compléments alimentaires formulés à partir d'ingrédients bruts, sourcés avec soin et sans aucun compromis. Votre bien-être mérite ce qu'il y a de plus pur.</p>
+        <div class="hero-cta">
+          <a href="produits.html" class="btn btn-primary">Découvrir nos produits</a>
+          <a href="quiz.html" class="btn btn-secondary">Faire le quiz bien-être 🌱</a>
+        </div>
+        <div class="hero-trust">
+          <div class="hero-avatars">
+            <span style="background:#8fa888">C</span>
+            <span style="background:#c97c4b">T</span>
+            <span style="background:#cf9f4c">É</span>
+            <span style="background:#56638c">S</span>
+          </div>
+          <div class="hero-trust-text">
+            <strong>+12 000 clients conquis</strong>
+            4,9/5 sur 2 300 avis vérifiés
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-jar tilt">
+          <div class="hero-jar-label">
+            <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 21c-4-2-7-6-7-11a7 7 0 0 1 14 0c0 5-3 9-7 11Z"/><path d="M12 21V9"/></svg>
+            <span>LUMÉA</span>
+            <small>NUTRITION VIVANTE</small>
+          </div>
+        </div>
+        <div class="hero-badge hb1">🌿 100% Naturel</div>
+        <div class="hero-badge hb2">✓ Sans additifs</div>
+        <div class="hero-badge hb3">🇫🇷 Fabriqué en France</div>
+      </div>
+    </div>
+    <div class="hero-scroll-cue"><span>Scroll</span><div class="mouse"></div></div>
+  </section>
+
+  <!-- ============ TRUST BAR ============ -->
+  <section class="trust-bar">
+    <div class="container trust-grid">
+      <div class="trust-item"><div class="trust-number"><span data-counter="12">0</span><span>k+</span></div><div class="trust-label">Clients satisfaits</div></div>
+      <div class="trust-item"><div class="trust-number"><span data-counter="100">0</span><span>%</span></div><div class="trust-label">Ingrédients naturels</div></div>
+      <div class="trust-item"><div class="trust-number"><span data-counter="0">0</span></div><div class="trust-label">Additif ajouté</div></div>
+      <div class="trust-item"><div class="trust-number"><span data-counter="4.9">0</span><span>/5</span></div><div class="trust-label">Note moyenne clients</div></div>
+    </div>
+  </section>
+
+  <!-- ============ POURQUOI LUMÉA ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header center" data-reveal>
+        <span class="eyebrow" style="justify-content:center">Pourquoi LUMÉA</span>
+        <h2 class="section-title">Une exigence de <em>pureté</em>, à chaque étape</h2>
+        <p class="section-desc">Nous refusons les raccourcis. Chaque formule est pensée pour offrir le meilleur de la nature, sans artifice.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card" data-reveal data-reveal-delay="0">
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21c-4-2-7-6-7-11a7 7 0 0 1 14 0c0 5-3 9-7 11Z"/><path d="M12 21V9"/></svg></div>
+          <h3>Ingrédients bruts</h3>
+          <p>Sélectionnés pour leur pureté et leur origine tracée, sans transformation excessive.</p>
+        </div>
+        <div class="feature-card" data-reveal data-reveal-delay="80">
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></div>
+          <h3>Zéro additif</h3>
+          <p>Aucun conservateur, colorant ou excipient inutile. Juste l'essentiel, rien de plus.</p>
+        </div>
+        <div class="feature-card" data-reveal data-reveal-delay="160">
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3>Contrôlé en laboratoire</h3>
+          <p>Chaque lot est testé indépendamment pour garantir sa pureté et son efficacité.</p>
+        </div>
+        <div class="feature-card" data-reveal data-reveal-delay="240">
+          <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 12h6M3 12l3-3M3 12l3 3"/></svg></div>
+          <h3>Engagement durable</h3>
+          <p>Emballages recyclables, sourcing responsable et impact carbone compensé.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PRODUITS PHARES ============ -->
+  <section class="section" style="background:var(--cream-dark)">
+    <div class="container">
+      <div class="section-header" data-reveal>
+        <span class="eyebrow">Best-sellers</span>
+        <h2 class="section-title">Nos <em>essentiels</em> naturels</h2>
+        <p class="section-desc">Les formules préférées de notre communauté, plébiscitées pour leurs résultats concrets.</p>
+      </div>
+      <div class="product-grid" id="featuredProducts"></div>
+      <div style="text-align:center;margin-top:50px" data-reveal>
+        <a href="produits.html" class="btn btn-secondary">Voir tous nos produits</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ INGRÉDIENTS ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header center" data-reveal>
+        <span class="eyebrow" style="justify-content:center">Zoom ingrédients</span>
+        <h2 class="section-title">Ce que la nature fait de <em>mieux</em></h2>
+      </div>
+      <div class="ingredient-section" data-reveal="scale">
+        <div class="ingredient-inner">
+          <div class="ingredient-tabs" role="tablist">
+            <button class="ingredient-tab active" data-tab="0"><span class="dot"></span><span><strong>Spiruline</strong><span>Micro-algue d'exception</span></span></button>
+            <button class="ingredient-tab" data-tab="1"><span class="dot"></span><span><strong>Curcuma</strong><span>L'or anti-oxydant</span></span></button>
+            <button class="ingredient-tab" data-tab="2"><span class="dot"></span><span><strong>Magnésium marin</strong><span>Le minéral anti-stress</span></span></button>
+            <button class="ingredient-tab" data-tab="3"><span class="dot"></span><span><strong>Probiotiques</strong><span>L'équilibre intérieur</span></span></button>
+          </div>
+          <div class="ingredient-panel">
+            <div class="ingredient-panel-content active" data-panel="0">
+              <h3>Spiruline</h3>
+              <p>Cultivée en circuit fermé et séchée à basse température, notre spiruline concentre fer, protéines et antioxydants dans un format 100% biodisponible.</p>
+              <div class="ingredient-stats">
+                <div class="ingredient-stat"><strong>65%</strong><span>Protéines</span></div>
+                <div class="ingredient-stat"><strong>28mg</strong><span>Fer / 100g</span></div>
+                <div class="ingredient-stat"><strong>Bio</strong><span>Certifiée UE</span></div>
+              </div>
+            </div>
+            <div class="ingredient-panel-content" data-panel="1">
+              <h3>Curcuma</h3>
+              <p>Notre curcuma bio, dosé à 95% de curcumine et associé à la pipérine, multiplie son absorption par 20 pour un effet antioxydant puissant.</p>
+              <div class="ingredient-stats">
+                <div class="ingredient-stat"><strong>95%</strong><span>Curcumine</span></div>
+                <div class="ingredient-stat"><strong>x20</strong><span>Absorption</span></div>
+                <div class="ingredient-stat"><strong>Bio</strong><span>Origine Inde</span></div>
+              </div>
+            </div>
+            <div class="ingredient-panel-content" data-panel="2">
+              <h3>Magnésium marin</h3>
+              <p>Extrait de l'eau de mer et associé à la vitamine B6, il contribue à réduire la fatigue et à maintenir un système nerveux équilibré.</p>
+              <div class="ingredient-stats">
+                <div class="ingredient-stat"><strong>400mg</strong><span>Par dose</span></div>
+                <div class="ingredient-stat"><strong>+B6</strong><span>Absorption optimisée</span></div>
+                <div class="ingredient-stat"><strong>100%</strong><span>Origine marine</span></div>
+              </div>
+            </div>
+            <div class="ingredient-panel-content" data-panel="3">
+              <h3>Probiotiques</h3>
+              <p>10 souches sélectionnées, encapsulées pour résister à l'acidité gastrique et agir directement là où elles sont utiles : votre flore intestinale.</p>
+              <div class="ingredient-stats">
+                <div class="ingredient-stat"><strong>10Mds</strong><span>UFC garantis</span></div>
+                <div class="ingredient-stat"><strong>10</strong><span>Souches</span></div>
+                <div class="ingredient-stat"><strong>100%</strong><span>Gastro-résistant</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROCESS ============ -->
+  <section class="section" style="background:var(--cream-dark)">
+    <div class="container">
+      <div class="section-header center" data-reveal>
+        <span class="eyebrow" style="justify-content:center">De la terre à vous</span>
+        <h2 class="section-title">Notre <em>process</em> en toute transparence</h2>
+      </div>
+      <div class="process-track">
+        <div class="process-step" data-reveal data-reveal-delay="0"><div class="process-num">01</div><h3>Sourcing</h3><p>Sélection rigoureuse de partenaires producteurs bio, en circuit court.</p></div>
+        <div class="process-step" data-reveal data-reveal-delay="100"><div class="process-num">02</div><h3>Formulation</h3><p>Dosages optimisés en laboratoire, pensés par des experts en nutrition.</p></div>
+        <div class="process-step" data-reveal data-reveal-delay="200"><div class="process-num">03</div><h3>Contrôle qualité</h3><p>Chaque lot est testé par un laboratoire indépendant avant commercialisation.</p></div>
+        <div class="process-step" data-reveal data-reveal-delay="300"><div class="process-num">04</div><h3>Votre porte</h3><p>Emballage recyclable et livraison rapide, directement chez vous.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TESTIMONIALS ============ -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header center" data-reveal>
+        <span class="eyebrow" style="justify-content:center">Ils nous font confiance</span>
+        <h2 class="section-title">La parole à notre <em>communauté</em></h2>
+      </div>
+      <div class="testimonials-carousel" data-reveal>
+        <div class="testimonial-track" data-testimonial-track></div>
+      </div>
+      <div class="carousel-controls">
+        <button class="carousel-arrow" data-testimonial-prev aria-label="Précédent">←</button>
+        <div class="carousel-dots" data-testimonial-dots></div>
+        <button class="carousel-arrow" data-testimonial-next aria-label="Suivant">→</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GALLERY ============ -->
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="section-header center" data-reveal>
+        <span class="eyebrow" style="justify-content:center">@lumea.naturel</span>
+        <h2 class="section-title">Suivez-nous sur <em>Instagram</em></h2>
+      </div>
+      <div class="gallery-grid" data-reveal="scale">
+        <div class="gallery-item">🌿<span>Récolte du matin</span></div>
+        <div class="gallery-item">☀️<span>Rituel bien-être</span></div>
+        <div class="gallery-item">🧴<span>Nos flacons</span></div>
+        <div class="gallery-item">🌱<span>Ingrédients bruts</span></div>
+        <div class="gallery-item">🍵<span>Routine du soir</span></div>
+        <div class="gallery-item">💚<span>Communauté LUMÉA</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NEWSLETTER ============ -->
+  <section class="container section-sm">
+    <div class="newsletter" data-reveal="scale">
+      <div>
+        <h2>Rejoignez le cercle LUMÉA</h2>
+        <p>Recevez -10% sur votre première commande et nos conseils bien-être en exclusivité.</p>
+      </div>
+      <form class="newsletter-form" data-newsletter-form>
+        <input type="email" placeholder="Votre adresse email" required />
+        <button type="submit" class="btn btn-terracotta default-label">S'inscrire</button>
+        <span class="form-success">✓ Merci ! Code : LUMEA10</span>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer" id="footer"></footer>
+<div id="footer-placeholder" style="display:none"></div>
+
+<button class="back-to-top" aria-label="Retour en haut">↑</button>
+
+<!-- Cart overlay & drawer -->
+<div class="cart-overlay" id="cartOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer">
+  <div class="cart-drawer-header">
+    <h3>Votre panier</h3>
+    <button class="icon-btn" data-cart-close aria-label="Fermer le panier">✕</button>
+  </div>
+  <div class="cart-drawer-body" id="cartDrawerBody"></div>
+  <div class="cart-drawer-footer" id="cartDrawerFooter">
+    <p class="cart-shipping-note" id="cartShippingNote"></p>
+    <div class="cart-subtotal-row"><span>Sous-total</span><span data-cart-subtotal>0,00 €</span></div>
+    <a href="produits.html" class="btn btn-primary btn-block">Commander</a>
+  </div>
+</aside>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+  // Render footer
+  document.getElementById("footer").outerHTML = `
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="index.html" class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21c-4-2-7-6-7-11a7 7 0 0 1 14 0c0 5-3 9-7 11Z"/><path d="M12 21V9"/></svg>LUMÉA</a>
+          <p>Des compléments alimentaires 100% naturels, pensés pour révéler votre vitalité, en toute transparence.</p>
+          <div class="social-row">
+            <a href="#" aria-label="Instagram">IG</a>
+            <a href="#" aria-label="Facebook">FB</a>
+            <a href="#" aria-label="Pinterest">PI</a>
+          </div>
+        </div>
+        <div class="footer-col"><h4>Boutique</h4><ul>
+          <li><a href="produits.html">Tous les produits</a></li>
+          <li><a href="produits.html?cat=energie">Énergie</a></li>
+          <li><a href="produits.html?cat=sommeil">Sommeil</a></li>
+          <li><a href="quiz.html">Quiz bien-être</a></li>
+        </ul></div>
+        <div class="footer-col"><h4>À propos</h4><ul>
+          <li><a href="notre-histoire.html">Notre histoire</a></li>
+          <li><a href="notre-histoire.html#valeurs">Nos valeurs</a></li>
+          <li><a href="contact.html">Contact</a></li>
+          <li><a href="contact.html#faq">FAQ</a></li>
+        </ul></div>
+        <div class="footer-col"><h4>Newsletter</h4>
+          <p style="font-size:0.85rem;margin-bottom:14px">Conseils bien-être &amp; offres exclusives.</p>
+          <form class="newsletter-form" data-newsletter-form style="flex-direction:column">
+            <input type="email" placeholder="Email" required style="min-width:0" />
+            <button type="submit" class="btn btn-terracotta btn-sm default-label">S'inscrire</button>
+            <span class="form-success">✓ Code : LUMEA10</span>
+          </form>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year></span> LUMÉA. Tous droits réservés.</span>
+        <div class="payment-icons"><span>Visa</span><span>Mastercard</span><span>Apple Pay</span></div>
+      </div>
+    </div>
+  </footer>`;
+  initNewsletterForms();
+  initYear();
+</script>
+<script>
+  // Featured products (first 3)
+  const featuredWrap = document.getElementById("featuredProducts");
+  if (featuredWrap) {
+    featuredWrap.innerHTML = LUMEA_PRODUCTS.slice(0, 3).map((p, i) => `
+      <div class="product-card" data-reveal data-reveal-delay="${i * 100}">
+        <div class="product-visual theme-${p.theme}">
+          <div class="product-badges-float">
+            ${p.badges.slice(0,2).map(b => `<span class="badge">${b}</span>`).join("")}
+            ${p.oldPrice ? '<span class="badge sale">Promo</span>' : ""}
+          </div>
+          <div class="product-jar" data-letter="${p.name.charAt(0)}"></div>
+          <button class="quick-add" data-add-id="${p.id}" aria-label="Ajouter au panier">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="product-body">
+          <p class="product-category">${p.categoryLabel}</p>
+          <h3 class="product-name"><a href="produit.html?slug=${p.slug}">${p.name}</a></h3>
+          <p class="product-tagline">${p.tagline}</p>
+          <div class="product-rating"><span class="stars">★★★★★</span> ${p.rating} (${p.reviews} avis)</div>
+          <div class="product-footer">
+            <div class="product-price">${lumeaFormatPrice(p.price)} ${p.oldPrice ? `<span class="old">${lumeaFormatPrice(p.oldPrice)}</span>` : ""}</div>
+          </div>
+        </div>
+      </div>
+    `).join("");
+    featuredWrap.querySelectorAll("[data-add-id]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        LumeaCart.add(Number(btn.dataset.addId));
+      });
+    });
+    initScrollReveal();
+  }
+
+  // Ingredient tabs
+  document.querySelectorAll(".ingredient-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".ingredient-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".ingredient-panel-content").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.querySelector(`.ingredient-panel-content[data-panel="${tab.dataset.tab}"]`).classList.add("active");
+    });
+  });
+</script>
+</body>
+</html>
