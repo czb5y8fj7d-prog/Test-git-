@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <p>D'après vos réponses, voici la formule LUMÉA la plus adaptée à vos besoins.</p>
       <div class="quiz-result-card">
         <div class="quiz-result-visual theme-${product.theme}" style="background:${
-      product.theme === "green" ? "#5c7a55" : product.theme === "indigo" ? "#56638c" : product.theme === "gold" ? "#cf9f4c" : "#c97c4b"
+      product.theme === "green" ? "#3f8f8a" : product.theme === "indigo" ? "#3d6478" : product.theme === "gold" ? "#cea968" : "#e0855f"
     }">${product.name.charAt(0)}</div>
         <div class="quiz-result-info">
           <h4>${product.name}</h4>

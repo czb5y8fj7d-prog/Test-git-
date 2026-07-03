@@ -172,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("stickyPrice").textContent = lumeaFormatPrice(product.price);
   document.getElementById("stickyJar").classList.add(`theme-${product.theme}`);
   document.getElementById("stickyJar").style.background =
-    product.theme === "green" ? "#b6cba9" : product.theme === "indigo" ? "#b7bedb" : product.theme === "gold" ? "#e0bf7c" : "#e6ac7f";
+    product.theme === "green" ? "#83c2b1" : product.theme === "indigo" ? "#93b3c3" : product.theme === "gold" ? "#dcc088" : "#eaa47e";
   document.getElementById("stickyAddBtn").addEventListener("click", addToCart);
 
   const actionsBtn = document.getElementById("pdAddBtn");

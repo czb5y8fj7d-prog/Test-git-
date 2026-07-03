@@ -320,7 +320,7 @@ function initHeroParticles() {
       speedY: (Math.random() * 0.35 + 0.1) * devicePixelRatio,
       speedX: (Math.random() - 0.5) * 0.25 * devicePixelRatio,
       opacity: Math.random() * 0.5 + 0.15,
-      hue: Math.random() > 0.5 ? "223,155,90" : "116,141,96"
+      hue: Math.random() > 0.5 ? "224,133,95" : "79,168,174"
     }));
   }
 
