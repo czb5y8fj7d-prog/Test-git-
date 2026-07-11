@@ -10,13 +10,15 @@ import {
   Heading2,
   Heading3,
   Quote,
-  Minus,
   ImageIcon,
   AlignLeft,
   AlignCenter,
   AlignRight,
+  Baseline,
+  Highlighter,
 } from 'lucide-react';
-import { FONT_OPTIONS } from '../../types';
+import { FONT_OPTIONS, TEXT_COLOR_SWATCHES, HIGHLIGHT_COLOR_SWATCHES } from '../../types';
+import { ColorSwatchPicker } from './ColorSwatchPicker';
 
 interface EditorToolbarProps {
   editor: Editor;
@@ -24,6 +26,11 @@ interface EditorToolbarProps {
 
 const FONT_SIZES = [9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28];
 const LINE_HEIGHTS = [1, 1.15, 1.3, 1.5, 1.75, 2];
+const SEPARATOR_STYLES: { value: string; label: string }[] = [
+  { value: 'line', label: '── Ligne simple' },
+  { value: 'dots', label: '···· Pointillés' },
+  { value: 'ornament', label: '❦ Ornement' },
+];
 
 export function EditorToolbar({ editor }: EditorToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,6 +48,8 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
   const currentFontFamily = editor.getAttributes('fontFamily').fontFamily ?? '';
   const currentFontSize = editor.getAttributes('fontSize').fontSize ?? '';
+  const currentTextColor = editor.getAttributes('textStyle').color ?? null;
+  const currentHighlight = editor.getAttributes('highlight').color ?? null;
 
   return (
     <div className="editor-toolbar">
@@ -69,6 +78,25 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         >
           <UnderlineIcon size={16} />
         </button>
+      </div>
+
+      <div className="toolbar-group">
+        <ColorSwatchPicker
+          icon={<Baseline size={16} />}
+          title="Couleur du texte"
+          swatches={TEXT_COLOR_SWATCHES}
+          activeColor={currentTextColor}
+          onPick={(color) => editor.chain().focus().setColor(color).run()}
+          onClear={() => editor.chain().focus().unsetColor().run()}
+        />
+        <ColorSwatchPicker
+          icon={<Highlighter size={16} />}
+          title="Couleur de surlignage"
+          swatches={HIGHLIGHT_COLOR_SWATCHES}
+          activeColor={currentHighlight}
+          onPick={(color) => editor.chain().focus().toggleHighlight({ color }).run()}
+          onClear={() => editor.chain().focus().unsetHighlight().run()}
+        />
       </div>
 
       <div className="toolbar-group">
@@ -123,9 +151,30 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         >
           <Quote size={16} />
         </button>
-        <button type="button" onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Séparateur">
-          <Minus size={16} />
-        </button>
+        <select
+          className="separator-select"
+          title="Insérer un séparateur"
+          value=""
+          onChange={(e) => {
+            if (e.target.value) {
+              editor
+                .chain()
+                .focus()
+                .setSeparator({ variant: e.target.value as 'line' | 'dots' | 'ornament' })
+                .run();
+            }
+            e.target.value = '';
+          }}
+        >
+          <option value="" disabled>
+            ── Séparateur…
+          </option>
+          {SEPARATOR_STYLES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="toolbar-group">

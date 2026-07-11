@@ -1,16 +1,18 @@
 import { useCallback, useRef, useState } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
-import { AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { AlignLeft, AlignCenter, AlignRight, Square, CircleDot } from 'lucide-react';
 import type { ImageAlign } from './ImageBlock';
 
 export function ImageBlockView({ node, updateAttributes, selected }: NodeViewProps) {
-  const { src, alt, caption, width, align } = node.attrs as {
+  const { src, alt, caption, width, align, rounded, shadow } = node.attrs as {
     src: string;
     alt: string;
     caption: string;
     width: number;
     align: ImageAlign;
+    rounded: boolean;
+    shadow: boolean;
   };
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [resizing, setResizing] = useState(false);
@@ -44,6 +46,11 @@ export function ImageBlockView({ node, updateAttributes, selected }: NodeViewPro
 
   const setAlign = (next: ImageAlign) => updateAttributes({ align: next });
 
+  const imgStyle: React.CSSProperties = {
+    borderRadius: rounded ? 14 : 0,
+    boxShadow: shadow ? '0 6px 18px rgba(0,0,0,0.22)' : 'none',
+  };
+
   return (
     <NodeViewWrapper
       className={`image-block-wrapper align-${align}`}
@@ -61,8 +68,25 @@ export function ImageBlockView({ node, updateAttributes, selected }: NodeViewPro
           <button type="button" className={align === 'right' ? 'active' : ''} onClick={() => setAlign('right')} title="Aligner à droite">
             <AlignRight size={14} />
           </button>
+          <span className="image-block-toolbar-sep" />
+          <button
+            type="button"
+            className={rounded ? 'active' : ''}
+            onClick={() => updateAttributes({ rounded: !rounded })}
+            title="Coins arrondis"
+          >
+            <CircleDot size={14} />
+          </button>
+          <button
+            type="button"
+            className={shadow ? 'active' : ''}
+            onClick={() => updateAttributes({ shadow: !shadow })}
+            title="Ombre portée"
+          >
+            <Square size={14} />
+          </button>
         </div>
-        <img src={src} alt={alt} draggable={false} />
+        <img src={src} alt={alt} draggable={false} style={imgStyle} />
         <input
           className="image-block-caption"
           type="text"

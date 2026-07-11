@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { Book, BookMeta, Chapter, PageSettings, Section, StyleSettings } from '../types';
-import { createEmptyBook } from '../types';
+import type { Book, BookMeta, Chapter, PageSettings, Section, StyleSettings, ThemeSettings } from '../types';
+import { createEmptyBook, normalizeBook } from '../types';
 import { loadBook, scheduleAutosave } from '../lib/storage';
 import { useUiStore } from './ui';
 
@@ -17,6 +17,8 @@ interface BookState {
   updateMeta: (meta: Partial<BookMeta>) => void;
   updateGlobalStyle: (style: Partial<StyleSettings>) => void;
   updatePageSettings: (settings: Partial<PageSettings>) => void;
+  updateTheme: (theme: Partial<ThemeSettings>) => void;
+  applyPreset: (preset: import('../types').StylePreset) => void;
 
   addChapter: () => void;
   renameChapter: (chapterId: string, title: string) => void;
@@ -48,9 +50,10 @@ export const useBookStore = create<BookState>((set, get) => ({
   hydrate: async () => {
     const stored = await loadBook();
     if (stored) {
-      const firstChapter = stored.chapters[0];
+      const book = normalizeBook(stored);
+      const firstChapter = book.chapters[0];
       set({
-        book: stored,
+        book,
         hydrated: true,
         selectedChapterId: firstChapter?.id ?? null,
         selectedSectionId: firstChapter?.sections[0]?.id ?? null,
@@ -60,7 +63,8 @@ export const useBookStore = create<BookState>((set, get) => ({
     }
   },
 
-  replaceBook: (book) => {
+  replaceBook: (incoming) => {
+    const book = normalizeBook(incoming);
     const firstChapter = book.chapters[0];
     set({
       book,
@@ -91,6 +95,23 @@ export const useBookStore = create<BookState>((set, get) => ({
         ...settings,
         margins: { ...current.margins, ...settings.margins },
       },
+    };
+    set({ book });
+    persist(book);
+  },
+
+  updateTheme: (theme) => {
+    const book = { ...get().book, theme: { ...get().book.theme, ...theme } };
+    set({ book });
+    persist(book);
+  },
+
+  applyPreset: (preset) => {
+    const book = {
+      ...get().book,
+      globalStyle: { ...preset.style },
+      theme: { ...get().book.theme, accentColor: preset.accentColor },
+      pageSettings: { ...get().book.pageSettings, format: preset.pageFormat },
     };
     set({ book });
     persist(book);

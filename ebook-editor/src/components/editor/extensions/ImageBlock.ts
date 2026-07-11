@@ -10,6 +10,8 @@ export interface ImageBlockAttrs {
   caption: string;
   width: number; // percentage of container width, 10-100
   align: ImageAlign;
+  rounded: boolean;
+  shadow: boolean;
 }
 
 declare module '@tiptap/core' {
@@ -19,6 +21,13 @@ declare module '@tiptap/core' {
       updateImageBlock: (attrs: Partial<ImageBlockAttrs>) => ReturnType;
     };
   }
+}
+
+function imgStyle(rounded: boolean, shadow: boolean): string {
+  const parts = ['max-width: 100%', 'display: block'];
+  if (rounded) parts.push('border-radius: 14px');
+  if (shadow) parts.push('box-shadow: 0 6px 18px rgba(0,0,0,0.22)');
+  return parts.join('; ');
 }
 
 export const ImageBlock = Node.create({
@@ -34,6 +43,8 @@ export const ImageBlock = Node.create({
       caption: { default: '' },
       width: { default: 60 },
       align: { default: 'center' },
+      rounded: { default: false },
+      shadow: { default: false },
     };
   },
 
@@ -42,7 +53,7 @@ export const ImageBlock = Node.create({
   },
 
   renderHTML({ HTMLAttributes, node }) {
-    const { src, alt, caption, width, align } = node.attrs as ImageBlockAttrs;
+    const { src, alt, caption, width, align, rounded, shadow } = node.attrs as ImageBlockAttrs;
     return [
       'figure',
       mergeAttributes(HTMLAttributes, {
@@ -51,7 +62,7 @@ export const ImageBlock = Node.create({
           align === 'center' ? 'auto' : align === 'right' ? 'auto' : '0'
         }; margin-right: ${align === 'center' ? 'auto' : align === 'left' ? 'auto' : '0'};`,
       }),
-      ['img', { src, alt }],
+      ['img', { src, alt, style: imgStyle(rounded, shadow) }],
       caption ? ['figcaption', {}, caption] : ['figcaption', { style: 'display:none' }],
     ];
   },
@@ -67,7 +78,7 @@ export const ImageBlock = Node.create({
         ({ commands }) => {
           return commands.insertContent({
             type: this.name,
-            attrs: { alt: '', caption: '', width: 60, align: 'center', ...attrs },
+            attrs: { alt: '', caption: '', width: 60, align: 'center', rounded: false, shadow: false, ...attrs },
           });
         },
       updateImageBlock:

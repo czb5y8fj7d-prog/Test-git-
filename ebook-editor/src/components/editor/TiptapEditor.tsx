@@ -3,10 +3,13 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { Highlight } from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import { FontFamily } from './extensions/FontFamily';
 import { FontSize } from './extensions/FontSize';
 import { ImageBlock } from './extensions/ImageBlock';
+import { Separator } from './extensions/Separator';
 import { EditorToolbar } from './EditorToolbar';
 import { useBookStore } from '../../store/book';
 
@@ -29,8 +32,11 @@ export function TiptapEditor({ chapterId, sectionId, content, fontFamily, fontSi
         TextStyle,
         FontFamily,
         FontSize,
+        Color,
+        Highlight.configure({ multicolor: true }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
         ImageBlock,
+        Separator,
         Placeholder.configure({ placeholder: 'Écrivez ou collez votre texte ici…' }),
       ],
       content: content as object,

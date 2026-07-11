@@ -1,8 +1,20 @@
+import { useRef } from 'react';
+import { ImagePlus, X } from 'lucide-react';
 import { useBookStore } from '../../store/book';
 
 export function CoverEditor() {
   const meta = useBookStore((s) => s.book.meta);
   const updateMeta = useBookStore((s) => s.updateMeta);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverImageChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => updateMeta({ coverImage: reader.result as string });
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   return (
     <div className="cover-editor">
@@ -35,6 +47,23 @@ export function CoverEditor() {
           placeholder="Nom de l'auteur"
         />
       </label>
+
+      <div className="cover-field">
+        Image de couverture (optionnelle)
+        {meta.coverImage ? (
+          <div className="cover-image-preview">
+            <img src={meta.coverImage} alt="Aperçu de la couverture" />
+            <button type="button" onClick={() => updateMeta({ coverImage: null })} title="Retirer l'image">
+              <X size={14} /> Retirer
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="cover-image-upload-btn" onClick={() => fileInputRef.current?.click()}>
+            <ImagePlus size={16} /> Choisir une image de fond
+          </button>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleCoverImageChosen} />
+      </div>
     </div>
   );
 }

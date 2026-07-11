@@ -1,4 +1,5 @@
 import { useBookStore, getEffectiveStyle } from '../../store/book';
+import { countWords } from '../../lib/wordCount';
 import { CoverEditor } from './CoverEditor';
 import { TiptapEditor } from './TiptapEditor';
 
@@ -39,11 +40,15 @@ export function EditorArea() {
   }
 
   const style = getEffectiveStyle(book, chapter, section);
+  const wordCount = countWords(section.content);
 
   return (
     <main className="editor-area">
       <div className="editor-breadcrumb">
-        {chapter.title} <span className="sep">/</span> {section.title}
+        <span>
+          {chapter.title} <span className="sep">/</span> {section.title}
+        </span>
+        <span className="word-count">{wordCount} mot{wordCount !== 1 ? 's' : ''}</span>
       </div>
       <TiptapEditor
         key={section.id}
