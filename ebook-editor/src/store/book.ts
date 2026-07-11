@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import type { Book, BookMeta, Chapter, PageSettings, Section, StyleSettings } from '../types';
 import { createEmptyBook } from '../types';
 import { loadBook, scheduleAutosave } from '../lib/storage';
+import { useUiStore } from './ui';
 
 interface BookState {
   book: Book;
@@ -154,6 +155,7 @@ export const useBookStore = create<BookState>((set, get) => ({
       ),
     };
     set({ book, selectedChapterId: chapterId, selectedSectionId: newSection.id });
+    useUiStore.getState().setMobilePanel('editeur');
     persist(book);
   },
 
@@ -252,7 +254,10 @@ export const useBookStore = create<BookState>((set, get) => ({
     persist(book);
   },
 
-  select: (chapterId, sectionId) => set({ selectedChapterId: chapterId, selectedSectionId: sectionId }),
+  select: (chapterId, sectionId) => {
+    set({ selectedChapterId: chapterId, selectedSectionId: sectionId });
+    useUiStore.getState().setMobilePanel('editeur');
+  },
 }));
 
 export function getEffectiveStyle(book: Book, chapter?: Chapter, section?: Section): StyleSettings {

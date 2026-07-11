@@ -10,7 +10,15 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+  }
+  /* Neutralise the on-screen "fit to width" zoom (see PreviewPane.tsx) so the
+     printed/exported PDF always uses the real, unscaled page dimensions. */
+  .pagedjs-preview-root .pagedjs_pages {
+    transform: none !important;
   }
   .preview-scroll {
     overflow: visible !important;

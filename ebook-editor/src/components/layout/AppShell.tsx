@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useBookStore } from '../../store/book';
 import { useUiStore } from '../../store/ui';
 import { TopBar } from './TopBar';
+import { MobileTabBar } from './MobileTabBar';
 import { BookTree } from '../sidebar/BookTree';
 import { EditorArea } from '../editor/EditorArea';
 import { StyleSettingsPanel } from '../settings/StyleSettingsPanel';
@@ -12,6 +13,7 @@ export function AppShell() {
   const hydrated = useBookStore((s) => s.hydrated);
   const rightTab = useUiStore((s) => s.rightTab);
   const setRightTab = useUiStore((s) => s.setRightTab);
+  const mobilePanel = useUiStore((s) => s.mobilePanel);
 
   useEffect(() => {
     hydrate();
@@ -25,7 +27,8 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <TopBar />
-      <div className="app-body">
+      <MobileTabBar />
+      <div className="app-body" data-mobile-panel={mobilePanel}>
         <BookTree />
         <EditorArea />
         <div className="right-panel">
