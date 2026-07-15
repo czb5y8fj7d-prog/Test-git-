@@ -3,19 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Nos produits — LUMÉA</title>
-<meta name="description" content="Découvrez toute la gamme LUMÉA : spiruline, sommeil, anti-stress, immunité, digestion et beauté. Des compléments 100% naturels et bio." />
+<title>Bilan Bien-être Complet — 20 questions, ton profil détaillé | LUMÉA</title>
+<meta name="description" content="Fais le point en 20 questions ludiques : énergie, sommeil, stress, immunité, digestion, beauté, hydratation et activité. Reçois ton profil complet, ton score et des conseils personnalisés en 3 minutes." />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🌿</text></svg>" />
 <link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/bilan.css" />
 </head>
 <body>
 
 <div class="scroll-progress"></div>
-
-<div class="announcement-bar">
-  <span>🌿 <strong>Livraison offerte</strong> dès 49€ d'achat — Code <strong>BIENVENUE10</strong> pour -10% sur votre 1ère commande</span>
-  <button class="announcement-close" aria-label="Fermer">✕</button>
-</div>
 
 <header class="site-header">
   <nav class="nav-wrap">
@@ -27,10 +23,10 @@
     <div class="nav-menu">
       <ul class="nav-links">
         <li><a href="index.html">Accueil</a></li>
-        <li><a href="produits.html" class="active">Produits</a></li>
+        <li><a href="produits.html">Produits</a></li>
         <li><a href="notre-histoire.html">Notre Histoire</a></li>
         <li><a href="quiz.html">Quiz Bien-être</a></li>
-        <li><a href="bilan-sante.html">Bilan Santé</a></li>
+        <li><a href="bilan-sante.html" class="active">Bilan Santé</a></li>
         <li><a href="contact.html">Contact</a></li>
       </ul>
     </div>
@@ -45,47 +41,51 @@
 </header>
 
 <main>
-  <section class="shop-hero">
-    <div class="container">
-      <div class="breadcrumb" data-reveal><a href="index.html">Accueil</a> / Produits</div>
-      <span class="eyebrow" style="justify-content:center" data-reveal>Notre gamme complète</span>
-      <h1 class="section-title" data-reveal>Une formule pour <em>chaque besoin</em></h1>
-      <p class="section-desc" style="margin:0 auto" data-reveal>Filtrez par objectif et trouvez le complément qui correspond à votre rythme de vie.</p>
-    </div>
-  </section>
-
   <section class="section" style="padding-top:50px">
     <div class="container">
-      <div class="product-toolbar" data-reveal>
-        <div class="filter-group" id="filterGroup">
-          <button class="filter-chip active" data-filter="all">Tous</button>
-          <button class="filter-chip" data-filter="energie">Énergie</button>
-          <button class="filter-chip" data-filter="sommeil">Sommeil</button>
-          <button class="filter-chip" data-filter="stress">Anti-stress</button>
-          <button class="filter-chip" data-filter="immunite">Immunité</button>
-          <button class="filter-chip" data-filter="digestion">Digestion</button>
-          <button class="filter-chip" data-filter="beaute">Beauté</button>
-        </div>
-        <select class="sort-select" id="sortSelect">
-          <option value="popular">Trier : Populaires</option>
-          <option value="price-asc">Prix croissant</option>
-          <option value="price-desc">Prix décroissant</option>
-          <option value="rating">Meilleures notes</option>
-        </select>
-      </div>
-      <p id="resultsCount" style="color:var(--ink-soft);font-size:0.88rem;margin-bottom:24px"></p>
-      <div class="product-grid" id="shopGrid"></div>
-      <p id="noResults" style="display:none;text-align:center;color:var(--ink-soft);padding:60px 0">Aucun produit ne correspond à ce filtre.</p>
-    </div>
-  </section>
 
-  <section class="container section-sm">
-    <div class="newsletter" data-reveal="scale">
-      <div>
-        <h2>Pas sûr(e) de votre choix ?</h2>
-        <p>Faites notre quiz bien-être en 1 minute pour recevoir une recommandation personnalisée.</p>
+      <!-- ============ INTRO ============ -->
+      <div id="bilanIntro">
+        <div class="section-header center bilan-hero" data-reveal>
+          <span class="eyebrow" style="justify-content:center">✨ Bilan bien-être · 100% gratuit</span>
+          <h1 class="section-title">Ton bilan bien-être <em>complet</em>, en 3 minutes chrono</h1>
+          <p class="section-desc" style="margin:0 auto">20 questions ludiques, aucune prise de tête : à la fin, tu repars avec ton profil, ton score détaillé par dimension et des conseils rien que pour toi.</p>
+        </div>
+
+        <div class="bilan-hero-meta">
+          <span>⏱️ 3 minutes chrono</span>
+          <span>🎯 20 questions</span>
+          <span>📊 Résultat instantané</span>
+          <span>🔒 Aucun email requis</span>
+        </div>
+
+        <div class="bilan-dims-preview">
+          <span>⚡ Énergie</span>
+          <span>🌙 Sommeil</span>
+          <span>🧘 Stress</span>
+          <span>🛡️ Immunité</span>
+          <span>🌱 Digestion</span>
+          <span>✨ Beauté</span>
+          <span>💧 Hydratation</span>
+          <span>🏃 Activité</span>
+        </div>
+
+        <div style="text-align:center;margin-top:34px">
+          <button class="btn btn-primary" id="bilanStartBtn">Commencer mon bilan →</button>
+        </div>
       </div>
-      <a href="quiz.html" class="btn btn-terracotta">Faire le quiz 🌱</a>
+
+      <!-- ============ QUIZ ============ -->
+      <div id="bilanQuizSection">
+        <div class="quiz-wrap" data-reveal="scale">
+          <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="bilanProgressFill"></div></div>
+          <div id="bilanSteps"></div>
+        </div>
+      </div>
+
+      <!-- ============ RESULTATS ============ -->
+      <div class="bilan-results" id="bilanResultsSection"></div>
+
     </div>
   </section>
 </main>
@@ -104,14 +104,15 @@
   <div class="cart-drawer-footer" id="cartDrawerFooter">
     <p class="cart-shipping-note" id="cartShippingNote"></p>
     <div class="cart-subtotal-row"><span>Sous-total</span><span data-cart-subtotal>0,00 €</span></div>
-    <a href="#" class="btn btn-primary btn-block">Commander</a>
+    <a href="produits.html" class="btn btn-primary btn-block">Commander</a>
   </div>
 </aside>
 
 <script src="assets/js/data.js"></script>
 <script src="assets/js/cart.js"></script>
 <script src="assets/js/main.js"></script>
-<script src="assets/js/shop.js"></script>
+<script src="assets/js/bilan-data.js"></script>
+<script src="assets/js/bilan.js"></script>
 <script>
   document.getElementById("footer").outerHTML = `
   <footer class="site-footer">
