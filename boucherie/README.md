@@ -1,113 +1,96 @@
-# Maison Lambert — site vitrine + menu admin
+# Maison Lambert — site vitrine + menu admin (PHP)
 
-Site vitrine dynamique (Node.js + Express + SQLite) avec un menu d'administration
-protégé par mot de passe pour éditer soi-même : infos & coordonnées, textes,
-couleurs (apparence) et produits/services — sans toucher au code.
+Site vitrine dynamique en PHP pur (aucune dépendance à installer) avec un
+menu d'administration protégé par mot de passe pour éditer soi-même : infos
+& coordonnées, textes, couleurs (apparence) et produits/services — sans
+toucher au code.
 
 ## Structure
 
+Volontairement minimale — un seul point d'entrée, tout le reste tient dans 3 fichiers :
+
 ```
 boucherie/
-  server.js            point d'entrée du serveur
-  db/                   base SQLite (schema, seed, accès aux données, sessions)
-  routes/                routes publiques (site) et admin (login + API)
-  middleware/            authentification, CSRF, upload d'images
-  views/                  gabarits EJS (site public + dashboard admin)
-  public/                 CSS, JS, images uploadées, servis tels quels
-  data/                   fichier boucherie.db (créé automatiquement, non versionné)
+  index.php            point d'entrée : routeur + page publique
+  admin.php              menu admin (connexion, tableau de bord, API)
+  functions.php           base de données SQLite + helpers, inclus par les deux
+  config.sample.php        à copier en config.php avant le 1er lancement
+  .htaccess                 redirige tout vers index.php + protège la base
+  assets/                    style.css, admin.css, main.js, admin.js
+  uploads/                    images de produits envoyées depuis l'admin
+  data/                        site.db (créé automatiquement, non versionné)
 ```
 
-## Lancer le site en local
+Aucun `npm install`, aucune dépendance : juste PHP (8+) avec l'extension
+`pdo_sqlite`, activée par défaut chez la quasi-totalité des hébergeurs PHP,
+Ionos compris.
 
-Prérequis : Node.js 18+ (testé avec Node 22).
+## Mettre en ligne sur Ionos (hébergement PHP mutualisé)
+
+1. Copie `config.sample.php` en `config.php` et renseigne un identifiant et
+   mot de passe admin de départ :
+   ```php
+   <?php
+   return [
+       'admin_username' => 'admin',
+       'admin_password' => 'un-mot-de-passe-fort',
+   ];
+   ```
+2. Envoie **tout le contenu du dossier `boucherie/`** (y compris les fichiers
+   cachés `.htaccess` et `.gitignore` n'a pas besoin d'être envoyé) à la
+   racine de ton espace Ionos, via FTP/SFTP ou le gestionnaire de fichiers
+   de l'espace client.
+3. Vérifie que les dossiers `data/` et `uploads/` sont **accessibles en
+   écriture** (permissions 755 ou 775 — c'est le cas par défaut sur la
+   plupart des hébergements Ionos).
+4. Va sur `https://tondomaine.fr/` : le site s'affiche directement. La base
+   `data/site.db` est créée automatiquement au premier chargement, pré-remplie
+   avec le contenu actuel.
+5. Va sur `https://tondomaine.fr/admin`, connecte-toi avec les identifiants
+   définis dans `config.php`, puis change immédiatement le mot de passe dans
+   l'onglet **Mon compte**. `config.php` ne sert plus après la création du
+   premier compte — tu peux même le supprimer une fois connecté (il sera
+   régénéré au besoin en le recopiant depuis `config.sample.php`).
+
+C'est tout : pas de build, pas de process à garder actif, pas de base de
+données externe à créer. Ionos exécute `index.php`/`admin.php` comme
+n'importe quel script PHP classique.
+
+### Tester en local avant l'envoi (optionnel)
 
 ```bash
 cd boucherie
-cp .env.example .env     # puis éditer .env (voir ci-dessous)
-npm install
-npm start
+cp config.sample.php config.php   # puis éditer config.php
+php -S localhost:8000
 ```
 
-Le site est alors accessible sur `http://localhost:3000/` et le menu admin sur
-`http://localhost:3000/admin`.
-
-### Variables d'environnement (`.env`)
-
-| Variable         | Rôle                                                                 |
-|------------------|-----------------------------------------------------------------------|
-| `PORT`           | Port d'écoute du serveur (3000 par défaut)                            |
-| `SESSION_SECRET` | Clé secrète qui signe les cookies de session admin — **à changer**    |
-| `ADMIN_USERNAME` | Identifiant admin, utilisé **une seule fois** à la création de la base |
-| `ADMIN_PASSWORD` | Mot de passe admin, utilisé **une seule fois** à la création de la base |
-
-`ADMIN_USERNAME`/`ADMIN_PASSWORD` ne servent qu'au tout premier démarrage,
-quand `data/boucherie.db` n'existe pas encore : le compte est créé avec ces
-identifiants. Ensuite, change le mot de passe depuis l'onglet **Mon compte**
-du menu admin — les variables d'environnement ne sont plus utilisées après.
-
-La base de données SQLite (`data/boucherie.db`) contient tout le contenu
-éditable du site. **Elle n'est pas versionnée dans Git** (voir `.gitignore`)
-et doit être sauvegardée/persistée séparément sur le serveur de production.
-
-## Déployer sur Ionos
-
-Le site n'est plus un simple site statique : il a besoin d'un environnement
-qui peut exécuter Node.js en continu. Selon l'offre Ionos que tu as :
-
-### Option A — Hébergement Ionos avec support Node.js (Deploy Now / Webhosting Node.js)
-
-1. Dans l'espace client Ionos, crée/configure une application Node.js et
-   pointe-la vers ce dossier `boucherie/` (dépôt Git ou envoi SFTP).
-2. Renseigne le **fichier de démarrage** : `server.js`.
-3. Dans les **variables d'environnement** de l'app Ionos, ajoute
-   `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (et `PORT` si Ionos
-   l'impose — beaucoup de plateformes injectent `PORT` automatiquement, le
-   code le respecte déjà via `process.env.PORT`).
-4. Ionos exécute `npm install` puis `npm start` automatiquement (ou lance
-   ces commandes toi-même si l'interface le demande).
-5. Vérifie que le dossier `data/` est bien sur un stockage **persistant**
-   (pas effacé à chaque redéploiement), sinon le contenu édité serait perdu
-   à chaque mise à jour du code.
-
-### Option B — Serveur Ionos (VPS / Cloud Server) en SSH
+Le serveur de développement intégré de PHP ne lit pas `.htaccess` : pour
+tester exactement le même routage qu'en production, utilise plutôt un
+routeur minimal :
 
 ```bash
-# Sur le serveur, une fois connecté en SSH
-sudo apt update && sudo apt install -y nodejs npm   # ou nvm si tu préfères une version précise
-git clone <ton-dépôt> maison-lambert && cd maison-lambert/boucherie
-cp .env.example .env && nano .env                    # renseigne les variables
-npm install --omit=dev
-npm install -g pm2                                    # garde le process actif
-pm2 start server.js --name maison-lambert
-pm2 save && pm2 startup                               # relance auto au reboot
+php -S localhost:8000 -t . router.php
 ```
 
-Ensuite, mets un reverse proxy Nginx devant le port Node (3000 par défaut)
-pour servir le site en HTTPS avec ton nom de domaine (Certbot/Let's Encrypt
-pour le certificat SSL). Exemple minimal de config Nginx :
+avec un `router.php` du style :
 
-```nginx
-server {
-    listen 80;
-    server_name tondomaine.fr;
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+```php
+<?php
+$path = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+if ($path !== '/' && file_exists(__DIR__ . $path) && !is_dir(__DIR__ . $path)) {
+    return false;
 }
+require __DIR__ . '/index.php';
 ```
 
-### Après la mise en ligne
+(pas nécessaire sur Ionos, qui utilise Apache + `.htaccess` directement)
 
-1. Va sur `https://tondomaine.fr/admin`, connecte-toi avec les identifiants
-   définis dans `.env`, puis change immédiatement le mot de passe dans
-   **Mon compte**.
-2. Édite les infos, textes, couleurs et produits depuis le menu admin — les
-   changements apparaissent immédiatement sur le site public.
-3. Pense à sauvegarder régulièrement le fichier `data/boucherie.db` (toutes
-   les données éditées y sont stockées).
+### Sauvegardes
+
+Toutes les données éditées depuis le menu admin vivent dans
+`data/site.db`. Télécharge ce fichier régulièrement (FTP) pour le
+sauvegarder — c'est la seule chose à sauvegarder, tout le reste est
+statique.
 
 ## Menu admin — ce qui est éditable
 

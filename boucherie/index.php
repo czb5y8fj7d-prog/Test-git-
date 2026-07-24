@@ -1,29 +1,59 @@
-<!DOCTYPE html>
+<?php
+require __DIR__ . '/functions.php';
+
+// ---------- Routage ----------
+// Toutes les requêtes passent par ce fichier (voir .htaccess). Tout ce qui
+// commence par /admin est délégué à admin.php ; le reste affiche le site.
+
+$scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+$requestPath = (string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$path = substr($requestPath, strlen($scriptDir));
+if ($path === '' || $path === false) $path = '/';
+if ($path !== '/') $path = rtrim($path, '/');
+
+if ($path === '/admin' || strpos($path, '/admin/') === 0) {
+    require __DIR__ . '/admin.php';
+    exit;
+}
+
+if ($path !== '/') {
+    http_response_code(404);
+    echo 'Page introuvable.';
+    exit;
+}
+
+// ---------- Données ----------
+
+$settings = get_all_settings();
+$stats = get_stats();
+$products = get_published_products();
+
+?><!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><%= settings.site_title %></title>
-<meta name="description" content="<%= settings.site_description %>">
+<title><?= e($settings['site_title']) ?></title>
+<meta name="description" content="<?= e($settings['site_description']) ?>">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23241d18%22/><text x=%2250%22 y=%2266%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%23c9a35f%22 font-family=%22serif%22>ML</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Playfair+Display:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/assets/style.css">
 <style>
 :root {
-  --burgundy: <%= settings.color_primary %>;
-  --burgundy-dark: color-mix(in srgb, <%= settings.color_primary %> 80%, black);
-  --burgundy-light: color-mix(in srgb, <%= settings.color_primary %> 80%, white);
-  --gold: <%= settings.color_accent %>;
-  --gold-dark: color-mix(in srgb, <%= settings.color_accent %> 78%, black);
-  --gold-light: color-mix(in srgb, <%= settings.color_accent %> 80%, white);
-  --cream: <%= settings.color_background %>;
-  --cream-2: color-mix(in srgb, <%= settings.color_background %> 90%, black);
-  --paper: color-mix(in srgb, <%= settings.color_background %> 97%, white);
-  --ink: <%= settings.color_text %>;
-  --ink-soft: color-mix(in srgb, <%= settings.color_text %> 68%, white);
-  --charcoal: <%= settings.color_text %>;
+  --burgundy: <?= e($settings['color_primary']) ?>;
+  --burgundy-dark: color-mix(in srgb, <?= e($settings['color_primary']) ?> 80%, black);
+  --burgundy-light: color-mix(in srgb, <?= e($settings['color_primary']) ?> 80%, white);
+  --gold: <?= e($settings['color_accent']) ?>;
+  --gold-dark: color-mix(in srgb, <?= e($settings['color_accent']) ?> 78%, black);
+  --gold-light: color-mix(in srgb, <?= e($settings['color_accent']) ?> 80%, white);
+  --cream: <?= e($settings['color_background']) ?>;
+  --cream-2: color-mix(in srgb, <?= e($settings['color_background']) ?> 90%, black);
+  --paper: color-mix(in srgb, <?= e($settings['color_background']) ?> 97%, white);
+  --ink: <?= e($settings['color_text']) ?>;
+  --ink-soft: color-mix(in srgb, <?= e($settings['color_text']) ?> 68%, white);
+  --charcoal: <?= e($settings['color_text']) ?>;
 }
 </style>
 </head>
@@ -43,8 +73,8 @@
         </svg>
       </span>
       <span class="brand-text">
-        <strong><%= settings.brand_name %></strong>
-        <em><%= settings.brand_tagline %></em>
+        <strong><?= e($settings['brand_name']) ?></strong>
+        <em><?= e($settings['brand_tagline']) ?></em>
       </span>
     </a>
 
@@ -59,9 +89,9 @@
     </nav>
 
     <div class="header-actions">
-      <a href="tel:<%= settings.phone_link %>" class="header-phone">
+      <a href="tel:<?= e($settings['phone_link']) ?>" class="header-phone">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5c0 9 7 16 16 16l3-4-6-3-2 2c-3-1-6-4-7-7l2-2-3-6z"/></svg>
-        <%= settings.phone_display %>
+        <?= e($settings['phone_display']) ?>
       </a>
       <a href="#contact" class="btn btn-outline btn-small">Devis traiteur</a>
       <button class="nav-toggle" id="nav-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="main-nav">
@@ -77,9 +107,9 @@
   <section class="hero" id="top">
     <div class="hero-texture" aria-hidden="true"></div>
     <div class="hero-inner">
-      <p class="eyebrow reveal"><%= settings.hero_eyebrow %></p>
-      <h1 class="reveal"><%- nl2br(settings.hero_title) %></h1>
-      <p class="hero-lede reveal"><%= settings.hero_lede %></p>
+      <p class="eyebrow reveal"><?= e($settings['hero_eyebrow']) ?></p>
+      <h1 class="reveal"><?= nl2br_e($settings['hero_title']) ?></h1>
+      <p class="hero-lede reveal"><?= e($settings['hero_lede']) ?></p>
       <div class="hero-actions reveal">
         <a href="#viandes" class="btn btn-gold">Découvrir nos viandes</a>
         <a href="#traiteur" class="btn btn-ghost">Service traiteur</a>
@@ -93,12 +123,12 @@
   <!-- ============ CHIFFRES / VALEURS ============ -->
   <section class="stats" id="chiffres">
     <div class="stats-inner">
-      <% stats.forEach(function (stat) { %>
+      <?php foreach ($stats as $stat): ?>
       <div class="stat reveal">
-        <span class="stat-number"><%= stat.number %></span>
-        <span class="stat-label"><%= stat.label %></span>
+        <span class="stat-number"><?= e($stat['number']) ?></span>
+        <span class="stat-label"><?= e($stat['label']) ?></span>
       </div>
-      <% }); %>
+      <?php endforeach; ?>
     </div>
   </section>
 
@@ -107,8 +137,8 @@
     <div class="section-inner">
       <div class="section-head reveal">
         <p class="eyebrow">Notre philosophie</p>
-        <h2><%= settings.philosophy_title %></h2>
-        <p class="section-lede"><%= settings.philosophy_lede %></p>
+        <h2><?= e($settings['philosophy_title']) ?></h2>
+        <p class="section-lede"><?= e($settings['philosophy_lede']) ?></p>
       </div>
 
       <div class="steps">
@@ -159,36 +189,36 @@
   <section class="section viandes" id="viandes">
     <div class="section-inner">
       <div class="section-head reveal">
-        <p class="eyebrow"><%= settings.meat_eyebrow %></p>
-        <h2><%= settings.meat_title %></h2>
-        <p class="section-lede"><%= settings.meat_lede %></p>
+        <p class="eyebrow"><?= e($settings['meat_eyebrow']) ?></p>
+        <h2><?= e($settings['meat_title']) ?></h2>
+        <p class="section-lede"><?= e($settings['meat_lede']) ?></p>
       </div>
 
       <div class="meat-grid">
-        <% products.forEach(function (product) { %>
+        <?php foreach ($products as $product): ?>
         <article class="meat-card reveal">
-          <% if (product.image_url) { %>
-          <img class="meat-card-image" src="<%= product.image_url %>" alt="<%= product.title %>" loading="lazy">
-          <% } %>
+          <?php if (!empty($product['image_url'])): ?>
+          <img class="meat-card-image" src="<?= e($product['image_url']) ?>" alt="<?= e($product['title']) ?>" loading="lazy">
+          <?php endif; ?>
           <div class="meat-card-top">
-            <% if (product.tag) { %>
-            <span class="meat-tag<%= product.tag_style === 'alt' ? ' meat-tag-alt' : '' %>"><%= product.tag %></span>
-            <% } %>
-            <h3><%= product.title %></h3>
+            <?php if (!empty($product['tag'])): ?>
+            <span class="meat-tag<?= $product['tag_style'] === 'alt' ? ' meat-tag-alt' : '' ?>"><?= e($product['tag']) ?></span>
+            <?php endif; ?>
+            <h3><?= e($product['title']) ?></h3>
           </div>
-          <% if (product.description) { %><p><%= product.description %></p><% } %>
-          <% if (product.items && product.items.length) { %>
+          <?php if (!empty($product['description'])): ?><p><?= e($product['description']) ?></p><?php endif; ?>
+          <?php if (!empty($product['items'])): ?>
           <ul class="meat-list">
-            <% product.items.forEach(function (item) { %>
-            <li><%= item %></li>
-            <% }); %>
+            <?php foreach ($product['items'] as $item): ?>
+            <li><?= e($item) ?></li>
+            <?php endforeach; ?>
           </ul>
-          <% } %>
+          <?php endif; ?>
         </article>
-        <% }); %>
+        <?php endforeach; ?>
       </div>
 
-      <p class="meat-note reveal"><%= settings.meat_note %></p>
+      <p class="meat-note reveal"><?= e($settings['meat_note']) ?></p>
     </div>
   </section>
 
@@ -197,9 +227,9 @@
     <div class="traiteur-texture" aria-hidden="true"></div>
     <div class="section-inner">
       <div class="section-head section-head-light reveal">
-        <p class="eyebrow eyebrow-gold"><%= settings.traiteur_eyebrow %></p>
-        <h2><%= settings.traiteur_title %></h2>
-        <p class="section-lede"><%= settings.traiteur_lede %></p>
+        <p class="eyebrow eyebrow-gold"><?= e($settings['traiteur_eyebrow']) ?></p>
+        <h2><?= e($settings['traiteur_title']) ?></h2>
+        <p class="section-lede"><?= e($settings['traiteur_lede']) ?></p>
       </div>
 
       <div class="traiteur-grid">
@@ -238,8 +268,8 @@
 
       <div class="traiteur-cta reveal">
         <div class="traiteur-cta-text">
-          <h3><%= settings.traiteur_cta_title %></h3>
-          <p><%= settings.traiteur_cta_text %></p>
+          <h3><?= e($settings['traiteur_cta_title']) ?></h3>
+          <p><?= e($settings['traiteur_cta_text']) ?></p>
         </div>
         <a href="#contact" class="btn btn-gold">Demander un devis traiteur</a>
       </div>
@@ -283,40 +313,40 @@
   <section class="section contact" id="contact">
     <div class="section-inner contact-inner">
       <div class="contact-info reveal">
-        <p class="eyebrow"><%= settings.contact_eyebrow %></p>
-        <h2><%= settings.contact_title %></h2>
-        <p class="section-lede"><%= settings.contact_lede %></p>
+        <p class="eyebrow"><?= e($settings['contact_eyebrow']) ?></p>
+        <h2><?= e($settings['contact_title']) ?></h2>
+        <p class="section-lede"><?= e($settings['contact_lede']) ?></p>
 
         <ul class="contact-details">
           <li>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s7-7.4 7-13a7 7 0 1 0-14 0c0 5.6 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>
-            <span><%= settings.address %></span>
+            <span><?= e($settings['address']) ?></span>
           </li>
           <li>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5c0 9 7 16 16 16l3-4-6-3-2 2c-3-1-6-4-7-7l2-2-3-6z"/></svg>
-            <a href="tel:<%= settings.phone_link %>"><%= settings.phone_display %></a>
+            <a href="tel:<?= e($settings['phone_link']) ?>"><?= e($settings['phone_display']) ?></a>
           </li>
           <li>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
-            <a href="mailto:<%= settings.email %>"><%= settings.email %></a>
+            <a href="mailto:<?= e($settings['email']) ?>"><?= e($settings['email']) ?></a>
           </li>
         </ul>
 
         <table class="hours">
           <caption>Horaires d'ouverture</caption>
           <tbody>
-            <tr><th><%= settings.hours_1_label %></th><td><%= settings.hours_1_value %></td></tr>
-            <tr><th><%= settings.hours_2_label %></th><td><%= settings.hours_2_value %></td></tr>
-            <tr><th><%= settings.hours_3_label %></th><td><%= settings.hours_3_value %></td></tr>
-            <tr><th><%= settings.hours_4_label %></th><td><%= settings.hours_4_value %></td></tr>
+            <tr><th><?= e($settings['hours_1_label']) ?></th><td><?= e($settings['hours_1_value']) ?></td></tr>
+            <tr><th><?= e($settings['hours_2_label']) ?></th><td><?= e($settings['hours_2_value']) ?></td></tr>
+            <tr><th><?= e($settings['hours_3_label']) ?></th><td><?= e($settings['hours_3_value']) ?></td></tr>
+            <tr><th><?= e($settings['hours_4_label']) ?></th><td><?= e($settings['hours_4_value']) ?></td></tr>
           </tbody>
         </table>
 
         <div class="social-links">
-          <a href="<%= settings.social_instagram || '#' %>" aria-label="Instagram">
+          <a href="<?= e($settings['social_instagram'] ?: '#') ?>" aria-label="Instagram">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg>
           </a>
-          <a href="<%= settings.social_facebook || '#' %>" aria-label="Facebook">
+          <a href="<?= e($settings['social_facebook'] ?: '#') ?>" aria-label="Facebook">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 8h-2a2 2 0 0 0-2 2v2H9v3h2v7h3v-7h2.2l.8-3H14v-1.5c0-.6.4-1 1-1h1.5V8z"/></svg>
           </a>
         </div>
@@ -377,8 +407,8 @@
         </svg>
       </span>
       <div>
-        <strong><%= settings.brand_name %></strong>
-        <p><%= settings.footer_tagline %></p>
+        <strong><?= e($settings['brand_name']) ?></strong>
+        <p><?= e($settings['footer_tagline']) ?></p>
       </div>
     </div>
 
@@ -393,11 +423,11 @@
     <button class="back-to-top" id="back-to-top" aria-label="Revenir en haut de page">↑</button>
   </div>
   <div class="footer-bottom">
-    <p>© <span id="year"></span> <%= settings.brand_name %>. Tous droits réservés.</p>
+    <p>© <span id="year"></span> <?= e($settings['brand_name']) ?>. Tous droits réservés.</p>
     <p class="footer-fictif">Site vitrine fictif, réalisé à titre de démonstration.</p>
   </div>
 </footer>
 
-<script src="/js/main.js"></script>
+<script src="/assets/main.js"></script>
 </body>
 </html>

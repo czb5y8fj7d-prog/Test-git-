@@ -1,0 +1,12 @@
+# Point d'entrée unique : toute requête vers un fichier/dossier qui
+# n'existe pas physiquement est envoyée à index.php, qui route en interne
+# (/, /admin, /admin/login, /admin/api/...).
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Empêche l'accès direct à la base de données ou à un éventuel fichier de config.
+<FilesMatch "\.(db|sqlite|sqlite3)$">
+  Require all denied
+</FilesMatch>

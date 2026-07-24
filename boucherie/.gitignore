@@ -1,6 +1,7 @@
-node_modules/
+config.php
 data/*.db
 data/*.db-journal
-.env
-public/uploads/*
-!public/uploads/.gitkeep
+data/*.db-wal
+data/*.db-shm
+uploads/*
+!uploads/.gitkeep

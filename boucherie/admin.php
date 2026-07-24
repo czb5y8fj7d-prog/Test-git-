@@ -1,17 +1,257 @@
-<!DOCTYPE html>
+<?php
+require_once __DIR__ . '/functions.php';
+
+// ---------- Routage interne (robuste que ce fichier soit inclus depuis
+// index.php via /admin, ou atteint directement en /admin.php) ----------
+
+$scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+$requestPath = (string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$full = substr($requestPath, strlen($scriptDir));
+if ($full === '' || $full === false) $full = '/';
+if ($full !== '/') $full = rtrim($full, '/');
+
+if (strpos($full, '/admin.php') === 0) {
+    $adminPath = substr($full, strlen('/admin.php'));
+} elseif (strpos($full, '/admin') === 0) {
+    $adminPath = substr($full, strlen('/admin'));
+} else {
+    $adminPath = '';
+}
+if ($adminPath === '' || $adminPath === false) $adminPath = '/';
+
+$method = $_SERVER['REQUEST_METHOD'];
+
+// ---------- Auth ----------
+
+if ($adminPath === '/login') {
+    if ($method === 'POST') {
+        $username = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+        $user = find_admin_by_username($username);
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+            render_login_page('Identifiants incorrects.');
+            exit;
+        }
+        session_regenerate_id(true);
+        $_SESSION['admin_id'] = $user['id'];
+        $_SESSION['admin_username'] = $user['username'];
+        header('Location: /admin');
+        exit;
+    }
+    if (is_logged_in()) {
+        header('Location: /admin');
+        exit;
+    }
+    render_login_page(null);
+    exit;
+}
+
+if ($adminPath === '/logout' && $method === 'POST') {
+    $_SESSION = [];
+    session_destroy();
+    header('Location: /admin/login');
+    exit;
+}
+
+if ($adminPath === '/' || $adminPath === '') {
+    require_admin_page();
+    render_dashboard();
+    exit;
+}
+
+// ---------- API (JSON) ----------
+
+if (strpos($adminPath, '/api/') === 0) {
+    require_admin_api();
+
+    // GET /admin/api/data
+    if ($adminPath === '/api/data' && $method === 'GET') {
+        json_response([
+            'settings' => get_all_settings(),
+            'stats' => get_stats(),
+            'products' => get_all_products(),
+        ]);
+    }
+
+    // POST /admin/api/settings
+    if ($adminPath === '/api/settings' && $method === 'POST') {
+        verify_csrf();
+        set_settings(read_json_body());
+        json_response(['ok' => true, 'settings' => get_all_settings()]);
+    }
+
+    // POST /admin/api/stats
+    if ($adminPath === '/api/stats' && $method === 'POST') {
+        verify_csrf();
+        $body = read_json_body();
+        if (!isset($body['stats']) || !is_array($body['stats'])) {
+            json_response(['error' => 'Format invalide.'], 400);
+        }
+        set_stats($body['stats']);
+        json_response(['ok' => true, 'stats' => get_stats()]);
+    }
+
+    // POST /admin/api/products
+    if ($adminPath === '/api/products' && $method === 'POST') {
+        verify_csrf();
+        $body = read_json_body();
+        if (empty(trim($body['title'] ?? ''))) {
+            json_response(['error' => 'Le titre du produit est obligatoire.'], 400);
+        }
+        $id = create_product($body);
+        json_response(['ok' => true, 'id' => $id, 'products' => get_all_products()]);
+    }
+
+    // POST /admin/api/products/reorder
+    if ($adminPath === '/api/products/reorder' && $method === 'POST') {
+        verify_csrf();
+        $body = read_json_body();
+        if (!isset($body['ids']) || !is_array($body['ids'])) {
+            json_response(['error' => 'Format invalide.'], 400);
+        }
+        reorder_products($body['ids']);
+        json_response(['ok' => true, 'products' => get_all_products()]);
+    }
+
+    // PUT/DELETE /admin/api/products/{id}
+    if (preg_match('#^/api/products/(\d+)$#', $adminPath, $m)) {
+        $id = (int) $m[1];
+        if ($method === 'PUT') {
+            verify_csrf();
+            $body = read_json_body();
+            if (empty(trim($body['title'] ?? ''))) {
+                json_response(['error' => 'Le titre du produit est obligatoire.'], 400);
+            }
+            update_product($id, $body);
+            json_response(['ok' => true, 'products' => get_all_products()]);
+        }
+        if ($method === 'DELETE') {
+            verify_csrf();
+            delete_product($id);
+            json_response(['ok' => true, 'products' => get_all_products()]);
+        }
+    }
+
+    // POST /admin/api/upload
+    if ($adminPath === '/api/upload' && $method === 'POST') {
+        verify_csrf();
+        json_response(handle_upload());
+    }
+
+    // POST /admin/api/change-password
+    if ($adminPath === '/api/change-password' && $method === 'POST') {
+        verify_csrf();
+        $body = read_json_body();
+        $user = find_admin_by_username($_SESSION['admin_username']);
+        if (!$user || !password_verify($body['currentPassword'] ?? '', $user['password_hash'])) {
+            json_response(['error' => 'Mot de passe actuel incorrect.'], 401);
+        }
+        $newPassword = (string) ($body['newPassword'] ?? '');
+        if (strlen($newPassword) < 8) {
+            json_response(['error' => 'Le nouveau mot de passe doit faire au moins 8 caractères.'], 400);
+        }
+        update_admin_password((int) $user['id'], password_hash($newPassword, PASSWORD_DEFAULT));
+        json_response(['ok' => true]);
+    }
+
+    json_response(['error' => 'Route inconnue.'], 404);
+}
+
+http_response_code(404);
+echo 'Page introuvable.';
+exit;
+
+// =====================================================================
+// Rendu HTML
+// =====================================================================
+
+function handle_upload(): array
+{
+    if (empty($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(400);
+        return ['error' => 'Aucun fichier reçu.'];
+    }
+    $file = $_FILES['image'];
+    if ($file['size'] > 5 * 1024 * 1024) {
+        http_response_code(400);
+        return ['error' => "L'image dépasse la taille maximale de 5 Mo."];
+    }
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    $extByType = [
+        'image/jpeg' => '.jpg',
+        'image/png' => '.png',
+        'image/webp' => '.webp',
+        'image/gif' => '.gif',
+        'image/svg+xml' => '.svg',
+    ];
+    if (!isset($extByType[$mime])) {
+        http_response_code(400);
+        return ['error' => "Format d'image non supporté (jpg, png, webp, gif, svg uniquement)."];
+    }
+    if (!is_dir(UPLOAD_DIR)) mkdir(UPLOAD_DIR, 0775, true);
+    $filename = bin2hex(random_bytes(16)) . $extByType[$mime];
+    move_uploaded_file($file['tmp_name'], UPLOAD_DIR . '/' . $filename);
+    return ['ok' => true, 'url' => '/uploads/' . $filename];
+}
+
+function render_login_page(?string $error): void
+{
+    ?><!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion admin — Maison Lambert</title>
+<link rel="stylesheet" href="/assets/admin.css">
+</head>
+<body class="admin-login-body">
+  <main class="login-card">
+    <h1>Espace admin</h1>
+    <p class="login-sub">Maison Lambert — gestion du site</p>
+    <?php if ($error): ?>
+      <p class="login-error"><?= e($error) ?></p>
+    <?php endif; ?>
+    <form method="POST" action="/admin/login" class="login-form">
+      <label for="username">Identifiant</label>
+      <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+      <button type="submit" class="btn-primary">Se connecter</button>
+    </form>
+    <a class="back-link" href="/">← Retour au site</a>
+  </main>
+</body>
+</html>
+<?php
+}
+
+function render_dashboard(): void
+{
+    $data = [
+        'settings' => get_all_settings(),
+        'stats' => get_stats(),
+        'products' => get_all_products(),
+    ];
+    $csrf = csrf_token();
+    $adminUsername = $_SESSION['admin_username'] ?? '';
+    ?><!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Menu admin — Maison Lambert</title>
-<link rel="stylesheet" href="/css/admin.css">
+<link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
 
 <header class="admin-topbar">
   <h1>Maison Lambert — Menu admin</h1>
   <div class="topbar-right">
-    <span>Connecté : <%= adminUsername %></span>
+    <span>Connecté : <?= e($adminUsername) ?></span>
     <a href="/" target="_blank" rel="noopener">Voir le site ↗</a>
     <form method="POST" action="/admin/logout" style="margin:0;">
       <button type="submit">Déconnexion</button>
@@ -259,9 +499,11 @@
 </div>
 
 <script>
-  window.__ADMIN_DATA__ = <%- JSON.stringify({ settings, stats, products }) %>;
-  window.__CSRF__ = <%- JSON.stringify(csrfToken) %>;
+  window.__ADMIN_DATA__ = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+  window.__CSRF__ = <?= json_encode($csrf) ?>;
 </script>
-<script src="/js/admin.js"></script>
+<script src="/assets/admin.js"></script>
 </body>
 </html>
+<?php
+}
