@@ -35,11 +35,11 @@ if ($adminPath === '/login') {
         session_regenerate_id(true);
         $_SESSION['admin_id'] = $user['id'];
         $_SESSION['admin_username'] = $user['username'];
-        header('Location: /admin');
+        header('Location: ' . base_path() . '/admin');
         exit;
     }
     if (is_logged_in()) {
-        header('Location: /admin');
+        header('Location: ' . base_path() . '/admin');
         exit;
     }
     render_login_page(null);
@@ -49,7 +49,7 @@ if ($adminPath === '/login') {
 if ($adminPath === '/logout' && $method === 'POST') {
     $_SESSION = [];
     session_destroy();
-    header('Location: /admin/login');
+    header('Location: ' . base_path() . '/admin/login');
     exit;
 }
 
@@ -193,18 +193,19 @@ function handle_upload(): array
     if (!is_dir(UPLOAD_DIR)) mkdir(UPLOAD_DIR, 0775, true);
     $filename = bin2hex(random_bytes(16)) . $extByType[$mime];
     move_uploaded_file($file['tmp_name'], UPLOAD_DIR . '/' . $filename);
-    return ['ok' => true, 'url' => '/uploads/' . $filename];
+    return ['ok' => true, 'url' => base_path() . '/uploads/' . $filename];
 }
 
 function render_login_page(?string $error): void
 {
+    $base = base_path();
     ?><!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Connexion admin — Maison Lambert</title>
-<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="<?= e($base) ?>/assets/admin.css">
 </head>
 <body class="admin-login-body">
   <main class="login-card">
@@ -213,7 +214,7 @@ function render_login_page(?string $error): void
     <?php if ($error): ?>
       <p class="login-error"><?= e($error) ?></p>
     <?php endif; ?>
-    <form method="POST" action="/admin/login" class="login-form">
+    <form method="POST" action="<?= e($base) ?>/admin/login" class="login-form">
       <label for="username">Identifiant</label>
       <input type="text" id="username" name="username" autocomplete="username" required autofocus>
 
@@ -222,7 +223,7 @@ function render_login_page(?string $error): void
 
       <button type="submit" class="btn-primary">Se connecter</button>
     </form>
-    <a class="back-link" href="/">← Retour au site</a>
+    <a class="back-link" href="<?= e($base) ?>/">← Retour au site</a>
   </main>
 </body>
 </html>
@@ -238,13 +239,14 @@ function render_dashboard(): void
     ];
     $csrf = csrf_token();
     $adminUsername = $_SESSION['admin_username'] ?? '';
+    $base = base_path();
     ?><!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Menu admin — Maison Lambert</title>
-<link rel="stylesheet" href="/assets/admin.css">
+<link rel="stylesheet" href="<?= e($base) ?>/assets/admin.css">
 </head>
 <body>
 
@@ -252,8 +254,8 @@ function render_dashboard(): void
   <h1>Maison Lambert — Menu admin</h1>
   <div class="topbar-right">
     <span>Connecté : <?= e($adminUsername) ?></span>
-    <a href="/" target="_blank" rel="noopener">Voir le site ↗</a>
-    <form method="POST" action="/admin/logout" style="margin:0;">
+    <a href="<?= e($base) ?>/" target="_blank" rel="noopener">Voir le site ↗</a>
+    <form method="POST" action="<?= e($base) ?>/admin/logout" style="margin:0;">
       <button type="submit">Déconnexion</button>
     </form>
   </div>
@@ -403,7 +405,7 @@ function render_dashboard(): void
         </div>
         <div class="form-actions">
           <button type="submit" class="btn">Enregistrer</button>
-          <a class="btn btn-secondary" href="/" target="_blank" rel="noopener">Prévisualiser le site</a>
+          <a class="btn btn-secondary" href="<?= e($base) ?>/" target="_blank" rel="noopener">Prévisualiser le site</a>
           <span class="status-msg" data-status-for="form-apparence"></span>
         </div>
       </form>
@@ -501,8 +503,9 @@ function render_dashboard(): void
 <script>
   window.__ADMIN_DATA__ = <?= json_encode($data, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   window.__CSRF__ = <?= json_encode($csrf) ?>;
+  window.__BASE__ = <?= json_encode($base) ?>;
 </script>
-<script src="/assets/admin.js"></script>
+<script src="<?= e($base) ?>/assets/admin.js"></script>
 </body>
 </html>
 <?php

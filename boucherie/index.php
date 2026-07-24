@@ -27,6 +27,7 @@ if ($path !== '/') {
 $settings = get_all_settings();
 $stats = get_stats();
 $products = get_published_products();
+$base = base_path();
 
 ?><!DOCTYPE html>
 <html lang="fr">
@@ -39,7 +40,7 @@ $products = get_published_products();
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Playfair+Display:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="<?= e($base) ?>/assets/style.css">
 <style>
 :root {
   --burgundy: <?= e($settings['color_primary']) ?>;
@@ -428,6 +429,6 @@ $products = get_published_products();
   </div>
 </footer>
 
-<script src="/assets/main.js"></script>
+<script src="<?= e($base) ?>/assets/main.js"></script>
 </body>
 </html>

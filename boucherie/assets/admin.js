@@ -3,6 +3,7 @@
 
   var state = window.__ADMIN_DATA__ || { settings: {}, stats: [], products: [] };
   var CSRF = window.__CSRF__ || "";
+  var BASE = window.__BASE__ || "";
 
   // ---------- helpers ----------
 
@@ -15,7 +16,7 @@
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(body);
     }
-    return fetch(url, opts).then(function (res) {
+    return fetch(BASE + url, opts).then(function (res) {
       return res.json().then(function (data) {
         if (!res.ok) throw new Error(data.error || "Une erreur est survenue.");
         return data;
@@ -267,7 +268,7 @@
       if (!file) return;
       var formData = new FormData();
       formData.append("image", file);
-      fetch("/admin/api/upload", {
+      fetch(BASE + "/admin/api/upload", {
         method: "POST",
         headers: { "X-CSRF-Token": CSRF },
         body: formData,

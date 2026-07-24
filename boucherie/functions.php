@@ -12,6 +12,23 @@ define('BASE_DIR', __DIR__);
 define('DATA_DIR', BASE_DIR . '/data');
 define('UPLOAD_DIR', BASE_DIR . '/uploads');
 
+// ---------- Chemin de base ----------
+// Calculé à partir de l'URL réelle du script : fonctionne que le site soit
+// déposé à la racine du domaine (ex. tondomaine.fr/) ou dans un sous-dossier
+// (ex. tondomaine.fr/boucherie/), sans rien à configurer.
+
+function base_path(): string
+{
+    static $base = null;
+    if ($base !== null) return $base;
+    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    // admin.php et index.php sont tous les deux à la racine du site, donc
+    // dirname() de l'un ou l'autre donne le même dossier de base.
+    $dir = rtrim(dirname($scriptName), '/');
+    $base = ($dir === '' || $dir === '/' || $dir === '.') ? '' : $dir;
+    return $base;
+}
+
 // ---------- Config (admin initial) ----------
 
 function app_config(): array
