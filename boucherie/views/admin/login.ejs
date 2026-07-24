@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion admin — Maison Lambert</title>
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-login-body">
+  <main class="login-card">
+    <h1>Espace admin</h1>
+    <p class="login-sub">Maison Lambert — gestion du site</p>
+    <% if (error) { %>
+      <p class="login-error"><%= error %></p>
+    <% } %>
+    <form method="POST" action="/admin/login" class="login-form">
+      <label for="username">Identifiant</label>
+      <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+      <button type="submit" class="btn-primary">Se connecter</button>
+    </form>
+    <a class="back-link" href="/">← Retour au site</a>
+  </main>
+</body>
+</html>

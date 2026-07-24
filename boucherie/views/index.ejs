@@ -3,13 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maison Lambert — Boucher · Charcutier · Traiteur depuis 1958</title>
-<meta name="description" content="Maison Lambert, boucherie artisanale depuis 1958. Viandes maturées, charcuterie faite main et service traiteur sur mesure pour vos réceptions.">
+<title><%= settings.site_title %></title>
+<meta name="description" content="<%= settings.site_description %>">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23241d18%22/><text x=%2250%22 y=%2266%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%23c9a35f%22 font-family=%22serif%22>ML</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Playfair+Display:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+:root {
+  --burgundy: <%= settings.color_primary %>;
+  --burgundy-dark: color-mix(in srgb, <%= settings.color_primary %> 80%, black);
+  --burgundy-light: color-mix(in srgb, <%= settings.color_primary %> 80%, white);
+  --gold: <%= settings.color_accent %>;
+  --gold-dark: color-mix(in srgb, <%= settings.color_accent %> 78%, black);
+  --gold-light: color-mix(in srgb, <%= settings.color_accent %> 80%, white);
+  --cream: <%= settings.color_background %>;
+  --cream-2: color-mix(in srgb, <%= settings.color_background %> 90%, black);
+  --paper: color-mix(in srgb, <%= settings.color_background %> 97%, white);
+  --ink: <%= settings.color_text %>;
+  --ink-soft: color-mix(in srgb, <%= settings.color_text %> 68%, white);
+  --charcoal: <%= settings.color_text %>;
+}
+</style>
 </head>
 <body>
 
@@ -27,8 +43,8 @@
         </svg>
       </span>
       <span class="brand-text">
-        <strong>Maison Lambert</strong>
-        <em>Boucher · Charcutier · Traiteur</em>
+        <strong><%= settings.brand_name %></strong>
+        <em><%= settings.brand_tagline %></em>
       </span>
     </a>
 
@@ -43,9 +59,9 @@
     </nav>
 
     <div class="header-actions">
-      <a href="tel:+330478123456" class="header-phone">
+      <a href="tel:<%= settings.phone_link %>" class="header-phone">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5c0 9 7 16 16 16l3-4-6-3-2 2c-3-1-6-4-7-7l2-2-3-6z"/></svg>
-        04 78 12 34 56
+        <%= settings.phone_display %>
       </a>
       <a href="#contact" class="btn btn-outline btn-small">Devis traiteur</a>
       <button class="nav-toggle" id="nav-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="main-nav">
@@ -61,10 +77,9 @@
   <section class="hero" id="top">
     <div class="hero-texture" aria-hidden="true"></div>
     <div class="hero-inner">
-      <p class="eyebrow reveal">Artisan boucher depuis 1958 — Villeneuve-sur-Auvézère</p>
-      <h1 class="reveal">L'art de la belle pièce,<br> depuis trois générations</h1>
-      <p class="hero-lede reveal">Une boucherie de famille où chaque pièce est choisie chez l'éleveur, maturée en cave
-        et travaillée au couteau, dans le respect du produit, du geste et du temps.</p>
+      <p class="eyebrow reveal"><%= settings.hero_eyebrow %></p>
+      <h1 class="reveal"><%- nl2br(settings.hero_title) %></h1>
+      <p class="hero-lede reveal"><%= settings.hero_lede %></p>
       <div class="hero-actions reveal">
         <a href="#viandes" class="btn btn-gold">Découvrir nos viandes</a>
         <a href="#traiteur" class="btn btn-ghost">Service traiteur</a>
@@ -78,22 +93,12 @@
   <!-- ============ CHIFFRES / VALEURS ============ -->
   <section class="stats" id="chiffres">
     <div class="stats-inner">
+      <% stats.forEach(function (stat) { %>
       <div class="stat reveal">
-        <span class="stat-number">1958</span>
-        <span class="stat-label">Année de fondation</span>
+        <span class="stat-number"><%= stat.number %></span>
+        <span class="stat-label"><%= stat.label %></span>
       </div>
-      <div class="stat reveal">
-        <span class="stat-number">21&nbsp;j</span>
-        <span class="stat-label">Maturation moyenne en cave</span>
-      </div>
-      <div class="stat reveal">
-        <span class="stat-number">12</span>
-        <span class="stat-label">Éleveurs partenaires en circuit court</span>
-      </div>
-      <div class="stat reveal">
-        <span class="stat-number">100%</span>
-        <span class="stat-label">Découpe artisanale, faite main</span>
-      </div>
+      <% }); %>
     </div>
   </section>
 
@@ -102,12 +107,8 @@
     <div class="section-inner">
       <div class="section-head reveal">
         <p class="eyebrow">Notre philosophie</p>
-        <h2>Le respect du produit, avant tout</h2>
-        <p class="section-lede">
-          Chez Maison Lambert, une belle pièce ne s'improvise pas. Elle se choisit à la ferme, se patiente
-          en cave, et se travaille à la main — sans raccourci. C'est ce savoir-faire, transmis depuis 1958,
-          que nous mettons chaque jour dans votre assiette.
-        </p>
+        <h2><%= settings.philosophy_title %></h2>
+        <p class="section-lede"><%= settings.philosophy_lede %></p>
       </div>
 
       <div class="steps">
@@ -158,93 +159,36 @@
   <section class="section viandes" id="viandes">
     <div class="section-inner">
       <div class="section-head reveal">
-        <p class="eyebrow">Le comptoir</p>
-        <h2>Nos viandes d'exception</h2>
-        <p class="section-lede">
-          Une sélection resserrée, choisie pour sa qualité plutôt que sa quantité. Toutes nos viandes sont
-          fermières, tracées depuis l'élevage, et préparées à la commande.
-        </p>
+        <p class="eyebrow"><%= settings.meat_eyebrow %></p>
+        <h2><%= settings.meat_title %></h2>
+        <p class="section-lede"><%= settings.meat_lede %></p>
       </div>
 
       <div class="meat-grid">
-
+        <% products.forEach(function (product) { %>
         <article class="meat-card reveal">
+          <% if (product.image_url) { %>
+          <img class="meat-card-image" src="<%= product.image_url %>" alt="<%= product.title %>" loading="lazy">
+          <% } %>
           <div class="meat-card-top">
-            <span class="meat-tag">Pièce signature</span>
-            <h3>Bœuf maturé</h3>
+            <% if (product.tag) { %>
+            <span class="meat-tag<%= product.tag_style === 'alt' ? ' meat-tag-alt' : '' %>"><%= product.tag %></span>
+            <% } %>
+            <h3><%= product.title %></h3>
           </div>
-          <p>Races à viande françaises — Salers, Aubrac, Charolaise. Maturation de 21 à 45 jours en cave.</p>
+          <% if (product.description) { %><p><%= product.description %></p><% } %>
+          <% if (product.items && product.items.length) { %>
           <ul class="meat-list">
-            <li>Côte de bœuf &amp; Tomahawk</li>
-            <li>Chateaubriand &amp; filet</li>
-            <li>Entrecôte, bavette, onglet</li>
+            <% product.items.forEach(function (item) { %>
+            <li><%= item %></li>
+            <% }); %>
           </ul>
+          <% } %>
         </article>
-
-        <article class="meat-card reveal">
-          <div class="meat-card-top">
-            <h3>Agneau fermier</h3>
-          </div>
-          <p>Agneau de lait et agneau fermier élevé en plein air, à la chair fine et délicate.</p>
-          <ul class="meat-list">
-            <li>Gigot &amp; épaule</li>
-            <li>Carré et côtelettes</li>
-            <li>Souris confites</li>
-          </ul>
-        </article>
-
-        <article class="meat-card reveal">
-          <div class="meat-card-top">
-            <h3>Veau sous la mère</h3>
-          </div>
-          <p>Veau fermier élevé sous la mère, pour une viande claire, tendre et savoureuse.</p>
-          <ul class="meat-list">
-            <li>Côtes &amp; escalopes</li>
-            <li>Rôti &amp; blanquette</li>
-            <li>Ris de veau (sur commande)</li>
-          </ul>
-        </article>
-
-        <article class="meat-card reveal">
-          <div class="meat-card-top">
-            <h3>Porc fermier</h3>
-          </div>
-          <p>Porc élevé en plein air et nourri sans OGM, pour une chair persillée et goûteuse.</p>
-          <ul class="meat-list">
-            <li>Côtes &amp; filet mignon</li>
-            <li>Poitrine &amp; travers</li>
-            <li>Rôti farci maison</li>
-          </ul>
-        </article>
-
-        <article class="meat-card reveal">
-          <div class="meat-card-top">
-            <h3>Volailles fermières</h3>
-          </div>
-          <p>Volailles Label Rouge élevées en plein air 81 jours minimum, chair ferme et parfumée.</p>
-          <ul class="meat-list">
-            <li>Chapon &amp; poularde</li>
-            <li>Pintade &amp; canard</li>
-            <li>Volaille farcie sur commande</li>
-          </ul>
-        </article>
-
-        <article class="meat-card reveal">
-          <div class="meat-card-top">
-            <span class="meat-tag meat-tag-alt">Fait maison</span>
-            <h3>Charcuterie d'atelier</h3>
-          </div>
-          <p>Terrines, pâtés et salaisons préparés chaque semaine dans notre atelier, sans additif.</p>
-          <ul class="meat-list">
-            <li>Terrines &amp; pâtés en croûte</li>
-            <li>Saucisson sec &amp; jambon sec</li>
-            <li>Rillettes &amp; boudin maison</li>
-          </ul>
-        </article>
-
+        <% }); %>
       </div>
 
-      <p class="meat-note reveal">Gibier de saison disponible selon arrivages — demandez conseil à votre boucher au comptoir.</p>
+      <p class="meat-note reveal"><%= settings.meat_note %></p>
     </div>
   </section>
 
@@ -253,13 +197,9 @@
     <div class="traiteur-texture" aria-hidden="true"></div>
     <div class="section-inner">
       <div class="section-head section-head-light reveal">
-        <p class="eyebrow eyebrow-gold">Service traiteur</p>
-        <h2>Recevez sans compromis</h2>
-        <p class="section-lede">
-          Mariage, fête de famille, réception d'entreprise ou simple dimanche entre amis : notre atelier
-          traiteur compose avec vous un menu à base de belles pièces, dans le même souci du détail que
-          notre boucherie.
-        </p>
+        <p class="eyebrow eyebrow-gold"><%= settings.traiteur_eyebrow %></p>
+        <h2><%= settings.traiteur_title %></h2>
+        <p class="section-lede"><%= settings.traiteur_lede %></p>
       </div>
 
       <div class="traiteur-grid">
@@ -298,9 +238,8 @@
 
       <div class="traiteur-cta reveal">
         <div class="traiteur-cta-text">
-          <h3>Un événement à préparer ?</h3>
-          <p>Parlez-nous de votre projet — nombre de convives, budget, envies — et recevez un devis
-            personnalisé sous 48h.</p>
+          <h3><%= settings.traiteur_cta_title %></h3>
+          <p><%= settings.traiteur_cta_text %></p>
         </div>
         <a href="#contact" class="btn btn-gold">Demander un devis traiteur</a>
       </div>
@@ -344,43 +283,40 @@
   <section class="section contact" id="contact">
     <div class="section-inner contact-inner">
       <div class="contact-info reveal">
-        <p class="eyebrow">Nous rencontrer</p>
-        <h2>Venez pousser la porte</h2>
-        <p class="section-lede">
-          Notre équipe vous accueille au comptoir pour vous conseiller sur la pièce du jour, ou pour
-          construire ensemble votre commande traiteur.
-        </p>
+        <p class="eyebrow"><%= settings.contact_eyebrow %></p>
+        <h2><%= settings.contact_title %></h2>
+        <p class="section-lede"><%= settings.contact_lede %></p>
 
         <ul class="contact-details">
           <li>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s7-7.4 7-13a7 7 0 1 0-14 0c0 5.6 7 13 7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>
-            <span>12 Place du Marché, 24 Villeneuve-sur-Auvézère</span>
+            <span><%= settings.address %></span>
           </li>
           <li>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5c0 9 7 16 16 16l3-4-6-3-2 2c-3-1-6-4-7-7l2-2-3-6z"/></svg>
-            <a href="tel:+330478123456">04 78 12 34 56</a>
+            <a href="tel:<%= settings.phone_link %>"><%= settings.phone_display %></a>
           </li>
           <li>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
-            <a href="mailto:contact@maison-lambert.fr">contact@maison-lambert.fr</a>
+            <a href="mailto:<%= settings.email %>"><%= settings.email %></a>
           </li>
         </ul>
 
         <table class="hours">
           <caption>Horaires d'ouverture</caption>
           <tbody>
-            <tr><th>Mardi – Vendredi</th><td>7h30 – 12h45 · 15h30 – 19h30</td></tr>
-            <tr><th>Samedi</th><td>7h00 – 19h30 (non-stop)</td></tr>
-            <tr><th>Dimanche</th><td>7h30 – 13h00</td></tr>
-            <tr><th>Lundi</th><td>Fermé</td></tr>
+            <tr><th><%= settings.hours_1_label %></th><td><%= settings.hours_1_value %></td></tr>
+            <tr><th><%= settings.hours_2_label %></th><td><%= settings.hours_2_value %></td></tr>
+            <tr><th><%= settings.hours_3_label %></th><td><%= settings.hours_3_value %></td></tr>
+            <tr><th><%= settings.hours_4_label %></th><td><%= settings.hours_4_value %></td></tr>
           </tbody>
         </table>
 
         <div class="social-links">
-          <a href="#" aria-label="Instagram">
+          <a href="<%= settings.social_instagram || '#' %>" aria-label="Instagram">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg>
           </a>
-          <a href="#" aria-label="Facebook">
+          <a href="<%= settings.social_facebook || '#' %>" aria-label="Facebook">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 8h-2a2 2 0 0 0-2 2v2H9v3h2v7h3v-7h2.2l.8-3H14v-1.5c0-.6.4-1 1-1h1.5V8z"/></svg>
           </a>
         </div>
@@ -441,8 +377,8 @@
         </svg>
       </span>
       <div>
-        <strong>Maison Lambert</strong>
-        <p>Boucher · Charcutier · Traiteur — artisan depuis 1958.</p>
+        <strong><%= settings.brand_name %></strong>
+        <p><%= settings.footer_tagline %></p>
       </div>
     </div>
 
@@ -457,11 +393,11 @@
     <button class="back-to-top" id="back-to-top" aria-label="Revenir en haut de page">↑</button>
   </div>
   <div class="footer-bottom">
-    <p>© <span id="year"></span> Maison Lambert. Tous droits réservés.</p>
+    <p>© <span id="year"></span> <%= settings.brand_name %>. Tous droits réservés.</p>
     <p class="footer-fictif">Site vitrine fictif, réalisé à titre de démonstration.</p>
   </div>
 </footer>
 
-<script src="assets/js/main.js"></script>
+<script src="/js/main.js"></script>
 </body>
 </html>

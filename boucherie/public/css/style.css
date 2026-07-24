@@ -248,6 +248,10 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
 .meat-list { margin-top: auto; padding-top: .6rem; border-top: 1px dashed rgba(96,26,32,.25); }
 .meat-list li { position: relative; padding-left: 1.1em; margin-bottom: .35em; font-size: 1rem; color: var(--charcoal); }
 .meat-list li::before { content: "—"; position: absolute; left: 0; color: var(--gold-dark); }
+.meat-card-image {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius);
+  margin: -0.4rem 0 1rem; box-shadow: var(--shadow-card);
+}
 .meat-note { text-align: center; color: var(--ink-soft); font-style: italic; margin-top: 2.6rem; font-size: 1.05rem; }
 
 /* ==========================================================================
