@@ -63,7 +63,7 @@ foreach ($stmt->fetchAll() as $row) {
 }
 
 $pageTitle = 'Mon planning';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>🗓️ Planning de la semaine</h1>
@@ -122,4 +122,4 @@ require __DIR__ . '/includes/header.php';
   <button type="submit" name="save_plan" value="1" class="btn">💾 Enregistrer le planning</button>
 </form>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

@@ -90,7 +90,7 @@ if (count($history) >= 2) {
 }
 
 $pageTitle = 'Suivi du poids';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>⚖️ Suivi de poids</h1>
@@ -146,4 +146,4 @@ require __DIR__ . '/includes/header.php';
   <?php endif; ?>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

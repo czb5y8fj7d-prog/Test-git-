@@ -3,6 +3,6 @@
     <p>NutriCoach — ton coach nutrition personnel 🥑</p>
   </footer>
 </div>
-<script src="assets/js/app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

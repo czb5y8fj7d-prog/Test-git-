@@ -8,11 +8,7 @@ function nc_db(): PDO
         return $pdo;
     }
 
-    $dataDir = __DIR__ . '/../data';
-    if (!is_dir($dataDir)) {
-        mkdir($dataDir, 0775, true);
-    }
-    $dbFile = $dataDir . '/nutricoach.sqlite';
+    $dbFile = __DIR__ . '/nutricoach.sqlite';
     $needsInstall = !file_exists($dbFile);
 
     $pdo = new PDO('sqlite:' . $dbFile);
@@ -21,7 +17,7 @@ function nc_db(): PDO
     $pdo->exec('PRAGMA foreign_keys = ON');
 
     if ($needsInstall) {
-        $schema = file_get_contents(__DIR__ . '/../schema.sql');
+        $schema = file_get_contents(__DIR__ . '/schema.sql');
         $pdo->exec($schema);
         require_once __DIR__ . '/seed.php';
         nc_seed_public_recipes($pdo);

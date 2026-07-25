@@ -67,7 +67,7 @@ if ($profile['start_weight_kg'] && $profile['current_weight_kg']) {
 }
 
 $pageTitle = 'Tableau de bord';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>🏠 Bonjour <?= nc_e($user['name']) ?> !</h1>
@@ -157,4 +157,4 @@ require __DIR__ . '/includes/header.php';
   </a>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

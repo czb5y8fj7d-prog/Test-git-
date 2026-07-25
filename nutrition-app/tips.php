@@ -59,7 +59,7 @@ $categories = [
 ];
 
 $pageTitle = 'Conseils & défis';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>💡 Conseils & défis</h1>
@@ -92,4 +92,4 @@ require __DIR__ . '/includes/header.php';
   <?php endforeach; ?>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

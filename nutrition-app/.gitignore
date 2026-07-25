@@ -1,2 +1,2 @@
-data/*.sqlite
-data/*.sqlite-journal
+nutricoach.sqlite
+nutricoach.sqlite-journal

@@ -5,44 +5,47 @@ calcul de calories/macros, recettes, planning de repas hebdomadaire, liste de
 courses automatique, suivi de poids, objectifs et défis ludiques avec points/badges.
 
 100% PHP + SQLite, **aucune dépendance externe, aucun build, aucune configuration
-serveur particulière**. Compatible avec l'hébergement mutualisé IONOS "en natif".
+serveur particulière**. Tous les fichiers sont à la racine du dossier (pas de
+sous-dossiers) pour un dépôt FTP le plus simple possible. Compatible avec
+l'hébergement mutualisé IONOS "en natif".
 
 ## Déploiement sur IONOS (hébergement mutualisé)
 
 1. Dans l'espace client IONOS, vérifie que la **version de PHP est 8.0 ou
    supérieure** (Hébergement → Configurer PHP). C'est un simple réglage dans
    le panneau, sans configuration serveur avancée.
-2. Récupère tous les fichiers de ce zip (en conservant l'arborescence) et
-   envoie-les via FTP/SFTP (FileZilla, ou le gestionnaire de fichiers IONOS)
-   dans le dossier de ton domaine (souvent `/`, ou un sous-dossier si tu veux
-   l'installer sur `tondomaine.fr/nutricoach`).
-3. Assure-toi que le dossier `data/` est bien présent et **accessible en
-   écriture** par PHP (c'est le cas par défaut chez IONOS). C'est là que la
-   base SQLite sera créée automatiquement au premier accès.
+2. Récupère tous les fichiers de ce zip et envoie-les via FTP/SFTP (FileZilla,
+   ou le gestionnaire de fichiers IONOS) dans le dossier de ton domaine
+   (souvent `/`, ou un sous-dossier si tu veux l'installer sur
+   `tondomaine.fr/nutricoach`). Tous les fichiers vont directement dans ce
+   même dossier, il n'y a aucune arborescence à recréer.
+3. Assure-toi que ce dossier est **accessible en écriture** par PHP (c'est le
+   cas par défaut chez IONOS). C'est là que le fichier `nutricoach.sqlite`
+   sera créé automatiquement au premier accès.
 4. Ouvre `https://tondomaine.fr/` (ou `/nutricoach/`) dans un navigateur :
    la base de données et les recettes de démarrage sont créées automatiquement
    dès la première visite. Il ne reste plus qu'à créer ton compte !
 
 Aucune base MySQL, aucun panneau d'administration à configurer : tout est
-autonome dans le dossier de l'application.
+autonome dans le dossier de l'application. Le fichier `.htaccess` fourni
+bloque l'accès web direct aux fichiers internes (`db.php`, `auth.php`...) et
+à la base de données — seules les pages de l'application restent accessibles.
 
-## Structure du projet
+## Structure du projet (tout à plat, aucun sous-dossier)
 
 ```
 nutrition-app/
 ├── config.php              Point d'entrée commun (session, includes)
 ├── schema.sql               Structure de la base SQLite
-├── includes/
-│   ├── db.php                Connexion + installation automatique de la base
-│   ├── seed.php               Recettes publiques pré-chargées
-│   ├── auth.php                Inscription / connexion / session
-│   ├── functions.php            Fonctions communes (points, badges, listes de courses...)
-│   ├── nutrition_engine.php      Calculs caloriques (Mifflin-St Jeor) et conseils
-│   ├── header.php / footer.php    Gabarit de page
-├── assets/
-│   ├── css/style.css          Design (aucune dépendance externe)
-│   └── js/app.js               Petites interactions (menu mobile, auto-validation)
-├── data/                     Base SQLite (créée automatiquement, protégée par .htaccess)
+├── db.php                    Connexion + installation automatique de la base
+├── seed.php                   Recettes publiques pré-chargées
+├── auth.php                    Inscription / connexion / session
+├── functions.php                Fonctions communes (points, badges, listes de courses...)
+├── nutrition_engine.php          Calculs caloriques (Mifflin-St Jeor) et conseils
+├── header.php / footer.php        Gabarit de page (inclus par chaque page)
+├── style.css                Design (aucune dépendance externe)
+├── app.js                     Petites interactions (menu mobile, auto-validation)
+├── .htaccess                Protège les fichiers internes et la base SQLite
 ├── index.php, login.php, register.php, logout.php
 ├── dashboard.php             Tableau de bord (stats, coach du jour, défi, suivi du jour)
 ├── profile.php               Profil + calcul calories/macros personnalisés
@@ -51,7 +54,8 @@ nutrition-app/
 ├── menu.php, menu_autogenerate.php                    Planning hebdomadaire + génération auto
 ├── shopping_list.php         Liste de courses agrégée depuis le planning
 ├── weight_log.php            Suivi de poids + graphique SVG
-└── tips.php                   Conseils du jour + défis hebdomadaires
+├── tips.php                   Conseils du jour + défis hebdomadaires
+└── nutricoach.sqlite         Base de données (créée automatiquement au 1er accès)
 ```
 
 ## Fonctionnement multi-utilisateurs
@@ -64,15 +68,15 @@ comptes. Une bibliothèque de recettes publiques est partagée par tous et peut
 
 ## Personnalisation
 
-- **Recettes de base** : modifie `includes/seed.php` avant le premier lancement
-  (avant que le fichier `data/nutricoach.sqlite` soit créé) pour changer la
-  bibliothèque de recettes de démarrage.
-- **Couleurs / style** : tout est dans `assets/css/style.css` (variables CSS
-  en haut de fichier).
-- **Règles de calcul caloriques** : `includes/nutrition_engine.php`.
+- **Recettes de base** : modifie `seed.php` avant le premier lancement (avant
+  que le fichier `nutricoach.sqlite` soit créé) pour changer la bibliothèque
+  de recettes de démarrage.
+- **Couleurs / style** : tout est dans `style.css` (variables CSS en haut de
+  fichier).
+- **Règles de calcul caloriques** : `nutrition_engine.php`.
 
 ## Sauvegarde
 
-La base de données est le fichier unique `data/nutricoach.sqlite`. Pour
-sauvegarder toutes les données de tous les utilisateurs, il suffit de
-télécharger ce fichier régulièrement via FTP.
+La base de données est le fichier unique `nutricoach.sqlite`, à la racine du
+site. Pour sauvegarder toutes les données de tous les utilisateurs, il suffit
+de télécharger ce fichier régulièrement via FTP.

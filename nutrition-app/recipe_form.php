@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$readOnly) {
 }
 
 $pageTitle = $recipe ? ($readOnly ? $recipe['title'] : 'Modifier ma recette') : 'Nouvelle recette';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>📖 <?= $recipe ? nc_e($recipe['title']) : '➕ Nouvelle recette' ?></h1>
@@ -181,4 +181,4 @@ require __DIR__ . '/includes/header.php';
   </div>
 <?php endif; ?>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

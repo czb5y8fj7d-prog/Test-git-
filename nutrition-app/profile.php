@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $summary = nc_build_profile_summary($profile);
 $pageTitle = 'Mon profil';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>🙋 Mon profil <?= nc_e($user['name']) ?></h1>
@@ -140,4 +140,4 @@ require __DIR__ . '/includes/header.php';
   </div>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

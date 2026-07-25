@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = 'Créer un compte';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 <div class="auth-wrap">
   <div class="auth-card">
@@ -43,4 +43,4 @@ require __DIR__ . '/includes/header.php';
     <p style="text-align:center;margin-top:1.2rem">Déjà inscrit(e) ? <a href="login.php">Se connecter</a></p>
   </div>
 </div>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

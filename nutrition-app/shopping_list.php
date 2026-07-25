@@ -56,7 +56,7 @@ $prevWeek = date('Y-m-d', strtotime($weekStart . ' -7 days'));
 $nextWeek = date('Y-m-d', strtotime($weekStart . ' +7 days'));
 
 $pageTitle = 'Liste de courses';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>🛒 Liste de courses</h1>
@@ -111,4 +111,4 @@ require __DIR__ . '/includes/header.php';
   <?php endif; ?>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

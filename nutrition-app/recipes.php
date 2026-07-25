@@ -35,7 +35,7 @@ $stmt->execute($params);
 $recipes = $stmt->fetchAll();
 
 $pageTitle = 'Recettes';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>📖 Recettes</h1>
@@ -90,4 +90,4 @@ require __DIR__ . '/includes/header.php';
 </div>
 <?php endif; ?>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>

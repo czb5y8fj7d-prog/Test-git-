@@ -1,10 +1,21 @@
 Options -Indexes
 
-<Files "schema.sql">
+# Empêche l'accès web direct aux fichiers internes (appelés uniquement via require côté PHP)
+<FilesMatch "^(db|seed|auth|functions|nutrition_engine|header|footer)\.php$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
     <IfModule !mod_authz_core.c>
         Deny from all
     </IfModule>
-</Files>
+</FilesMatch>
+
+# Empêche le téléchargement de la base de données et du schéma SQL
+<FilesMatch "\.(sqlite|sqlite3|db|sql)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>

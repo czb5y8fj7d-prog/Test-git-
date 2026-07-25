@@ -44,7 +44,7 @@ $stmt->execute([$userId]);
 $weighCount = (int)$stmt->fetchColumn();
 
 $pageTitle = 'Mes objectifs';
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/header.php';
 ?>
 
 <h1>🎯 Mes objectifs</h1>
@@ -118,4 +118,4 @@ require __DIR__ . '/includes/header.php';
   <?php endif; ?>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/footer.php'; ?>
