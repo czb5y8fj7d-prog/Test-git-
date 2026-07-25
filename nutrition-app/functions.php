@@ -6,6 +6,9 @@ function nc_e(string $s): string
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
 
+const NC_DEMO_EMAIL = 'demo@nutricoach.app';
+const NC_DEMO_PASSWORD = 'demo';
+
 const NC_BADGES = [
     'first_recipe'   => ['icon' => '🍳', 'label' => 'Chef en herbe',        'desc' => 'Première recette ajoutée'],
     'recipes_10'     => ['icon' => '📚', 'label' => 'Livre de recettes',    'desc' => '10 recettes ajoutées'],

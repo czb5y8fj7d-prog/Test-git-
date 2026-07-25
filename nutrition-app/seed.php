@@ -87,3 +87,92 @@ function nc_seed_public_recipes(PDO $pdo): void
         $stmt->execute($r);
     }
 }
+
+/**
+ * Crée un compte de démonstration pré-rempli (profil, historique de poids,
+ * recette perso, planning, liste de courses, objectifs) pour donner tout de
+ * suite un aperçu concret de l'application.
+ */
+function nc_seed_demo_account(PDO $pdo): void
+{
+    $hash = password_hash(NC_DEMO_PASSWORD, PASSWORD_DEFAULT);
+    $pdo->prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)')
+        ->execute(['Démo', NC_DEMO_EMAIL, $hash]);
+    $userId = (int)$pdo->lastInsertId();
+
+    $pdo->prepare(
+        'INSERT INTO profiles (user_id, sex, age, height_cm, current_weight_kg, start_weight_kg, target_weight_kg, activity_level, goal, diet_pref, allergies)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )->execute([$userId, 'F', 34, 165, 68.4, 72.0, 62.0, 'modere', 'perte', '', '']);
+
+    $pdo->prepare('INSERT INTO points (user_id, total_points) VALUES (?, ?)')->execute([$userId, 0]);
+
+    // Historique de poids (tendance à la baisse sur ~5 semaines) pour un graphique parlant
+    $weightSteps = [72.0, 71.4, 71.0, 70.3, 69.8, 69.5, 69.0, 68.7, 68.4];
+    $today = new DateTime();
+    $daysAgo = (count($weightSteps) - 1) * 4;
+    $insertWeight = $pdo->prepare('INSERT INTO weight_logs (user_id, log_date, weight_kg) VALUES (?, ?, ?)');
+    foreach ($weightSteps as $i => $weight) {
+        $date = (clone $today)->modify('-' . ($daysAgo - $i * 4) . ' days')->format('Y-m-d');
+        $insertWeight->execute([$userId, $date, $weight]);
+    }
+
+    // Une recette personnelle pour montrer la fonctionnalité "mes recettes"
+    $pdo->prepare(
+        'INSERT INTO recipes (user_id, title, category, tags, servings, prep_minutes, kcal, protein_g, carbs_g, fat_g, ingredients, instructions, is_public)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)'
+    )->execute([
+        $userId, 'Ma soupe de saison', 'diner', 'maison,léger', 2, 25, 210, 7, 32, 5,
+        "2 carottes\n1 courgette\n1 oignon\n1 pomme de terre\nBouillon de légumes\nPersil",
+        "Éplucher et couper tous les légumes.\nCuire 25 minutes dans le bouillon puis mixer.\nParsemer de persil frais avant de servir.",
+    ]);
+
+    // Planning de la semaine en cours, à partir de la bibliothèque publique
+    $stmt = $pdo->query('SELECT id, category FROM recipes WHERE is_public = 1 ORDER BY id');
+    $byCategory = [];
+    foreach ($stmt->fetchAll() as $r) {
+        $byCategory[$r['category']][] = $r['id'];
+    }
+    $weekStart = nc_week_start();
+    $insertPlan = $pdo->prepare(
+        'INSERT INTO menu_plan (user_id, week_start, day_of_week, meal_slot, recipe_id) VALUES (?, ?, ?, ?, ?)'
+    );
+    foreach (array_keys(NC_MEAL_SLOTS) as $slot) {
+        $pool = $byCategory[$slot] ?? [];
+        if (!$pool) continue;
+        foreach (range(0, 6) as $day) {
+            $insertPlan->execute([$userId, $weekStart, $day, $slot, $pool[$day % count($pool)]]);
+        }
+    }
+
+    // Liste de courses générée à partir de ce planning
+    $lines = nc_build_ingredient_list($pdo, $userId, $weekStart);
+    $counts = [];
+    foreach ($lines as $line) {
+        $key = mb_strtolower($line);
+        $counts[$key] = $counts[$key] ?? ['label' => $line, 'n' => 0];
+        $counts[$key]['n']++;
+    }
+    $insertItem = $pdo->prepare('INSERT INTO shopping_items (user_id, week_start, label, quantity_text, checked, is_manual) VALUES (?,?,?,?,?,0)');
+    $i = 0;
+    foreach ($counts as $c) {
+        $qty = $c['n'] > 1 ? '× ' . $c['n'] : '';
+        $insertItem->execute([$userId, $weekStart, $c['label'], $qty, $i < 4 ? 1 : 0]);
+        $i++;
+    }
+
+    // Objectifs personnels d'exemple
+    $pdo->prepare('INSERT INTO user_goals (user_id, label, done) VALUES (?, ?, ?)')->execute([$userId, 'Boire 1,5L d\'eau chaque jour', 1]);
+    $pdo->prepare('INSERT INTO user_goals (user_id, label, done) VALUES (?, ?, ?)')->execute([$userId, 'Marcher 30 minutes, 5 fois par semaine', 0]);
+    $pdo->prepare('INSERT INTO user_goals (user_id, label, done) VALUES (?, ?, ?)')->execute([$userId, 'Cuisiner 2 nouvelles recettes ce mois-ci', 0]);
+
+    // Petit suivi du jour pour illustrer le tableau de bord
+    $pdo->prepare('INSERT INTO daily_checks (user_id, log_date, water_glasses, exercise_done, sleep_hours) VALUES (?,?,?,?,?)')
+        ->execute([$userId, date('Y-m-d'), 5, 1, 7.5]);
+
+    // Badges et points de démonstration
+    foreach (['first_recipe', 'first_weigh', 'shopping_master'] as $code) {
+        nc_award_badge($pdo, $userId, $code);
+    }
+    nc_add_points($pdo, $userId, 145);
+}

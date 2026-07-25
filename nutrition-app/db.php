@@ -21,6 +21,8 @@ function nc_db(): PDO
         $pdo->exec($schema);
         require_once __DIR__ . '/seed.php';
         nc_seed_public_recipes($pdo);
+        require_once __DIR__ . '/functions.php';
+        nc_seed_demo_account($pdo);
     }
 
     return $pdo;

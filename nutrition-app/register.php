@@ -41,6 +41,7 @@ require __DIR__ . '/header.php';
       <button type="submit" class="btn" style="width:100%">Créer mon compte</button>
     </form>
     <p style="text-align:center;margin-top:1.2rem">Déjà inscrit(e) ? <a href="login.php">Se connecter</a></p>
+    <p style="text-align:center;margin-top:0.6rem"><a href="index.php">← Retour à l'accueil</a></p>
   </div>
 </div>
 <?php require __DIR__ . '/footer.php'; ?>

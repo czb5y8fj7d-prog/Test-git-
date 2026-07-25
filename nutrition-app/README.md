@@ -23,8 +23,26 @@ l'hébergement mutualisé IONOS "en natif".
    cas par défaut chez IONOS). C'est là que le fichier `nutricoach.sqlite`
    sera créé automatiquement au premier accès.
 4. Ouvre `https://tondomaine.fr/` (ou `/nutricoach/`) dans un navigateur :
-   la base de données et les recettes de démarrage sont créées automatiquement
-   dès la première visite. Il ne reste plus qu'à créer ton compte !
+   la base de données, les recettes de démarrage et un compte de démonstration
+   sont créés automatiquement dès la première visite. Il ne reste plus qu'à
+   créer ton compte !
+
+## Compte de démonstration
+
+Un compte de démo est créé automatiquement au premier accès, pré-rempli avec
+un profil, un historique de poids, une recette perso, un planning de la
+semaine et une liste de courses — pratique pour visiter l'appli ou la faire
+tester sans que le visiteur crée un compte :
+
+- **E-mail** : `demo@nutricoach.app`
+- **Mot de passe** : `demo`
+
+Un bouton "Essayer la démo" est présent sur la page d'accueil et la page de
+connexion. Comme ce compte est partagé par tous les visiteurs, ses données
+peuvent évoluer avec le temps ; pour le réinitialiser, supprime simplement
+le fichier `nutricoach.sqlite` (toute l'application sera réinstallée au
+prochain accès, y compris les comptes réels : ne fais ça que sur un site de
+test, pas en production une fois que de vrais utilisateurs se sont inscrits).
 
 Aucune base MySQL, aucun panneau d'administration à configurer : tout est
 autonome dans le dossier de l'application. Le fichier `.htaccess` fourni

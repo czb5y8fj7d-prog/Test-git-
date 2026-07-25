@@ -35,6 +35,12 @@ $navItems = [
       <?php endforeach; ?>
       <a href="logout.php" class="logout">🚪 Déconnexion</a>
     </nav>
+    <?php else: ?>
+    <nav class="mainnav guest-nav">
+      <a href="index.php" class="<?= $currentPage === 'index.php' ? 'active' : '' ?>">Accueil</a>
+      <a href="login.php" class="btn secondary small">Connexion</a>
+      <a href="register.php" class="btn small">Créer un compte</a>
+    </nav>
     <?php endif; ?>
   </header>
 

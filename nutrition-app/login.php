@@ -33,6 +33,17 @@ require __DIR__ . '/header.php';
       <button type="submit" class="btn" style="width:100%">Se connecter</button>
     </form>
     <p style="text-align:center;margin-top:1.2rem">Pas encore de compte ? <a href="register.php">Créer un compte</a></p>
+
+    <div style="text-align:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <p class="help" style="margin-bottom:0.6rem">Curieux(se) ? Visite l'appli sans t'inscrire :</p>
+      <form method="post">
+        <input type="hidden" name="email" value="<?= nc_e(NC_DEMO_EMAIL) ?>">
+        <input type="hidden" name="password" value="<?= nc_e(NC_DEMO_PASSWORD) ?>">
+        <button type="submit" class="btn secondary" style="width:100%">🚀 Essayer la démo</button>
+      </form>
+    </div>
+
+    <p style="text-align:center;margin-top:1.2rem"><a href="index.php">← Retour à l'accueil</a></p>
   </div>
 </div>
 <?php require __DIR__ . '/footer.php'; ?>
