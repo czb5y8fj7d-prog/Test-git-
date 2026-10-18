@@ -56,7 +56,7 @@ function idb(mode, fn) {
   }));
 }
 
-let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, ...ls.get('locallm.settings', {}) };
+let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, hideLocal: null, ...ls.get('locallm.settings', {}) };
 const ctxFor = (m) => Math.min(S.ctx, m.maxCtx || 4096);   // contexte effectif pour un modèle
 const saveS = () => ls.set('locallm.settings', S);
 const cached = new Set(ls.get('locallm.cached', []));
@@ -82,6 +82,9 @@ const remoteModels = () => {
   }));
 };
 const allModels = () => [...MODELS, ...remoteModels()];
+/* Option « seulement les modèles du serveur » : masque ceux qui tournent sur l'appareil */
+const hideLocalOn = () => S.hideLocal === true && remoteModels().length > 0;
+const visibleModels = () => (hideLocalOn() ? remoteModels() : allModels());
 const modelById = (id) => allModels().find((m) => m.id === id) || null;
 
 /* =====================================================================
@@ -592,7 +595,7 @@ function setSendMode() {
 function renderModelSel() {
   const sel = $('modelSel');
   sel.textContent = '';
-  for (const m of allModels()) {
+  for (const m of visibleModels()) {
     const u = usable(m);
     const o = document.createElement('option');
     o.value = m.id;
@@ -613,7 +616,7 @@ function renderModelCards() {
   const sel = modelById(S.modelId);
   const isRemote = !!(sel && sel.type === 'remote');
   $('btnLoad').hidden = isRemote; $('btnDelModel').hidden = isRemote;   // sans objet pour un modèle sur serveur
-  for (const m of allModels()) {
+  for (const m of visibleModels()) {
     const u = usable(m);
     const card = document.createElement('div');
     card.className = 'model' + (m.id === S.modelId ? ' sel' : '') + (u.ok ? '' : ' off');
@@ -844,17 +847,24 @@ async function testRemote() {
     S.remote = { url, key, models: names }; saveS();
     $('rUrl').value = url;   // adresse normalisée (sans « /v1/ » final)
     if (!names.length) { renderModelSel(); info.textContent = 'Connexion réussie, mais aucun modèle installé. Sur le serveur : ollama pull <nom>.'; return; }
+    if (S.hideLocal == null) { S.hideLocal = true; saveS(); }   // par défaut : seulement les modèles du serveur (décochable)
     const cur = modelById(S.modelId);
     if (!cur || cur.type !== 'remote') selectModel('remote:' + names[0]); else renderModelSel();
+    syncHideLocalUI();
     info.textContent = remoteSummary();
   } finally { clearTimeout(to); btn.disabled = false; btn.textContent = 'Tester et récupérer les modèles'; }
 }
+function syncHideLocalUI() {
+  $('chkHideLocal').checked = S.hideLocal === true;
+  $('chkHideLocal').disabled = !remoteModels().length;
+}
 function clearRemote() {
-  S.remote = null;
+  S.remote = null; S.hideLocal = null;
   const cur = modelById(S.modelId);
   if (!cur) { const d = pickDefault(); S.modelId = d ? d.id : null; }
   saveS();
   $('rUrl').value = ''; $('rKey').value = ''; $('remoteInfo').textContent = 'Serveur retiré.';
+  syncHideLocalUI();
   renderModelSel();
   if (!chat.messages.length && gen.phase === 'idle') renderChat();
 }
@@ -863,6 +873,7 @@ function syncSettingsUI() {
   $('rUrl').value = (S.remote && S.remote.url) || '';
   $('rKey').value = (S.remote && S.remote.key) || '';
   $('remoteInfo').textContent = remoteSummary();
+  syncHideLocalUI();
   $('rTemp').value = S.temperature; $('vTemp').textContent = (+S.temperature).toFixed(2);
   $('rTopP').value = S.top_p; $('vTopP').textContent = (+S.top_p).toFixed(2);
   $('rMax').value = S.max_tokens; $('vMax').textContent = S.max_tokens + ' tokens';
@@ -915,6 +926,11 @@ function bindEvents() {
   $('btnDelModel').onclick = deleteModelCache;
   $('btnRemoteTest').onclick = testRemote;
   $('btnRemoteClear').onclick = clearRemote;
+  $('chkHideLocal').onchange = () => {
+    S.hideLocal = $('chkHideLocal').checked; saveS();
+    const cur = modelById(S.modelId), first = remoteModels()[0];
+    if (hideLocalOn() && first && (!cur || cur.type !== 'remote')) selectModel(first.id); else renderModelSel();
+  };
   $('btnPersist').onclick = () => requestPersist(true);
   $('btnWipe').onclick = wipeAll;
   const bindRange = (id, out, key, fmt) => $(id).addEventListener('input', () => { S[key] = +$(id).value; $(out).textContent = fmt(S[key]); saveS(); });
@@ -934,7 +950,7 @@ function bindEvents() {
 
 /* Précharge le code du moteur en tâche de fond (pour l'usage hors ligne) */
 async function warmEngine() {
-  if (!navigator.onLine) return;
+  if (!navigator.onLine || hideLocalOn()) return;   // inutile si seuls les modèles du serveur sont utilisés
   try {
     if (gpu.ok) await importWebLLM();
     else { await importWllama(); fetch(ENGINES.wllamaWasm).catch(() => {}); }
@@ -950,6 +966,7 @@ async function boot() {
   try { chat = (await idb('readonly', (s) => s.get('main'))) || chat; }
   catch (e) { console.error('[LocalLM] IndexedDB', e); notice('warn', 'Stockage local indisponible : la conversation ne sera pas conservée.'); }
 
+  if (hideLocalOn() && !(modelById(S.modelId) || {}).type?.startsWith('remote')) { S.modelId = remoteModels()[0].id; saveS(); }
   if (!modelById(S.modelId) || !usable(modelById(S.modelId)).ok) { const d = pickDefault(); S.modelId = d ? d.id : null; saveS(); }
   renderModelSel(); renderChat(); setSendMode();
 
@@ -962,9 +979,9 @@ async function boot() {
       small ? [{ label: 'Choisir « ' + small.name + ' »', fn: () => selectModel(small.id) }] : []);
   } else if (!window.isSecureContext) {
     notice('err', 'Cette page n\'est pas en HTTPS : WebGPU et le mode hors ligne sont indisponibles.');
-  } else if (!gpu.ok) {
+  } else if (!gpu.ok && !hideLocalOn()) {
     notice('warn', 'WebGPU indisponible (' + gpu.reason + '). Moteur WASM (GGUF) utilisé : plus lent, petits modèles recommandés.');
-  } else if (!gpu.f16) {
+  } else if (!gpu.f16 && !hideLocalOn()) {
     notice('info', 'Format f16 indisponible sur ce navigateur : les variantes q4f32 (un peu plus gourmandes) seront utilisées.');
   }
 
