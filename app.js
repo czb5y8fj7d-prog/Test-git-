@@ -56,9 +56,10 @@ function idb(mode, fn) {
   }));
 }
 
-let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, hideLocal: null, ...ls.get('locallm.settings', {}) };
-const ctxFor = (m) => Math.min(S.ctx, m.maxCtx || 4096);   // contexte effectif pour un modèle
+let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, hideLocal: null, ctxR: 4096, think: true, ...ls.get('locallm.settings', {}) };
+const ctxFor = (m) => (m.type === 'remote' ? Math.min(S.ctxR, m.maxCtx) : Math.min(S.ctx, m.maxCtx || 4096));   // contexte effectif pour un modèle
 const saveS = () => ls.set('locallm.settings', S);
+if (!S.v) { if (S.remote) S.max_tokens = Math.max(S.max_tokens, 4096); S.v = 2; saveS(); }   // migration : réponses plus longues si un serveur est configuré
 const cached = new Set(ls.get('locallm.cached', []));
 function setCached(id, on) { if (on) cached.add(id); else cached.delete(id); ls.set('locallm.cached', [...cached]); }
 
@@ -70,7 +71,7 @@ const gen = { phase: 'idle', stick: true, stream: null, bubble: null, stopReques
 const gpu = { ok: false, f16: false, reason: '' };
 const E = { kind: null, modelId: null, ctx: 0, inst: null, ac: null };   // moteur chargé
 
-/* Modèles hébergés sur le serveur de l'utilisateur (API compatible OpenAI, ex. Ollama).
+/* Modèles hébergés sur le serveur de l'utilisateur (Ollama).
    La liste est récupérée via « Tester et récupérer les modèles » dans les réglages. */
 const remoteModels = () => {
   const R = S.remote;
@@ -78,7 +79,7 @@ const remoteModels = () => {
   let host = R.url; try { host = new URL(R.url).host; } catch { /* ignoré */ }
   return (R.models || []).map((n) => ({
     id: 'remote:' + n, remoteName: n, name: n.replace(/:latest$/, ''), type: 'remote',
-    sizeMB: 0, maxCtx: 4096, note: 'Sur votre serveur (' + host + ') · vos messages lui sont envoyés en HTTPS',
+    sizeMB: 0, maxCtx: 32768, note: 'Sur votre serveur (' + host + ') · vos messages lui sont envoyés en HTTPS',
   }));
 };
 const allModels = () => [...MODELS, ...remoteModels()];
@@ -156,6 +157,7 @@ const ERR_TEXT = {
   /* serveur distant */
   server: () => 'Serveur injoignable. Vérifiez la connexion, l\'adresse (https://…) et que le serveur est démarré.',
   auth: () => 'Le serveur a refusé la clé d\'accès. Vérifiez-la dans Réglages › Serveur distant.',
+  remotemem: () => 'Le serveur n\'a pas assez de mémoire pour ce modèle avec cette taille de contexte. Réduisez « Taille de contexte du serveur » dans les réglages, ou choisissez un modèle plus petit.',
   remote404: () => 'Le serveur ne trouve pas ce modèle. Sur le serveur : « ollama pull <nom> », puis « Tester et récupérer les modèles » dans les réglages.',
   servererr: (e) => 'Erreur du serveur : ' + String((e && e.message) || e).slice(0, 220),
 };
@@ -208,7 +210,7 @@ function reportError(e, m) {
   const actions = [];
   if (kind === 'network' || kind === 'unknown') actions.push({ label: 'Réessayer', fn: () => { loadModelUI(); } });
   if (kind === 'server') actions.push({ label: 'Réessayer', fn: () => { regenerate(); } });
-  if (['server', 'auth', 'remote404'].includes(kind)) actions.push({ label: 'Ouvrir les réglages', fn: openSheet });
+  if (['server', 'auth', 'remote404', 'remotemem'].includes(kind)) actions.push({ label: 'Ouvrir les réglages', fn: openSheet });
   const small = smallerModel(m, ['memory', 'gpulimit'].includes(kind));
   if (small && ['memory', 'gpulimit', 'quota', 'unknown', 'f16'].includes(kind)) {
     actions.push({ label: 'Essayer « ' + small.name + ' »', fn: () => { selectModel(small.id); loadModelUI(); } });
@@ -364,59 +366,81 @@ async function remoteHttpError(res) {
     const t = await res.text();
     try { const j = JSON.parse(t); detail = (j.error && (j.error.message || j.error)) || t; } catch { detail = t; }
   } catch { /* ignoré */ }
-  detail = String(detail).slice(0, 160);
-  if (res.status === 401 || res.status === 403) return Object.assign(new Error(detail), { kind: 'auth' });
-  if (res.status === 404) return Object.assign(new Error(detail), { kind: 'remote404' });
-  return Object.assign(new Error('HTTP ' + res.status + (detail ? ' — ' + detail : '')), { kind: 'servererr' });
+  detail = String(detail).slice(0, 200);
+  const typed = (kind, msg) => Object.assign(new Error(msg), { kind, status: res.status });
+  if (res.status === 401 || res.status === 403) return typed('auth', detail);
+  if (res.status === 404) return typed('remote404', detail);
+  if (/memory/i.test(detail)) return typed('remotemem', detail);
+  return typed('servererr', 'HTTP ' + res.status + (detail ? ' — ' + detail : ''));
 }
 
-/* Génération via un serveur compatible OpenAI (Ollama…) : flux SSE lu à la main */
+const noThink = new Set();   // modèles du serveur qui refusent le mode « réflexion »
+const stripThink = (s) => String(s).replace(/<think>[\s\S]*?(<\/think>|$)/g, '').trim();
+
+/* Génération via Ollama (API native /api/chat) : fixe le contexte réel (num_ctx) et reçoit la
+   réflexion à part du texte. Le flux est une suite de lignes JSON. La réflexion est insérée dans
+   le message entre <think>…</think> (affichée dans un bloc repliable, retirée de l'historique). */
 async function generateRemote(m, messages, maxGen, onToken) {
   const R = S.remote || {};
   const ac = new AbortController();
   E.ac = ac;
-  let n = 0, t1 = 0;
+  const serverDown = (e) => Object.assign(new Error(String((e && e.message) || e)), { kind: 'server' });
   try {
-    let res;
-    try {
-      res = await fetch(R.url + '/v1/chat/completions', {
-        method: 'POST', signal: ac.signal,
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key },
-        body: JSON.stringify({ model: m.remoteName, messages, stream: true, temperature: S.temperature, top_p: S.top_p, max_tokens: maxGen }),
-      });
-    } catch (e) {
-      if (ac.signal.aborted) return { tps: null };
-      throw Object.assign(new Error(String((e && e.message) || e)), { kind: 'server' });
-    }
-    if (!res.ok) throw await remoteHttpError(res);
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '';
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let i;
-        while ((i = buf.indexOf('\n')) >= 0) {
-          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-          if (!line.startsWith('data:')) continue;
-          const data = line.slice(5).trim();
-          if (!data || data === '[DONE]') continue;
-          let j; try { j = JSON.parse(data); } catch { continue; }
-          if (j.error) throw Object.assign(new Error(typeof j.error === 'string' ? j.error : (j.error.message || 'erreur')), { kind: 'servererr' });
-          const d = dget(j);
-          if (d) { if (!n) t1 = performance.now(); n++; onToken(d); }
-        }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const body = {
+        model: m.remoteName, messages, stream: true,
+        options: { temperature: S.temperature, top_p: S.top_p, num_predict: maxGen, num_ctx: E.ctx },
+      };
+      if (!noThink.has(m.remoteName)) body.think = S.think !== false;
+      let res;
+      try {
+        res = await fetch(R.url + '/api/chat', {
+          method: 'POST', signal: ac.signal,
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key },
+          body: JSON.stringify(body),
+        });
+      } catch (e) {
+        if (ac.signal.aborted) return { tps: null };
+        throw serverDown(e);
       }
-    } catch (e) {
-      if (ac.signal.aborted) { /* arrêt demandé */ }
-      else if (e && e.kind) throw e;
-      else throw Object.assign(new Error(String((e && e.message) || e)), { kind: 'server' });   // coupure en cours de route
+      if (!res.ok) {
+        const err = await remoteHttpError(res);
+        if (attempt === 0 && err.status === 400 && /think/i.test(err.message) && 'think' in body) { noThink.add(m.remoteName); continue; }   // modèle sans mode réflexion : on réessaie sans
+        throw err;
+      }
+
+      let n = 0, t1 = 0, inThink = false, tps = null, buf = '';
+      const tick = () => { if (!n) t1 = performance.now(); n++; };
+      const feed = (line) => {
+        line = line.trim();
+        if (!line) return;
+        let j; try { j = JSON.parse(line); } catch { return; }
+        if (j.error) throw Object.assign(new Error(String(j.error)), { kind: /memory/i.test(String(j.error)) ? 'remotemem' : 'servererr' });
+        const msg = j.message || {};
+        if (msg.thinking) { if (!inThink) { inThink = true; onToken('<think>'); } tick(); onToken(msg.thinking); }
+        if (msg.content) { if (inThink) { inThink = false; onToken('</think>'); } tick(); onToken(msg.content); }
+        if (j.done && j.eval_count && j.eval_duration) tps = j.eval_count / (j.eval_duration / 1e9);
+      };
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let i;
+          while ((i = buf.indexOf('\n')) >= 0) { feed(buf.slice(0, i)); buf = buf.slice(i + 1); }
+        }
+        feed(buf);
+      } catch (e) {
+        if (!ac.signal.aborted) throw (e && e.kind ? e : serverDown(e));   // coupure en cours de route
+      }
+      if (inThink) onToken('</think>');   // réflexion jamais suivie d'une réponse : on referme le bloc
+      if (tps == null && n > 1) { const dt = (performance.now() - t1) / 1000; if (dt > 0.2) tps = (n - 1) / dt; }
+      return { tps };
     }
   } finally { E.ac = null; }
-  const dt = (performance.now() - t1) / 1000;
-  return { tps: n > 1 && dt > 0.2 ? (n - 1) / dt : null };
+  return { tps: null };
 }
 
 async function generate(messages, maxGen, onToken) {
@@ -474,6 +498,7 @@ function stopGeneration() {
 const estTok = (s) => Math.ceil(String(s).length / 3) + 4;   // ≈ 3 caractères / token (estimation prudente)
 
 function buildPrompt(history, m, maxGen, scale = 1) {
+  history = history.map((h) => (h.role === 'assistant' ? { ...h, content: stripThink(h.content) } : h)).filter((h) => h.content);   // la réflexion n'est pas renvoyée au modèle
   const sys = (S.system || '').trim();
   const budget = Math.max(128, Math.floor(((E.ctx || ctxFor(m)) - maxGen - 64 - (sys ? estTok(sys) : 0)) * scale));
   const kept = [];
@@ -562,7 +587,7 @@ function renderChat() {
       bubble.classList.add('streaming'); gen.bubble = bubble;
     } else {
       const tools = document.createElement('div'); tools.className = 'tools';
-      tools.append(toolBtn('Copier', (b) => copyText(msg.content, b)));
+      tools.append(toolBtn('Copier', (b) => copyText(msg.role === 'assistant' ? stripThink(msg.content) : msg.content, b)));
       if (msg.role === 'assistant' && i === lastIdx && gen.phase === 'idle') tools.append(toolBtn('↻ Régénérer', regenerate));
       if (msg.stats && msg.stats.tps) { const s = document.createElement('span'); s.textContent = msg.stats.tps.toFixed(1) + ' tok/s'; tools.append(s); }
       if (msg.stopped) { const s = document.createElement('span'); s.textContent = 'interrompu'; tools.append(s); }
@@ -735,6 +760,7 @@ async function runGeneration() {
     chat.messages.pop();
     notice('warn', 'Le modèle a renvoyé une réponse vide. Réessayez ou changez de modèle.');
   } else {
+    if (!stripThink(msg.content)) notice('warn', 'Le modèle a réfléchi sans arriver à répondre (longueur maximale atteinte). Augmentez « Longueur max. de réponse » dans les réglages.');
     msg.stats = { tps: result && result.tps };
     msg.stopped = gen.stopRequested;
   }
@@ -816,7 +842,7 @@ async function wipeAll() {
 }
 
 /* ----- panneau de réglages ----- */
-/* ----- serveur distant (API compatible OpenAI : Ollama, llama.cpp…) ----- */
+/* ----- serveur distant (Ollama) ----- */
 const remoteBase = (u) => String(u || '').trim().replace(/\/+$/, '').replace(/\/v1$/, '');
 function remoteUrlOk(u) {
   try {
@@ -838,19 +864,19 @@ async function testRemote() {
   const to = setTimeout(() => ac.abort(), 12000);
   try {
     let res;
-    try { res = await fetch(url + '/v1/models', { headers: { Authorization: 'Bearer ' + key }, signal: ac.signal }); }
+    try { res = await fetch(url + '/api/tags', { headers: { Authorization: 'Bearer ' + key }, signal: ac.signal }); }
     catch { info.textContent = 'Serveur injoignable. Vérifiez l\'adresse (https://…), la connexion et que le serveur est démarré.'; return; }
     if (res.status === 401 || res.status === 403) { info.textContent = 'Clé refusée par le serveur.'; return; }
-    if (!res.ok) { info.textContent = 'Le serveur a répondu « ' + res.status + ' ». Est-ce bien l\'adresse de l\'API ?'; return; }
+    if (!res.ok) { info.textContent = 'Le serveur a répondu « ' + res.status + ' ». Est-ce bien l\'adresse du serveur Ollama ?'; return; }
     const j = await res.json().catch(() => null);
-    const names = j && Array.isArray(j.data) ? j.data.map((x) => x && x.id).filter(Boolean) : [];
+    const names = j && Array.isArray(j.models) ? j.models.map((x) => x && (x.name || x.model)).filter(Boolean) : [];
     S.remote = { url, key, models: names }; saveS();
     $('rUrl').value = url;   // adresse normalisée (sans « /v1/ » final)
     if (!names.length) { renderModelSel(); info.textContent = 'Connexion réussie, mais aucun modèle installé. Sur le serveur : ollama pull <nom>.'; return; }
-    if (S.hideLocal == null) { S.hideLocal = true; saveS(); }   // par défaut : seulement les modèles du serveur (décochable)
+    if (S.hideLocal == null) { S.hideLocal = true; S.max_tokens = Math.max(S.max_tokens, 4096); saveS(); }   // 1re connexion : seulement les modèles du serveur (décochable) et réponses longues
     const cur = modelById(S.modelId);
     if (!cur || cur.type !== 'remote') selectModel('remote:' + names[0]); else renderModelSel();
-    syncHideLocalUI();
+    syncSettingsUI();   // met à jour curseurs et cases (longueur de réponse relevée, etc.)
     info.textContent = remoteSummary();
   } finally { clearTimeout(to); btn.disabled = false; btn.textContent = 'Tester et récupérer les modèles'; }
 }
@@ -878,6 +904,8 @@ function syncSettingsUI() {
   $('rTopP').value = S.top_p; $('vTopP').textContent = (+S.top_p).toFixed(2);
   $('rMax').value = S.max_tokens; $('vMax').textContent = S.max_tokens + ' tokens';
   $('selCtx').value = String(S.ctx);
+  $('selCtxR').value = String(S.ctxR);
+  $('chkThink').checked = S.think !== false;
   $('sysPrompt').value = S.system;
 }
 function openSheet() {
@@ -926,6 +954,8 @@ function bindEvents() {
   $('btnDelModel').onclick = deleteModelCache;
   $('btnRemoteTest').onclick = testRemote;
   $('btnRemoteClear').onclick = clearRemote;
+  $('selCtxR').onchange = () => { S.ctxR = +$('selCtxR').value; saveS(); };
+  $('chkThink').onchange = () => { S.think = $('chkThink').checked; saveS(); };
   $('chkHideLocal').onchange = () => {
     S.hideLocal = $('chkHideLocal').checked; saveS();
     const cur = modelById(S.modelId), first = remoteModels()[0];

@@ -54,7 +54,7 @@
     <button id="btnDelModel" class="ghost wide">Supprimer ce modèle du cache</button>
 
     <h3>Serveur distant (optionnel)</h3>
-    <p class="hint">Utilise un modèle hébergé sur votre propre serveur (API compatible OpenAI, par exemple Ollama derrière Caddy). Vos messages sont alors envoyés à ce serveur, en HTTPS.</p>
+    <p class="hint">Utilise un modèle hébergé sur votre propre serveur Ollama (par exemple derrière Caddy). Vos messages sont alors envoyés à ce serveur, en HTTPS.</p>
     <label for="rUrl">Adresse</label>
     <input id="rUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://158-69-0-183.sslip.io">
     <label for="rKey">Clé d'accès</label>
@@ -62,6 +62,16 @@
     <button id="btnRemoteTest" class="primary wide">Tester et récupérer les modèles</button>
     <p class="hint" id="remoteInfo"></p>
     <label class="check"><input type="checkbox" id="chkHideLocal"> Afficher seulement les modèles du serveur</label>
+    <label class="check"><input type="checkbox" id="chkThink"> Afficher la réflexion du modèle</label>
+    <label for="selCtxR">Taille de contexte du serveur</label>
+    <select id="selCtxR">
+      <option value="2048">2048</option>
+      <option value="4096">4096 (défaut)</option>
+      <option value="8192">8192</option>
+      <option value="16384">16384</option>
+      <option value="32768">32768 (maximum)</option>
+    </select>
+    <p class="hint">Un contexte plus grand consomme plus de mémoire sur le serveur : avec 4 Go de RAM, restez à 4096 pour un modèle de 4 milliards de paramètres. Si le serveur manque de mémoire, il le signale.</p>
     <button id="btnRemoteClear" class="ghost danger wide">Retirer le serveur</button>
 
     <h3>Génération</h3>
@@ -70,8 +80,8 @@
     <label for="rTopP">Top-p <output id="vTopP"></output></label>
     <input id="rTopP" type="range" min="0.1" max="1" step="0.01">
     <label for="rMax">Longueur max. de réponse <output id="vMax"></output></label>
-    <input id="rMax" type="range" min="64" max="2048" step="32">
-    <label for="selCtx">Taille de contexte</label>
+    <input id="rMax" type="range" min="64" max="16384" step="64">
+    <label for="selCtx">Taille de contexte (modèles de l'iPhone)</label>
     <select id="selCtx">
       <option value="1024">1024 (très économe)</option>
       <option value="2048">2048 (défaut)</option>
