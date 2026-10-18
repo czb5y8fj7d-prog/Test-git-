@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>LocalLM</title>
+  <meta name="theme-color" content="#0b0d10">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LocalLM">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <header id="topbar">
+    <select id="modelSel" aria-label="Modèle"></select>
+    <button id="btnSettings" class="icon-btn" aria-label="Réglages">⚙</button>
+    <button id="btnClear" class="icon-btn" aria-label="Nouvelle conversation">＋</button>
+  </header>
+
+  <main id="chat"><div id="msgs"></div></main>
+
+  <div id="notice" hidden></div>
+
+  <div id="progress" hidden>
+    <div class="p-row"><span id="pLabel">Chargement…</span><span id="pPct">0 %</span></div>
+    <div class="bar"><div id="pBar"></div></div>
+    <div class="p-sub" id="pSub"></div>
+  </div>
+
+  <form id="composer" autocomplete="off">
+    <textarea id="input" rows="1" placeholder="Écrire un message…" enterkeyhint="send"></textarea>
+    <button id="btnSend" type="submit" aria-label="Envoyer">➤</button>
+  </form>
+</div>
+
+<!-- Panneau de réglages -->
+<div id="scrim" hidden></div>
+<section id="sheet" aria-hidden="true">
+  <div class="sheet-head">
+    <strong>Réglages</strong>
+    <button id="btnCloseSheet" class="icon-btn" aria-label="Fermer">✕</button>
+  </div>
+  <div class="sheet-body">
+
+    <h3>Modèle</h3>
+    <div id="modelList"></div>
+    <button id="btnLoad" class="primary wide">Charger le modèle maintenant</button>
+    <button id="btnDelModel" class="ghost wide">Supprimer ce modèle du cache</button>
+
+    <h3>Serveur distant (optionnel)</h3>
+    <p class="hint">Utilise un modèle hébergé sur votre propre serveur (API compatible OpenAI, par exemple Ollama derrière Caddy). Vos messages sont alors envoyés à ce serveur, en HTTPS.</p>
+    <label for="rUrl">Adresse</label>
+    <input id="rUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://158-69-0-183.sslip.io">
+    <label for="rKey">Clé d'accès</label>
+    <input id="rKey" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Clé fournie par le script du serveur">
+    <button id="btnRemoteTest" class="primary wide">Tester et récupérer les modèles</button>
+    <p class="hint" id="remoteInfo"></p>
+    <button id="btnRemoteClear" class="ghost danger wide">Retirer le serveur</button>
+
+    <h3>Génération</h3>
+    <label for="rTemp">Température <output id="vTemp"></output></label>
+    <input id="rTemp" type="range" min="0" max="2" step="0.05">
+    <label for="rTopP">Top-p <output id="vTopP"></output></label>
+    <input id="rTopP" type="range" min="0.1" max="1" step="0.01">
+    <label for="rMax">Longueur max. de réponse <output id="vMax"></output></label>
+    <input id="rMax" type="range" min="64" max="2048" step="32">
+    <label for="selCtx">Taille de contexte</label>
+    <select id="selCtx">
+      <option value="1024">1024 (très économe)</option>
+      <option value="2048">2048 (défaut)</option>
+      <option value="3072">3072</option>
+      <option value="4096">4096</option>
+    </select>
+    <p class="hint">Un contexte plus grand consomme plus de mémoire. Le modèle est rechargé au prochain message si le contexte change. L'historique est tronqué automatiquement.</p>
+
+    <h3>Prompt système</h3>
+    <textarea id="sysPrompt" rows="5" aria-label="Prompt système"></textarea>
+    <button id="btnSysReset" class="ghost wide">Rétablir le prompt par défaut</button>
+
+    <h3>Stockage</h3>
+    <p class="hint" id="storageInfo">…</p>
+    <button id="btnPersist" class="ghost wide">Demander le stockage persistant</button>
+    <button id="btnWipe" class="ghost danger wide">Tout effacer (conversation et modèles en cache)</button>
+  </div>
+</section>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
