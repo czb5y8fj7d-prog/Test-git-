@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mes projets</title>
   <meta name="description" content="Accueil : tous mes projets au même endroit.">
+  <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0b0d10">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236b8cff'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
@@ -29,7 +30,9 @@
     h1 { margin: 0; font-size: clamp(30px, 8vw, 44px); line-height: 1.1; letter-spacing: -.02em; }
     .lead { margin: 10px 0 0; color: var(--mut); }
 
-    #list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+    #list { display: grid; gap: 30px; }
+    .cat { margin: 0 0 12px; color: var(--mut); font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
     .card {
       display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 16px 18px;
       color: inherit; text-decoration: none; background: var(--s1);
@@ -128,8 +131,21 @@
         return;
       }
       list.textContent = '';
-      items.forEach(function (p) { var c = card(p); if (c) list.appendChild(c); });
-      document.getElementById('foot').textContent = items.length + (items.length > 1 ? ' projets' : ' projet');
+      var groups = {}, order = [], shown = 0;
+      items.forEach(function (p) {
+        var c = card(p); if (!c) return;
+        var name = (typeof p.cat === 'string' && p.cat) ? p.cat : 'Projets';
+        if (!groups[name]) { groups[name] = []; order.push(name); }
+        groups[name].push(c); shown++;
+      });
+      order.forEach(function (name) {
+        var sec = document.createElement('section');
+        var h = document.createElement('h2'); h.className = 'cat'; h.textContent = name;
+        var g = document.createElement('div'); g.className = 'grid';
+        groups[name].forEach(function (c) { g.appendChild(c); });
+        sec.appendChild(h); sec.appendChild(g); list.appendChild(sec);
+      });
+      document.getElementById('foot').textContent = shown + (shown > 1 ? ' projets' : ' projet');
     })
     .catch(function () { message('Impossible de charger la liste des projets. Réessayez dans un instant.', true); });
 })();

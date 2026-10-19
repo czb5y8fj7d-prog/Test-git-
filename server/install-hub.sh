@@ -3,7 +3,7 @@
 #  - installe Caddy (HTTPS automatique) et la page d'accueil (branche « hub »)
 #  - installe la commande « hub » pour ajouter des projets en une ligne
 #  - garde l'API Ollama protégée par la clé d'accès (reprise de la config existante, sinon créée)
-#  - ajoute LocalLM comme premier projet (https://<hôte>/llm/)
+#  - ajoute LocalLM (https://<hôte>/llm/) puis les sites statiques de la branche « sites » (hub sync)
 # Relançable sans risque.
 # Usage : bash install-hub.sh [nom-d-hôte]      (par défaut : <ip>.sslip.io)
 set -e
@@ -113,8 +113,12 @@ $SUDO "$CADDY_BIN" validate --config "$CADDYFILE" --adapter caddyfile
 
 # 6. Premier projet : LocalLM (sans redémarrer Caddy ici, on le fait une fois à la fin)
 if [ -z "$NO_LLM" ]; then
-  CADDY_RELOAD=true "$HUB_DIR/server/hub" add llm --titre "LocalLM" --icone "💬" \
+  CADDY_RELOAD=true "$HUB_DIR/server/hub" add llm --titre "LocalLM" --icone "💬" --categorie "IA" \
     --desc "Chat IA privé : sur l'iPhone ou sur le serveur" --branche locallm
+fi
+# Les sites statiques (branche « sites »), s'ils existent
+if [ -z "$NO_SITES" ]; then
+  CADDY_RELOAD=true "$HUB_DIR/server/hub" sync || echo "(branche « sites » ignorée : voir le message ci-dessus)"
 fi
 
 if [ -z "$SKIP_RESTART" ]; then
