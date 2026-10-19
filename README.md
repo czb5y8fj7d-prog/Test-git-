@@ -53,6 +53,9 @@ ll-auth logout-all   # déconnecter tous les appareils
 ll-auth status
 ```
 
+### Réponses persistantes
+Avec le service à jour, la réponse du modèle est lue par `ll-server` (`/_ll/chat`, sondage long) et non par l'app : si l'iPhone met l'app en veille, la génération continue et le texte est récupéré au retour (reprise au bon décalage, aussi après un rechargement de la page). Les tâches sont gardées 2 h en mémoire. Un serveur plus ancien est détecté (`capabilities`) et l'app retombe sur le flux direct.
+
 ## Images (FLUX.1 schnell)
 
 `server/install-images.sh` installe stable-diffusion.cpp et FLUX.1 schnell (Q8, ≈ 19 Go) dans `/opt/ll/sd`.

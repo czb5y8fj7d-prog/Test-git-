@@ -28,6 +28,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
@@ -474,6 +475,105 @@ def cancel_job(j):
         job_save(j)
 
 
+# --------------------------------------------------------------------------- chats persistants
+# La réponse du modèle est lue par le serveur, indépendamment de l'app : si l'iPhone met Safari en veille,
+# la génération continue et l'app récupère le texte à son retour (sondage long, reprise à un décalage).
+CHATS = {}
+CHATS_LOCK = threading.Lock()
+CHAT_KEEP = 2 * 3600
+CHAT_MAX_LINES = 400_000
+
+
+def chat_prune():
+    now = time.time()
+    with CHATS_LOCK:
+        for cid in [k for k, c in CHATS.items() if c["state"] != "run" and now - c["updated"] > CHAT_KEEP]:
+            CHATS.pop(cid, None)
+
+
+def chat_new(payload):
+    chat_prune()
+    c = {"id": secrets.token_hex(8), "lines": [], "state": "run", "http": None, "cancel": False, "resp": None,
+         "created": time.time(), "updated": time.time(), "cond": threading.Condition()}
+    with CHATS_LOCK:
+        CHATS[c["id"]] = c
+    threading.Thread(target=chat_run, args=(c, payload), daemon=True).start()
+    return c
+
+
+def chat_finish(c, state, http=None):
+    with c["cond"]:
+        c["state"], c["http"], c["updated"] = state, http, time.time()
+        c["resp"] = None
+        c["cond"].notify_all()
+
+
+def chat_run(c, payload):
+    seen_done = False
+    try:
+        req = urllib.request.Request(OLLAMA + "/api/chat", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+        try:
+            resp = urllib.request.urlopen(req, timeout=1200)
+        except urllib.error.HTTPError as e:
+            return chat_finish(c, "http", {"status": e.code, "body": e.read(4000).decode("utf-8", "replace")})
+        except Exception as e:
+            return chat_finish(c, "http", {"status": 502, "body": json.dumps({"error": "modèle injoignable : %s" % str(e)[:150]})})
+        c["resp"] = resp
+        for raw in resp:
+            if c["cancel"]:
+                break
+            line = raw.decode("utf-8", "replace").strip()
+            if not line:
+                continue
+            if '"done"' in line:
+                try:
+                    if json.loads(line).get("done"):
+                        seen_done = True
+                except ValueError:
+                    pass
+            with c["cond"]:
+                if len(c["lines"]) < CHAT_MAX_LINES:
+                    c["lines"].append(line)
+                c["updated"] = time.time()
+                c["cond"].notify_all()
+        chat_finish(c, "cancel" if c["cancel"] else ("done" if seen_done else "cut"))
+    except Exception:
+        chat_finish(c, "cancel" if c["cancel"] else ("done" if seen_done else "cut"))
+    finally:
+        try:
+            if c.get("resp"):
+                c["resp"].close()
+        except Exception:
+            pass
+
+
+def chat_poll(c, start, wait):
+    """Renvoie les lignes à partir de « start » ; attend jusqu'à « wait » s si rien de neuf."""
+    deadline = time.time() + wait
+    with c["cond"]:
+        while len(c["lines"]) <= start and c["state"] == "run":
+            left = deadline - time.time()
+            if left <= 0:
+                break
+            c["cond"].wait(left)
+    if c["state"] == "run":
+        time.sleep(0.06)   # regroupe les jetons qui arrivent à la suite
+    with c["cond"]:
+        chunk = c["lines"][start:start + 2000]
+        return {"lines": chunk, "next": start + len(chunk), "state": c["state"] if start + len(chunk) >= len(c["lines"]) else "run", "http": c["http"] if c["state"] == "http" else None}
+
+
+def chat_cancel(c):
+    c["cancel"] = True
+    r = c.get("resp")
+    if r:
+        try:
+            r.close()   # Ollama arrête de calculer quand la connexion se ferme
+        except Exception:
+            pass
+
+
+
 # --------------------------------------------------------------------------- serveur HTTP
 class H(BaseHTTPRequestHandler):
     server_version = "ll-server"
@@ -499,9 +599,9 @@ class H(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(body)
 
-    def body(self):
+    def body(self, limit=10_000):
         try:
-            n = min(int(self.headers.get("Content-Length") or 0), 10_000)
+            n = min(int(self.headers.get("Content-Length") or 0), limit)
             return json.loads(self.rfile.read(n) or b"{}")
         except ValueError:
             return {}
@@ -518,7 +618,19 @@ class H(BaseHTTPRequestHandler):
         if p == "/_ll/auth/me":
             return self.send_json(200, {"ok": True, "kind": kind, "passwordSet": bool(conf().get("pw"))})
         if p == "/_ll/capabilities":
-            return self.send_json(200, {"web": True, "image": image_ready(), "image_model": "FLUX.1 schnell (Q8)", "formats": list(FORMATS)})
+            return self.send_json(200, {"web": True, "chat": True, "image": image_ready(), "image_model": "FLUX.1 schnell (Q8)", "formats": list(FORMATS)})
+        m = re.fullmatch(r"/_ll/chat/([0-9a-f]{16})", p)
+        if m:
+            with CHATS_LOCK:
+                c = CHATS.get(m.group(1))
+            if not c:
+                return self.send_json(404, {"error": "tâche inconnue (le service a redémarré ou elle a expiré)"})
+            try:
+                start = max(0, int((q.get("from") or ["0"])[0]))
+                wait = max(0, min(25, float((q.get("wait") or ["0"])[0])))
+            except ValueError:
+                return self.send_json(400, {"error": "paramètres invalides"})
+            return self.send_json(200, chat_poll(c, start, wait))
         m = re.fullmatch(r"/_ll/image/([0-9a-f]{16})(/png)?", p)
         if m:
             j = job_get(m.group(1))
@@ -588,6 +700,23 @@ class H(BaseHTTPRequestHandler):
         kind = auth_kind(self.token())
         if not kind:
             return self.send_json(401, {"error": "non autorisé"})
+        if p == "/_ll/chat":
+            b = self.body(limit=80_000_000)
+            if not isinstance(b, dict) or not b.get("model") or not isinstance(b.get("messages"), list):
+                return self.send_json(400, {"error": "requête invalide"})
+            with CHATS_LOCK:
+                busy = sum(1 for x in CHATS.values() if x["state"] == "run")
+            if busy >= 8:
+                return self.send_json(429, {"error": "trop de réponses en cours"})
+            b["stream"] = True
+            return self.send_json(200, {"id": chat_new(b)["id"]})
+        m = re.fullmatch(r"/_ll/chat/([0-9a-f]{16})/cancel", p)
+        if m:
+            with CHATS_LOCK:
+                c = CHATS.get(m.group(1))
+            if c:
+                chat_cancel(c)
+            return self.send_json(200, {"ok": True})
         if p == "/_ll/image":
             if not image_ready():
                 return self.send_json(503, {"error": "générateur d'images non installé sur le serveur (install-images.sh)"})
