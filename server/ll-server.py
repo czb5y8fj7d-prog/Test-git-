@@ -20,7 +20,11 @@ import json
 import os
 import re
 import secrets
+import queue
+import shutil
+import signal
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -259,6 +263,217 @@ def fetch_page(url, limit=14000):
     raise ValueError("trop de redirections")
 
 
+# --------------------------------------------------------------------------- génération d'images (stable-diffusion.cpp + FLUX.1 schnell)
+SD_DIR = os.environ.get("SD_DIR", "/opt/ll/sd")
+IMG_DIR = os.environ.get("LL_IMG_DIR", os.path.join(os.path.dirname(CONF), "images"))
+OLLAMA = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
+MODEL_FILES = {  # fichiers téléchargés par install-images.sh
+    "diffusion": "flux1-schnell-Q8_0.gguf", "t5": "t5xxl-Q8_0.gguf", "clip": "clip_l.safetensors", "vae": "ae.safetensors",
+}
+FORMATS = {"carre": (1024, 1024), "portrait": (832, 1216), "paysage": (1216, 832)}
+JOBS = {}
+JOB_Q = queue.Queue()
+JOBS_LOCK = threading.Lock()
+_sd_help = {}
+
+
+def sd_paths():
+    d = os.environ.get("SD_MODELS", os.path.join(SD_DIR, "models"))
+    binp = os.environ.get("SD_BIN") or next((p for p in (os.path.join(SD_DIR, "bin", n) for n in ("sd-cli", "sd")) if os.path.isfile(p) and os.access(p, os.X_OK)), "")
+    files = {k: os.path.join(d, v) for k, v in MODEL_FILES.items()}
+    ok = bool(binp) and all(os.path.isfile(p) for p in files.values())
+    return binp, files, ok
+
+
+def image_ready():
+    return sd_paths()[2]
+
+
+def sd_supports(binp, flag):
+    if binp not in _sd_help:
+        try:
+            r = subprocess.run([binp, "--help"], capture_output=True, text=True, timeout=30)
+            _sd_help[binp] = r.stdout + r.stderr
+        except Exception:
+            _sd_help[binp] = ""
+    return flag in _sd_help[binp]
+
+
+def free_ollama():
+    """Décharge les modèles texte de la mémoire (FLUX a besoin de la RAM) ; Ollama les recharge à la demande."""
+    try:
+        with urllib.request.urlopen(OLLAMA + "/api/ps", timeout=5) as r:
+            models = [m.get("name") or m.get("model") for m in json.load(r).get("models", [])]
+        for name in models:
+            req = urllib.request.Request(OLLAMA + "/api/generate", data=json.dumps({"model": name, "keep_alive": 0}).encode(), headers={"Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=15).read()
+        for _ in range(20):
+            with urllib.request.urlopen(OLLAMA + "/api/ps", timeout=5) as r:
+                if not json.load(r).get("models"):
+                    break
+            time.sleep(1)
+    except Exception as e:
+        sys.stderr.write("free_ollama: %s\n" % e)
+
+
+def job_meta_path(jid):
+    return os.path.join(IMG_DIR, jid + ".json")
+
+
+def job_save(j):
+    try:
+        os.makedirs(IMG_DIR, exist_ok=True)
+        pub = {k: v for k, v in j.items() if k != "proc"}
+        with open(job_meta_path(j["id"]), "w", encoding="utf-8") as f:
+            json.dump(pub, f)
+    except OSError:
+        pass
+
+
+def job_get(jid):
+    if not re.fullmatch(r"[0-9a-f]{16}", jid or ""):
+        return None
+    with JOBS_LOCK:
+        j = JOBS.get(jid)
+    if j:
+        return j
+    try:  # après un redémarrage du service : état relu depuis le disque
+        with open(job_meta_path(jid), encoding="utf-8") as f:
+            j = json.load(f)
+        if j.get("state") in ("queued", "running"):
+            j["state"], j["error"] = "error", "Le service a redémarré pendant la génération."
+        return j
+    except (OSError, ValueError):
+        return None
+
+
+def job_public(j):
+    now = time.time()
+    out = {k: j.get(k) for k in ("id", "state", "phase", "prompt", "width", "height", "steps", "step", "sec_per_it", "error")}
+    out["elapsed"] = int((j.get("finished") or now) - j["started"]) if j.get("started") else 0
+    if j["state"] == "queued":
+        with JOBS_LOCK:
+            ahead = [x for x in JOBS.values() if x["state"] in ("queued", "running") and x["created"] < j["created"]]
+        out["position"] = len(ahead)
+    if j["state"] == "running" and j.get("sec_per_it") and j.get("step") is not None:
+        out["eta"] = int(max(0, (j["steps"] - j["step"]) * j["sec_per_it"]))
+    return out
+
+
+def job_new(prompt, width, height, steps, seed):
+    j = {"id": secrets.token_hex(8), "state": "queued", "phase": "En attente", "prompt": prompt, "width": width, "height": height,
+         "steps": steps, "seed": seed, "step": 0, "sec_per_it": None, "created": time.time(), "started": None, "finished": None, "error": None}
+    with JOBS_LOCK:
+        JOBS[j["id"]] = j
+    job_save(j)
+    JOB_Q.put(j["id"])
+    return j
+
+
+_PROG = re.compile(r"(\d+)\s*/\s*(\d+)\s*-\s*([\d.]+)\s*(s/it|it/s)")
+
+
+def run_job(j):
+    binp, files, ok = sd_paths()
+    out = os.path.join(IMG_DIR, j["id"] + ".png")
+    if not ok:
+        j.update(state="error", error="Le générateur d'images n'est pas installé (install-images.sh).", finished=time.time())
+        return
+    j.update(state="running", phase="Libération de la mémoire", started=time.time())
+    job_save(j)
+    free_ollama()
+    cmd = [binp, "--diffusion-model", files["diffusion"], "--vae", files["vae"], "--clip_l", files["clip"], "--t5xxl", files["t5"],
+           "-p", j["prompt"], "--cfg-scale", "1.0", "--sampling-method", "euler", "--steps", str(j["steps"]),
+           "-W", str(j["width"]), "-H", str(j["height"]), "-s", str(j["seed"]), "-o", out]
+    if sd_supports(binp, "--diffusion-fa"):
+        cmd.append("--diffusion-fa")
+    if sd_supports(binp, "--clip-on-cpu"):
+        cmd.append("--clip-on-cpu")
+    j["phase"] = "Chargement des modèles"
+    tail = ""
+    try:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
+        j["proc"] = p
+        buf = b""
+        deadline = time.time() + 3 * 3600
+        while True:
+            ch = p.stdout.read(1)
+            if not ch:
+                break
+            if ch in (b"\r", b"\n"):
+                line = buf.decode("utf-8", "replace")
+                buf = b""
+                if line.strip():
+                    tail = (tail + "\n" + line)[-600:]
+                    m = _PROG.search(line)
+                    if m:
+                        a, b, v, unit = int(m.group(1)), int(m.group(2)), float(m.group(3)), m.group(4)
+                        j.update(step=a, phase="Dessin en cours", sec_per_it=(v if unit == "s/it" else (1 / v if v else None)))
+                        if a >= b:
+                            j["phase"] = "Finalisation"
+                    elif re.search(r"decode|vae", line, re.I):
+                        j["phase"] = "Finalisation"
+                    elif re.search(r"sampling|generating", line, re.I):
+                        j["phase"] = "Dessin en cours"
+            else:
+                buf += ch
+            if time.time() > deadline:
+                p.kill()
+                break
+        rc = p.wait()
+        if j.get("cancel"):
+            j.update(state="error", error="Annulée.")
+        elif rc == 0 and os.path.isfile(out) and os.path.getsize(out) > 1000:
+            j.update(state="done", phase="Terminé", step=j["steps"])
+        else:
+            j.update(state="error", error=("Échec du générateur (code %s). " % rc) + tail.strip()[-300:])
+    except Exception as e:
+        j.update(state="error", error="Erreur : %s" % str(e)[:200])
+    finally:
+        j["proc"] = None
+        j["finished"] = time.time()
+        job_save(j)
+        prune_images()
+
+
+def prune_images(keep=60):
+    try:
+        files = sorted((f for f in os.listdir(IMG_DIR) if f.endswith(".png")), key=lambda f: os.path.getmtime(os.path.join(IMG_DIR, f)))
+        for f in files[:-keep]:
+            for ext in (".png", ".json"):
+                try:
+                    os.remove(os.path.join(IMG_DIR, f[:-4] + ext))
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
+
+def worker():
+    while True:
+        jid = JOB_Q.get()
+        with JOBS_LOCK:
+            j = JOBS.get(jid)
+        if not j or j.get("cancel"):
+            if j:
+                j.update(state="error", error="Annulée.", finished=time.time())
+            continue
+        run_job(j)
+
+
+def cancel_job(j):
+    j["cancel"] = True
+    p = j.get("proc")
+    if p:
+        try:
+            p.terminate()
+        except Exception:
+            pass
+    elif j["state"] == "queued":
+        j.update(state="error", error="Annulée.", finished=time.time())
+        job_save(j)
+
+
 # --------------------------------------------------------------------------- serveur HTTP
 class H(BaseHTTPRequestHandler):
     server_version = "ll-server"
@@ -302,6 +517,29 @@ class H(BaseHTTPRequestHandler):
             return self.send_json(401, {"error": "non autorisé"})
         if p == "/_ll/auth/me":
             return self.send_json(200, {"ok": True, "kind": kind, "passwordSet": bool(conf().get("pw"))})
+        if p == "/_ll/capabilities":
+            return self.send_json(200, {"web": True, "image": image_ready(), "image_model": "FLUX.1 schnell (Q8)", "formats": list(FORMATS)})
+        m = re.fullmatch(r"/_ll/image/([0-9a-f]{16})(/png)?", p)
+        if m:
+            j = job_get(m.group(1))
+            if not j:
+                return self.send_json(404, {"error": "tâche inconnue"})
+            if not m.group(2):
+                return self.send_json(200, job_public(j))
+            f = os.path.join(IMG_DIR, j["id"] + ".png")
+            if j.get("state") != "done" or not os.path.isfile(f):
+                return self.send_json(404, {"error": "image non disponible"})
+            size = os.path.getsize(f)
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(size))
+            self.send_header("Cache-Control", "private, max-age=86400")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            if self.command != "HEAD":
+                with open(f, "rb") as fh:
+                    shutil.copyfileobj(fh, self.wfile)
+            return
         if p == "/_ll/search":
             term = (q.get("q") or [""])[0].strip()
             if not term:
@@ -350,6 +588,31 @@ class H(BaseHTTPRequestHandler):
         kind = auth_kind(self.token())
         if not kind:
             return self.send_json(401, {"error": "non autorisé"})
+        if p == "/_ll/image":
+            if not image_ready():
+                return self.send_json(503, {"error": "générateur d'images non installé sur le serveur (install-images.sh)"})
+            b = self.body()
+            prompt = str(b.get("prompt", "")).strip()[:1500]
+            if not prompt:
+                return self.send_json(400, {"error": "description vide"})
+            w, h = FORMATS.get(str(b.get("format", "carre")), FORMATS["carre"])
+            try:
+                steps = max(1, min(20, int(b.get("steps", 8))))
+                seed = int(b.get("seed")) if b.get("seed") not in (None, "") else secrets.randbelow(2 ** 31)
+            except (TypeError, ValueError):
+                return self.send_json(400, {"error": "paramètres invalides"})
+            with JOBS_LOCK:
+                busy = sum(1 for x in JOBS.values() if x["state"] in ("queued", "running"))
+            if busy >= 6:
+                return self.send_json(429, {"error": "trop de générations en attente"})
+            return self.send_json(200, job_public(job_new(prompt, w, h, steps, seed)))
+        m = re.fullmatch(r"/_ll/image/([0-9a-f]{16})/cancel", p)
+        if m:
+            j = job_get(m.group(1))
+            if not j:
+                return self.send_json(404, {"error": "tâche inconnue"})
+            cancel_job(j)
+            return self.send_json(200, {"ok": True})
         if p == "/_ll/auth/logout":
             with LOCK:
                 d = load()
@@ -373,6 +636,8 @@ class H(BaseHTTPRequestHandler):
 
 
 def serve():
+    os.makedirs(IMG_DIR, exist_ok=True)
+    threading.Thread(target=worker, daemon=True).start()
     srv = ThreadingHTTPServer((HOST, PORT), H)
     sys.stderr.write("ll-server sur %s:%d (conf %s)\n" % (HOST, PORT, CONF))
     srv.serve_forever()
@@ -415,6 +680,7 @@ def cli(argv):
         save(d)
         print("Tous les appareils sont déconnectés.")
     elif cmd == "status":
+        print("images       :", "prêt (FLUX.1 schnell)" if image_ready() else "non installé (install-images.sh)")
         now = time.time()
         act = [s for s in d.get("sessions", {}).values() if s.get("exp", 0) > now]
         print("clé d'accès  :", "définie" if d.get("key_hash") else "ABSENTE")

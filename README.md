@@ -52,3 +52,8 @@ ll-auth rotate-key   # nouvelle clé d'accès
 ll-auth logout-all   # déconnecter tous les appareils
 ll-auth status
 ```
+
+## Images (FLUX.1 schnell)
+
+`server/install-images.sh` installe stable-diffusion.cpp et FLUX.1 schnell (Q8, ≈ 19 Go) dans `/opt/ll/sd`.
+`ll-server` le détecte seul : le bouton 🎨 apparaît dans LL. Le modèle texte est déchargé pendant le dessin.
