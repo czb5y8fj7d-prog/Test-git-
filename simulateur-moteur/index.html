@@ -1,0 +1,1908 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Simulateur moteur</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Poste de pilotage : une barre d'état en haut, les réglages à gauche en sections repliables, les résultats à droite en vues (synthèse, moteur, performances, conso, clim, comparaison, export). Une seule colonne sur téléphone. */
+:root{
+  --bg:#EDF0F5; --panel:#FFFFFF; --panel-2:#F5F7FB; --ink:#0F1726; --muted:#586379; --line:#DAE0EA;
+  --accent:#2747D0; --accent-soft:#E4EAFC; --on-accent:#FFFFFF; --heat:#D4470C; --warn:#9A5B00; --good:#17803D;
+  --s-int:#9CCBE6; --s-comp:#EDCB86; --s-pow:#F0743A; --s-exh:#B3BBC3;
+  --metal:#A9B4BF; --metal-d:#7E8B98; --rod:#5E6B78; --block:#C3CCD5; --head:#B4BEC8; --guide:#AEB9C4; --spark:#F2B705;
+  --shadow:0 1px 2px rgba(15,23,38,.05),0 6px 18px rgba(15,23,38,.04);
+  --font-display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --font-body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A0F18; --panel:#131A27; --panel-2:#192233; --ink:#E8EDF5; --muted:#8F9CB2; --line:#263145;
+    --accent:#7E9CFF; --accent-soft:#1B2850; --on-accent:#0A0F18; --heat:#FF8B4F; --warn:#E3AB3C; --good:#4FC580;
+    --s-int:#4E92B8; --s-comp:#B8923F; --s-pow:#E8672A; --s-exh:#6F7A85;
+    --metal:#8E9BA8; --metal-d:#6A7784; --rod:#A9B5C1; --block:#26323E; --head:#1F2A35; --guide:#3A4A5A; --spark:#FFD54A;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A0F18; --panel:#131A27; --panel-2:#192233; --ink:#E8EDF5; --muted:#8F9CB2; --line:#263145;
+  --accent:#7E9CFF; --accent-soft:#1B2850; --on-accent:#0A0F18; --heat:#FF8B4F; --warn:#E3AB3C; --good:#4FC580;
+  --s-int:#4E92B8; --s-comp:#B8923F; --s-pow:#E8672A; --s-exh:#6F7A85;
+  --metal:#8E9BA8; --metal-d:#6A7784; --rod:#A9B5C1; --block:#26323E; --head:#1F2A35; --guide:#3A4A5A; --spark:#FFD54A;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5;padding-inline:0;padding-block:0 40px;-webkit-font-smoothing:antialiased}
+canvas{display:block;width:100%}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:16px}
+
+/* ---- barre du haut ---- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:32px;height:32px;border-radius:9px;background:var(--accent);display:grid;grid-template-columns:repeat(4,5px);gap:3px;align-content:end;justify-content:center;padding:6px 0}
+.mark i{display:block;background:var(--on-accent);border-radius:1.5px;height:10px}
+.mark i:nth-child(2){height:16px}.mark i:nth-child(3){height:13px}.mark i:nth-child(4){height:19px}
+h1{font:600 26px/1 var(--font-display);letter-spacing:.01em;margin:0}
+.cfgbar{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 280px;min-width:0}
+.modeseg{--cols:2;min-width:220px;margin-left:auto}
+
+/* ---- composition ---- */
+.shell{display:grid;gap:18px;grid-template-columns:minmax(0,1fr);padding-block:18px}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.side>*{flex-shrink:0}
+.main{min-width:0}
+@media (min-width:960px){
+  .shell{grid-template-columns:340px minmax(0,1fr);align-items:start}
+  .side{position:sticky;top:calc(66px + env(safe-area-inset-top,0px));max-height:calc(100vh - 82px);overflow-y:auto;padding-right:4px;scrollbar-width:thin}
+}
+.view{display:flex;flex-direction:column;gap:16px;min-width:0}
+.views{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:16px;scrollbar-width:none}
+.views button{font:500 14px var(--font-body);color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
+.views button:hover{color:var(--ink)}
+.views button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.wrap.simple .adv{display:none!important}
+.wrap:not(.simple) .sim{display:none!important}
+.wrap.simple .view:not(#v-synth):not(#v-perf):not(#v-cons){display:none!important}
+
+/* ---- cartes ---- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow);min-width:0}
+.card-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:8px 16px;margin-bottom:14px}
+.card-h h2{font:600 17px/1.25 var(--font-body);margin:0;text-wrap:balance}
+.card-h p{margin:2px 0 0;font-size:13px;color:var(--muted);max-width:60ch}
+.sub-h{font:600 12px var(--font-body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.dual{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:1100px){.dual{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}}
+.two{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:700px){.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.perfcharts{margin-top:16px}
+
+/* ---- synthèse ---- */
+.hero{padding:22px}
+.verdict{margin:0 0 18px;font-size:19px;line-height:1.45;font-weight:500;max-width:62ch;text-wrap:pretty}
+.verdict b{font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(min-width:760px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.kpi{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.kpi .k-lab{font:500 12.5px var(--font-body);color:var(--muted)}
+.kpi .k-row{display:flex;align-items:baseline;gap:6px;margin-top:2px}
+.kpi .k-val{font:600 46px/1 var(--font-display);font-variant-numeric:tabular-nums}
+.kpi .k-unit{font:500 13px var(--font-body);color:var(--muted)}
+.kpi .k-sub{font:400 12px var(--font-mono);color:var(--muted);margin-top:4px;min-height:1.4em}
+.kpi.eco .k-val{color:var(--good)}
+
+/* ---- pastilles ---- */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{font:500 12px var(--font-body);border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:3px 11px;color:var(--muted)}
+.chip.warn{color:var(--warn);border-color:var(--warn);background:transparent}
+.chip.ok{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.cfgbar .chip{background:var(--panel-2);color:var(--ink)}
+
+/* ---- tuiles de mesure ---- */
+.tiles,.kpi5{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0;display:grid;grid-template-columns:auto 1fr;column-gap:6px;align-items:baseline;align-content:start}
+.tile .lab{grid-column:1/-1;font:500 12px var(--font-body);color:var(--muted)}
+.tile .val{font:600 32px/1.1 var(--font-display);font-variant-numeric:tabular-nums}
+.tile .unit{font:400 12px var(--font-mono);color:var(--muted)}
+.tile .sub{grid-column:1/-1;font:400 11.5px var(--font-mono);color:var(--muted);min-height:1.4em}
+.tile .dlt{grid-column:1/-1;font:500 11.5px var(--font-mono);color:var(--heat);min-height:1.4em}
+.chrono{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:14px 0 0}
+.chrono div{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
+.chrono dt{font:400 11.5px var(--font-body);color:var(--muted);margin:0}
+.chrono dd{font:600 22px var(--font-display);margin:0;font-variant-numeric:tabular-nums}
+.chrono dd small{font:400 11px var(--font-mono);color:var(--muted)}
+
+/* ---- commandes ---- */
+.btn{font:500 13px var(--font-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer;min-width:96px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);width:100%;font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.primary:disabled{opacity:.45;cursor:default}
+.seg{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:2px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{font:500 13px var(--font-body);background:transparent;color:var(--muted);border:0;border-radius:7px;padding:6px 8px;cursor:pointer;min-width:0}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.seg.c2{--cols:2}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>label,.field .row>label,.field .row>span{font:500 13px var(--font-body)}
+.field .row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.field .row output{font:500 12.5px var(--font-mono);color:var(--accent);text-align:right}
+select,input[type=number],textarea{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 10px;width:100%;min-width:0}
+input[type=number]{font-family:var(--font-mono)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;margin:0;background:transparent;accent-color:var(--accent)}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid var(--panel);box-shadow:0 0 0 1px var(--accent);margin-top:-6px}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--accent);border:2px solid var(--panel);box-shadow:0 0 0 1px var(--accent)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer}
+.check input{margin-top:3px;accent-color:var(--accent)}
+textarea{font:400 12px/1.5 var(--font-mono);min-height:170px;resize:vertical}
+.gmsg{margin:0;font-size:12.5px;color:var(--muted);min-height:1.4em}
+.note{font-size:12.5px;color:var(--muted);margin:12px 0 0;max-width:72ch}
+.banner{border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:12.5px;margin:0}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.btnrow .gmsg{flex:1 1 200px}
+
+/* ---- réglages (colonne de gauche) ---- */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.sec>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 16px}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary::after{content:"";flex:none;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:3px;transition:transform .15s}
+.sec[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
+.sec>summary b{display:block;font:600 14.5px var(--font-body)}
+.sec>summary span{display:block;font:400 12px var(--font-body);color:var(--muted)}
+.sec .body{padding:16px;display:flex;flex-direction:column;gap:14px;border-top:1px solid var(--line)}
+.grp{font:600 11.5px var(--font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:2px 0 -4px}
+.sep{height:1px;background:var(--line);border:0;margin:2px 0}
+.pane{display:flex;flex-direction:column;gap:14px}
+.fieldset{display:flex;flex-direction:column;gap:12px;min-width:0}
+.goal{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px}
+dl.derived{display:grid;grid-template-columns:1fr auto;gap:5px 12px;margin:0;font-size:12.5px}
+dl.derived dt{color:var(--muted)}
+dl.derived dd{margin:0;font:400 12px var(--font-mono);text-align:right}
+.combo .field{gap:6px}
+.combo{padding:14px 16px}
+.combo p{margin:6px 0 0;font-size:12px;color:var(--muted)}
+
+/* ---- tableaux ---- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:6px}
+.actable{border-collapse:collapse;width:100%;min-width:480px;font:400 12.5px var(--font-mono)}
+.actable th,.actable td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.actable thead th{font:600 11.5px var(--font-body);color:var(--muted);background:var(--panel-2)}
+.actable thead th:first-child{text-align:left}
+.actable tbody th{text-align:left;font-weight:400;color:var(--ink);font-family:var(--font-body);font-size:13px}
+.actable tbody tr:last-child th,.actable tbody tr:last-child td{border-bottom:0}
+.actable small{color:var(--muted);font-size:11px}
+.actable .delta{color:var(--heat);white-space:nowrap}
+.actable .delta small{color:var(--heat)}
+.cmptable .good{color:var(--good)}
+.cmptable .bad{color:var(--heat)}
+.cmptable td.dd{white-space:nowrap}
+.cmphead{display:grid;gap:10px 16px;grid-template-columns:minmax(0,1fr);margin-bottom:10px;align-items:end}
+@media (min-width:640px){.cmphead{grid-template-columns:minmax(0,1fr) auto}}
+.aclead p{margin:0 0 8px;max-width:72ch}
+.caption{font:400 12px var(--font-mono);color:var(--muted);margin:10px 0 0}
+.caption b{color:var(--ink);font-weight:500}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font:400 12px var(--font-body);color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.transport{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:10px 18px;align-items:end;margin-top:12px}
+@media (max-width:560px){.transport{grid-template-columns:minmax(0,1fr)}}
+footer{color:var(--muted);font-size:12.5px;max-width:84ch;padding-block:6px 0}
+@media (max-width:560px){
+  .actable:not(#phaseTable){min-width:0}.actable th,.actable td{padding:7px 6px}.cmptable td.dd{white-space:normal}
+  .card{padding:16px}.kpi .k-val{font-size:38px}.modeseg{margin-left:0;flex:1 1 100%}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><h1>Simulateur moteur</h1></div>
+    <div class="cfgbar" id="cfgbar" aria-label="Configuration en cours"></div>
+    <div class="seg modeseg" role="group" aria-label="Mode d'affichage" id="seg-mode"><button type="button" data-mode="simple" aria-pressed="true">Simple</button><button type="button" data-mode="expert" aria-pressed="false">Expert</button></div>
+  </div>
+</header>
+
+<div class="wrap simple" id="wrap">
+  <div class="shell">
+
+    <!-- =========== RÉGLAGES =========== -->
+    <aside class="side" aria-label="Réglages">
+      <form onsubmit="return false" style="display:contents">
+        <div class="card combo">
+          <div class="field">
+            <label for="combo">Exemple complet</label>
+            <select id="combo"></select>
+          </div>
+          <p>Un moteur et un véhicule prêts à l'emploi. Modifie ensuite ce que tu veux.</p>
+        </div>
+
+        <details class="sec sim" open>
+          <summary><div><b>Réglages rapides</b><span>Les 7 choix qui comptent</span></div></summary>
+          <div class="body">
+            <div class="pane" id="pane-simple">
+              <div class="field">
+                <label for="s-n">Nombre de cylindres</label>
+                <select id="s-n"><option value="2">2 cylindres</option><option value="3">3 cylindres</option><option value="4">4 cylindres</option></select>
+              </div>
+              <div class="field">
+                <div class="row"><label for="s-disp">Taille du moteur (cylindrée)</label><output id="o-s-disp"></output></div>
+                <input type="range" id="s-disp" min="500" max="3000" step="50" value="1600">
+              </div>
+              <div class="field">
+                <label for="s-turbo">Turbo</label>
+                <select id="s-turbo"><option value="none">Sans turbo (atmosphérique)</option><option value="light">Turbo léger</option><option value="strong">Turbo fort</option></select>
+              </div>
+              <div class="field">
+                <label for="s-pt">Motorisation</label>
+                <select id="s-pt"><option value="ice">Essence</option><option value="mhev">Essence + hybride léger 48 V</option><option value="ev">Électrique</option></select>
+              </div>
+              <div class="field">
+                <div class="row"><label for="s-m">Poids de la voiture</label><output id="o-s-m"></output></div>
+                <input type="range" id="s-m" min="700" max="2300" step="10" value="1100">
+              </div>
+              <div class="field">
+                <label for="s-ac">Climatisation</label>
+                <select id="s-ac"><option value="off">Éteinte</option><option value="norm">Normale</option><option value="max">À fond</option></select>
+              </div>
+              <div class="field">
+                <label for="s-env">Conditions</label>
+                <select id="s-env"><option value="std">Normales (plat, 20 °C)</option><option value="mont">Montagne (2 000 m, pente 6 %)</option><option value="hot">Canicule, voiture chargée</option><option value="cold">Hiver froid</option><option value="tow">Remorque en montée</option><option value="custom">Personnalisées (mode expert)</option></select>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="sec adv" id="sec-engine" open>
+          <summary><div><b>Moteur</b><span>Architecture, turbo, distribution</span></div></summary>
+          <div class="body">
+            <p class="banner" id="evnote" hidden>Voiture électrique : le moteur thermique ci-dessous n'intervient pas dans les performances ni la consommation.</p>
+            <div class="field">
+              <label for="preset">Exemple de moteur</label>
+              <select id="preset"></select>
+            </div>
+            <p class="grp">Architecture</p>
+            <div class="field">
+              <div class="row"><span id="l-n">Cylindres en ligne</span><output id="o-n">2</output></div>
+              <div class="seg" role="group" aria-labelledby="l-n" id="seg-n">
+                <button type="button" data-n="2" aria-pressed="true">2</button>
+                <button type="button" data-n="3" aria-pressed="false">3</button>
+                <button type="button" data-n="4" aria-pressed="false">4</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="row"><label for="disp">Cylindrée totale</label><output id="o-disp"></output></div>
+              <input type="range" id="disp" min="125" max="3000" step="5" value="650">
+            </div>
+            <div class="field">
+              <div class="row"><label for="ratio">Rapport alésage / course</label><output id="o-ratio"></output></div>
+              <input type="range" id="ratio" min="0.7" max="1.6" step="0.01" value="1.38">
+            </div>
+            <div class="field">
+              <div class="row"><label for="cr">Rapport volumétrique</label><output id="o-cr"></output></div>
+              <input type="range" id="cr" min="8" max="14.5" step="0.1" value="11.5">
+            </div>
+            <div class="field">
+              <label for="ron">Carburant (indice d'octane RON)</label>
+              <select id="ron"><option value="91">91</option><option value="95" selected>95</option><option value="98">98</option><option value="100">100</option></select>
+            </div>
+            <div class="field">
+              <div class="row"><label for="rT">Régime d'accord de l'admission</label><output id="o-rT"></output></div>
+              <input type="range" id="rT" min="3000" max="12000" step="100" value="6500">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vpm">Vitesse moyenne piston max</label><output id="o-vpm"></output></div>
+              <input type="range" id="vpm" min="16" max="28" step="0.5" value="20">
+            </div>
+            <p class="grp">Suralimentation et distribution</p>
+            <div class="field">
+              <div class="row"><label for="boost">Pression de suralimentation</label><output id="o-boost"></output></div>
+              <input type="range" id="boost" min="0" max="2" step="0.05" value="0">
+            </div>
+            <div class="field">
+              <div class="row"><label for="spool">Régime de plein boost</label><output id="o-spool"></output></div>
+              <input type="range" id="spool" min="1000" max="4000" step="100" value="1800">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vvt">Déphaseur d'arbre à cames (VVT)</label><output id="o-vvt"></output></div>
+              <input type="range" id="vvt" min="0" max="100" step="5" value="0">
+            </div>
+            <div class="field">
+              <div class="row"><label for="ivc">Fermeture admission (après PMB)</label><output id="o-ivc"></output></div>
+              <input type="range" id="ivc" min="20" max="80" step="1" value="40">
+            </div>
+            <p class="grp">Point de fonctionnement</p>
+            <div class="field">
+              <div class="row"><label for="rpm">Régime</label><output id="o-rpm"></output></div>
+              <input type="range" id="rpm" min="800" max="14000" step="100" value="6500">
+            </div>
+            <div class="field">
+              <div class="row"><label for="thr">Ouverture du papillon</label><output id="o-thr"></output></div>
+              <input type="range" id="thr" min="10" max="100" step="5" value="100">
+            </div>
+            <hr class="sep">
+            <dl class="derived" id="derived"></dl>
+          </div>
+        </details>
+
+        <details class="sec adv" id="sec-veh">
+          <summary><div><b>Véhicule</b><span>Motorisation, masse, transmission</span></div></summary>
+          <div class="body">
+            <div class="field">
+              <label for="vpreset">Exemple de véhicule</label>
+              <select id="vpreset"></select>
+            </div>
+            <p class="grp">Motorisation</p>
+            <div class="seg" role="group" aria-label="Type de motorisation" id="seg-pt">
+              <button type="button" data-pt="ice" aria-pressed="true">Thermique</button>
+              <button type="button" data-pt="mhev" aria-pressed="false">Hybride 48 V</button>
+              <button type="button" data-pt="ev" aria-pressed="false">Électrique</button>
+            </div>
+            <div id="motorBox" hidden style="display:flex;flex-direction:column;gap:14px">
+              <div class="field">
+                <div class="row"><label for="mP">Puissance du moteur électrique</label><output id="o-mP"></output></div>
+                <input type="range" id="mP" min="4" max="25" step="1" value="10">
+              </div>
+              <div class="field">
+                <div class="row"><label for="mT">Couple max du moteur électrique</label><output id="o-mT"></output></div>
+                <input type="range" id="mT" min="20" max="80" step="1" value="50">
+              </div>
+              <div class="field">
+                <div class="row"><label for="mE">Énergie de la batterie</label><output id="o-mE"></output></div>
+                <input type="range" id="mE" min="0.2" max="2" step="0.05" value="0.5">
+              </div>
+              <div class="field">
+                <div class="row"><label for="mR">Récupération au freinage</label><output id="o-mR"></output></div>
+                <input type="range" id="mR" min="0" max="100" step="5" value="60">
+              </div>
+            </div>
+            <p class="grp">Masse et aérodynamique</p>
+            <div class="field">
+              <div class="row"><label for="vm">Masse avec conducteur</label><output id="o-vm"></output></div>
+              <input type="range" id="vm" min="500" max="2500" step="10" value="900">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vscx">Surface de traînée SCx</label><output id="o-vscx"></output></div>
+              <input type="range" id="vscx" min="0.4" max="1.4" step="0.01" value="0.62">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vcrr">Résistance au roulement</label><output id="o-vcrr"></output></div>
+              <input type="range" id="vcrr" min="0.006" max="0.02" step="0.001" value="0.012">
+            </div>
+            <p class="grp">Transmission</p>
+            <div class="field">
+              <div class="row"><span id="l-lay">Roues motrices</span></div>
+              <div class="seg" role="group" aria-labelledby="l-lay" id="seg-lay">
+                <button type="button" data-lay="AV" aria-pressed="true">Avant</button>
+                <button type="button" data-lay="AR" aria-pressed="false">Arrière</button>
+                <button type="button" data-lay="4x4" aria-pressed="false">4×4</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="row"><label for="vmu">Adhérence des pneus</label><output id="o-vmu"></output></div>
+              <input type="range" id="vmu" min="0.6" max="1.3" step="0.05" value="1">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vrw">Rayon de roue</label><output id="o-vrw"></output></div>
+              <input type="range" id="vrw" min="250" max="400" step="5" value="290">
+            </div>
+            <div class="field">
+              <label for="vng">Nombre de rapports</label>
+              <select id="vng"><option value="1">1 (réducteur)</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select>
+            </div>
+            <div class="field">
+              <div class="row"><label for="vg1">Rapport de 1re</label><output id="o-vg1"></output></div>
+              <input type="range" id="vg1" min="0.8" max="4.5" step="0.05" value="3.6">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vgn">Rapport du dernier</label><output id="o-vgn"></output></div>
+              <input type="range" id="vgn" min="0.5" max="1.1" step="0.01" value="0.85">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vfd">Rapport de pont</label><output id="o-vfd"></output></div>
+              <input type="range" id="vfd" min="2.5" max="12" step="0.05" value="4.1">
+            </div>
+            <div class="field">
+              <div class="row"><label for="vts">Temps de passage</label><output id="o-vts"></output></div>
+              <input type="range" id="vts" min="0.1" max="0.8" step="0.05" value="0.35">
+            </div>
+            <hr class="sep">
+            <dl class="derived" id="vderived"></dl>
+          </div>
+        </details>
+
+        <details class="sec adv" id="sec-env">
+          <summary><div><b>Environnement</b><span>Climatisation, altitude, pente, charge</span></div></summary>
+          <div class="body">
+            <p class="grp">Climatisation</p>
+            <div class="seg acseg" role="group" aria-label="Climatisation" id="seg-ac">
+              <button type="button" data-ac="off" aria-pressed="true">Éteinte</button>
+              <button type="button" data-ac="norm" aria-pressed="false">Normale</button>
+              <button type="button" data-ac="max" aria-pressed="false">À fond</button>
+            </div>
+            <label class="check" for="accut"><input type="checkbox" id="accut"><span>Le compresseur se coupe à pleine charge</span></label>
+            <input type="range" id="act" min="-10" max="45" step="1" value="20" hidden><output id="o-act" hidden></output>
+            <p class="grp">Conditions</p>
+            <div class="field">
+              <label for="scn">Scénario</label>
+              <select id="scn">
+                <option value="std">Conditions standard (0 m, 20 °C)</option>
+                <option value="mont">Col de montagne (2 000 m, 12 °C, pente 6 %)</option>
+                <option value="hot">Canicule (35 °C, chargé, vent de face)</option>
+                <option value="cold">Hiver froid (−5 °C)</option>
+                <option value="tow">Remorquage en montée (remorque, pente 5 %)</option>
+                <option value="custom">Réglage personnalisé</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="row"><label for="alt">Altitude</label><output id="o-alt"></output></div>
+              <input type="range" id="alt" min="0" max="4000" step="50" value="0">
+            </div>
+            <div class="field">
+              <div class="row"><label for="tAir">Température extérieure</label><output id="o-tAir"></output></div>
+              <input type="range" id="tAir" min="-10" max="45" step="1" value="20">
+            </div>
+            <div class="field">
+              <div class="row"><label for="slope">Pente</label><output id="o-slope"></output></div>
+              <input type="range" id="slope" min="-10" max="15" step="0.5" value="0">
+            </div>
+            <div class="field">
+              <div class="row"><label for="wind">Vent de face</label><output id="o-wind"></output></div>
+              <input type="range" id="wind" min="-40" max="60" step="5" value="0">
+            </div>
+            <div class="field">
+              <div class="row"><label for="load">Passagers et bagages</label><output id="o-load"></output></div>
+              <input type="range" id="load" min="0" max="500" step="10" value="0">
+            </div>
+            <label class="check" for="trailer"><input type="checkbox" id="trailer"><span>Remorque de 750 kg (traînée en plus)</span></label>
+            <hr class="sep">
+            <dl class="derived" id="envderived"></dl>
+          </div>
+        </details>
+
+        <details class="sec adv" id="sec-goal">
+          <summary><div><b>Objectif</b><span>Atteindre une valeur cible automatiquement</span></div></summary>
+          <div class="body">
+            <div class="goal">
+              <div class="field">
+                <label for="gkind">Viser</label>
+                <select id="gkind">
+                  <option value="none">Aucun objectif</option>
+                  <option value="ch">Puissance max (ch)</option>
+                  <option value="T">Couple max (N·m)</option>
+                  <option value="eta">Rendement frein max (%)</option>
+                  <option value="t100">0 à 100 km/h (s)</option>
+                  <option value="vmax">Vitesse max (km/h)</option>
+                  <option value="t400">400 m D.A. (s)</option>
+                  <option value="wltp">Conso WLTP (L/100 km)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="gval">Valeur visée</label>
+                <input type="number" id="gval" min="1" step="1" value="100" inputmode="decimal">
+              </div>
+            </div>
+            <div class="field">
+              <label for="gvar">En ajustant</label>
+              <select id="gvar">
+                <option value="disp">La cylindrée totale</option>
+                <option value="cr">Le rapport volumétrique</option>
+                <option value="rT">Le régime d'accord</option>
+                <option value="boost">La pression de suralimentation</option>
+                <option value="fd">Le rapport de pont</option>
+                <option value="m">La masse du véhicule</option>
+              </select>
+            </div>
+            <button type="button" class="btn primary" id="gsolve">Atteindre l'objectif</button>
+            <p class="gmsg" id="gmsg" aria-live="polite"></p>
+          </div>
+        </details>
+      </form>
+    </aside>
+
+    <!-- =========== RÉSULTATS =========== -->
+    <main class="main">
+      <nav class="views" role="tablist" aria-label="Vues" id="views">
+        <button type="button" role="tab" data-view="synth" aria-selected="true">Synthèse</button>
+        <button type="button" class="adv" role="tab" data-view="engine" aria-selected="false">Moteur</button>
+        <button type="button" role="tab" data-view="perf" aria-selected="false">Performances</button>
+        <button type="button" role="tab" data-view="cons" aria-selected="false">Consommation</button>
+        <button type="button" class="adv" role="tab" data-view="ac" aria-selected="false">Climatisation</button>
+        <button type="button" class="adv" role="tab" data-view="cmp" aria-selected="false">Comparer</button>
+        <button type="button" class="adv" role="tab" data-view="exp" aria-selected="false">Exporter</button>
+      </nav>
+
+      <!-- Synthèse -->
+      <div class="view" id="v-synth">
+        <section class="card hero" aria-labelledby="h-hero">
+          <h2 class="sr" id="h-hero">Résultat</h2>
+          <p class="verdict" id="verdict"></p>
+          <div class="kpis">
+            <div class="kpi"><div class="k-lab">Puissance</div><div class="k-row"><span class="k-val" id="hk-ch">0</span><span class="k-unit">ch</span></div><div class="k-sub" id="hk-ch-sub">&nbsp;</div></div>
+            <div class="kpi"><div class="k-lab">Couple</div><div class="k-row"><span class="k-val" id="hk-T">0</span><span class="k-unit">N·m</span></div><div class="k-sub" id="hk-T-sub">&nbsp;</div></div>
+            <div class="kpi"><div class="k-lab">0 à 100 km/h</div><div class="k-row"><span class="k-val" id="hk-100">0</span><span class="k-unit">s</span></div><div class="k-sub" id="hk-100-sub">&nbsp;</div></div>
+            <div class="kpi"><div class="k-lab">Vitesse max</div><div class="k-row"><span class="k-val" id="hk-vmax">0</span><span class="k-unit">km/h</span></div><div class="k-sub" id="hk-vmax-sub">&nbsp;</div></div>
+            <div class="kpi eco"><div class="k-lab">Consommation</div><div class="k-row"><span class="k-val" id="hk-cons">0</span><span class="k-unit" id="hk-cons-u">L/100 km</span></div><div class="k-sub" id="hk-cons-sub">&nbsp;</div></div>
+            <div class="kpi eco"><div class="k-lab">CO₂</div><div class="k-row"><span class="k-val" id="hk-co2">0</span><span class="k-unit">g/km</span></div><div class="k-sub" id="hk-co2-sub">&nbsp;</div></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="h-mass">
+          <div class="card-h"><div><h2 id="h-mass">Effet de la masse</h2><p>Ce que changent 100 kg de plus ou de moins, toutes choses égales par ailleurs.</p></div></div>
+          <div class="tiles" id="massTiles"></div>
+        </section>
+        <div class="dual">
+          <section class="card" aria-labelledby="h-engine">
+            <div class="card-h"><div><h2 id="h-engine">Moteur en coupe</h2><p>Les quatre temps, cylindre par cylindre.</p></div></div>
+            <canvas id="cvEngine" role="img" aria-label="Coupe animée des cylindres : pistons, bielles, soupapes et vilebrequin"></canvas>
+            <div class="transport">
+              <button type="button" class="btn" id="play">Pause</button>
+              <div class="field">
+                <div class="row"><label for="speed">Vitesse de lecture</label><output id="o-speed">0,4 tr/s</output></div>
+                <input type="range" id="speed" min="0.1" max="2" step="0.05" value="0.4">
+              </div>
+              <div class="field">
+                <div class="row"><label for="ang">Angle vilebrequin</label><output id="o-ang">0°</output></div>
+                <input type="range" id="ang" min="0" max="719" step="1" value="0">
+              </div>
+            </div>
+            <div class="legend" aria-hidden="true">
+              <span><i style="background:var(--s-int)"></i>Admission</span>
+              <span><i style="background:var(--s-comp)"></i>Compression</span>
+              <span><i style="background:var(--s-pow)"></i>Détente</span>
+              <span><i style="background:var(--s-exh)"></i>Échappement</span>
+            </div>
+          </section>
+          <section class="card" aria-labelledby="h-curv">
+            <div class="card-h"><div><h2 id="h-curv">Courbes à pleine charge</h2><p>Couple (bleu) et puissance (orange) selon le régime.</p></div></div>
+            <canvas id="cvCurves" role="img" aria-label="Couple et puissance en fonction du régime"></canvas>
+            <p class="caption" id="peaks"></p>
+          </section>
+        </div>
+      </div>
+
+      <!-- Moteur -->
+      <div class="view adv" id="v-engine" hidden>
+        <section class="card" aria-labelledby="h-read">
+          <div class="card-h"><div><h2 id="h-read">Mesures au point de fonctionnement</h2><p>Régime et papillon réglés dans la colonne de gauche.</p></div>
+            <div class="seg acseg" role="group" aria-label="Climatisation" style="min-width:260px">
+              <button type="button" data-ac="off" aria-pressed="true">Clim éteinte</button>
+              <button type="button" data-ac="norm" aria-pressed="false">Normale</button>
+              <button type="button" data-ac="max" aria-pressed="false">À fond</button>
+            </div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><div class="lab">Couple</div><div class="val" id="r-T">0</div><div class="unit">N·m</div><div class="sub dlt" id="dl-T">&nbsp;</div></div>
+            <div class="tile"><div class="lab">Puissance</div><div class="val" id="r-P">0</div><div class="unit">ch</div><div class="sub" id="r-kW">&nbsp;</div><div class="dlt" id="dl-P"></div></div>
+            <div class="tile"><div class="lab">PME frein</div><div class="val" id="r-bmep">0</div><div class="unit">bar</div><div class="sub" id="r-imep">&nbsp;</div><div class="dlt" id="dl-bmep"></div></div>
+            <div class="tile"><div class="lab">Pression max</div><div class="val" id="r-pmax">0</div><div class="unit">bar</div><div class="sub" id="r-pang">&nbsp;</div></div>
+            <div class="tile"><div class="lab">Rendement frein</div><div class="val" id="r-eta">0</div><div class="unit">%</div><div class="sub">&nbsp;</div><div class="dlt" id="dl-eta"></div></div>
+            <div class="tile"><div class="lab">Conso spécifique</div><div class="val" id="r-bsfc">0</div><div class="unit">g/kWh</div><div class="sub">&nbsp;</div><div class="dlt" id="dl-bsfc"></div></div>
+          </div>
+          <div class="chips" id="chips"></div>
+        </section>
+        <section class="card" aria-labelledby="h-cycle">
+          <div class="card-h"><div><h2 id="h-cycle">Diagramme des temps</h2><p>Quel cylindre est dans quel temps, sur 720° de vilebrequin.</p></div></div>
+          <canvas id="cvCycle" role="img" aria-label="Temps du cycle de chaque cylindre sur 720 degrés de vilebrequin"></canvas>
+          <p class="caption" id="firing"></p>
+        </section>
+        <section class="card" aria-labelledby="h-pv">
+          <div class="card-h"><div><h2 id="h-pv">Pression et volume, cylindre 1</h2><p>Le cycle thermodynamique calculé. L'aire est le travail fourni.</p></div></div>
+          <canvas id="cvPV" role="img" aria-label="Diagramme pression-volume du cylindre 1"></canvas>
+        </section>
+      </div>
+
+      <!-- Performances -->
+      <div class="view" id="v-perf" hidden>
+        <section class="card" aria-labelledby="h-perf">
+          <div class="card-h"><div><h2 id="h-perf">Performances du véhicule</h2><p>Pleine charge, départ arrêté.</p></div>
+            <div class="seg acseg" role="group" aria-label="Climatisation" style="min-width:260px">
+              <button type="button" data-ac="off" aria-pressed="true">Clim éteinte</button>
+              <button type="button" data-ac="norm" aria-pressed="false">Normale</button>
+              <button type="button" data-ac="max" aria-pressed="false">À fond</button>
+            </div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><div class="lab">Vitesse max</div><div class="val" id="v-vmax">0</div><div class="unit">km/h</div><div class="sub" id="v-vmax-sub">&nbsp;</div><div class="dlt" id="dl-vmax"></div></div>
+            <div class="tile"><div class="lab">Vitesse à 2 s</div><div class="val" id="v-t2">0</div><div class="unit">km/h</div><div class="sub">départ arrêté</div><div class="dlt" id="dl-t2"></div></div>
+            <div class="tile"><div class="lab">Vitesse à 10 s</div><div class="val" id="v-t10">0</div><div class="unit">km/h</div><div class="sub">départ arrêté</div><div class="dlt" id="dl-t10"></div></div>
+            <div class="tile"><div class="lab">0 à 100 km/h</div><div class="val" id="v-100">0</div><div class="unit">s</div><div class="sub" id="v-100-sub">&nbsp;</div><div class="dlt" id="dl-100"></div></div>
+            <div class="tile"><div class="lab">0 à Vmax</div><div class="val" id="v-0vmax">0</div><div class="unit">s</div><div class="sub">à 99 % de Vmax</div><div class="dlt" id="dl-0vmax"></div></div>
+            <div class="tile"><div class="lab">400 m D.A.</div><div class="val" id="v-400">0</div><div class="unit">s</div><div class="sub" id="v-400-sub">&nbsp;</div><div class="dlt" id="dl-400"></div></div>
+          </div>
+          <div class="chips" id="vchips"></div>
+          <dl class="chrono" id="chrono"></dl>
+          <div class="two perfcharts">
+            <div><p class="sub-h">Vitesse en fonction du temps</p><canvas id="cvVSpeed" role="img" aria-label="Vitesse du véhicule en fonction du temps depuis un départ arrêté"></canvas></div>
+            <div><p class="sub-h">Diagramme de traction</p><canvas id="cvVTrac" role="img" aria-label="Force aux roues et résistance à l'avancement en fonction de la vitesse"></canvas></div>
+          </div>
+          <p class="caption" id="vnote"></p>
+        </section>
+      </div>
+
+      <!-- Consommation -->
+      <div class="view" id="v-cons" hidden>
+        <section class="card" aria-labelledby="h-cons">
+          <div class="card-h"><div><h2 id="h-cons">Consommation et CO₂ sur cycle</h2><p>Un profil de vitesse suivi seconde par seconde.</p></div>
+            <div class="seg c2" role="group" aria-label="Cycle" id="seg-cyc" style="min-width:240px">
+              <button type="button" data-cyc="wltp" aria-pressed="true">WLTP approché</button>
+              <button type="button" data-cyc="nedc" aria-pressed="false">NEDC</button>
+            </div>
+          </div>
+          <div class="kpi5 tiles" id="consTiles"></div>
+          <div class="chips" id="consChips"></div>
+          <p class="sub-h" style="margin-top:18px" id="consChartTitle">Vitesse et régime sur le cycle</p>
+          <canvas id="cvCons" role="img" aria-label="Profil de vitesse du cycle et régime moteur ou puissance batterie en fonction du temps"></canvas>
+          <div class="tablewrap phasetable" style="margin-top:14px"><table class="actable" id="phaseTable"></table></div>
+          <p class="caption" id="consNote"></p>
+        </section>
+      </div>
+
+      <!-- Climatisation -->
+      <div class="view adv" id="v-ac" hidden>
+        <section class="card" aria-labelledby="h-ac">
+          <div class="card-h"><div><h2 id="h-ac">Impact de la climatisation</h2></div></div>
+          <div class="aclead" id="aclead"></div>
+          <dl class="derived" id="acderived" style="margin:10px 0 14px;max-width:360px"></dl>
+          <div class="tablewrap"><table class="actable" id="actable"></table></div>
+          <p class="sub-h" style="margin-top:18px">Puissance prélevée selon le régime</p>
+          <canvas id="cvAC" role="img" aria-label="Puissance prélevée par la climatisation en chevaux et en pourcentage de la puissance du moteur selon le régime"></canvas>
+          <p class="caption" id="acnote"></p>
+        </section>
+      </div>
+
+      <!-- Comparer -->
+      <div class="view adv" id="v-cmp" hidden>
+        <section class="card" aria-labelledby="h-cmp">
+          <div class="card-h"><div><h2 id="h-cmp">Comparaison A / B</h2><p>A est une référence figée, B est ta configuration actuelle.</p></div></div>
+          <div class="cmphead">
+            <div class="field">
+              <label for="refSel">Référence A</label>
+              <select id="refSel"></select>
+            </div>
+            <button type="button" class="btn" id="refFreeze">Figer la configuration actuelle en A</button>
+          </div>
+          <p class="gmsg" id="refInfo"></p>
+          <div class="tablewrap"><table class="actable cmptable" id="cmpTable"></table></div>
+          <div class="two perfcharts">
+            <div><p class="sub-h">Couple et puissance (A en pointillés)</p><canvas id="cvCmpE" role="img" aria-label="Courbes de couple et de puissance des configurations A et B"></canvas></div>
+            <div><p class="sub-h">Vitesse depuis un départ arrêté</p><canvas id="cvCmpV" role="img" aria-label="Vitesse en fonction du temps pour les configurations A et B"></canvas></div>
+          </div>
+          <p class="caption" id="cmpNote"></p>
+        </section>
+      </div>
+
+      <!-- Exporter -->
+      <div class="view adv" id="v-exp" hidden>
+        <section class="card" aria-labelledby="h-exp">
+          <div class="card-h"><div><h2 id="h-exp">Export et partage</h2><p>Copie les résultats ou la configuration complète.</p></div></div>
+          <div class="seg" role="group" aria-label="Format d'export" id="seg-exp" style="margin-bottom:12px;max-width:480px">
+            <button type="button" data-exp="fiche" aria-pressed="true">Fiche texte</button>
+            <button type="button" data-exp="tsv" aria-pressed="false">Tableau Excel</button>
+            <button type="button" data-exp="cfg" aria-pressed="false">Code de config</button>
+          </div>
+          <label for="expText" class="sr">Contenu de l'export</label>
+          <textarea id="expText" spellcheck="false" aria-label="Contenu de l'export"></textarea>
+          <div class="btnrow">
+            <button type="button" class="btn" id="expCopy">Copier</button>
+            <button type="button" class="btn" id="expApply">Appliquer ce code de config</button>
+            <p class="gmsg" id="expMsg" aria-live="polite"></p>
+          </div>
+          <p class="note">Le tableau se colle directement dans Excel ou Google Sheets (virgule décimale). Le code de config se partage par message : colle-le ici puis « Appliquer » pour retrouver les mêmes réglages. Pour un vrai fichier PDF ou .xlsx, demande-le dans la conversation.</p>
+        </section>
+      </div>
+
+      <footer>Modèle à une zone : compression et détente avec la loi d'Euler, combustion de Wiebe, frottements de type Chen-Flynn, remplissage en cloche autour du régime d'accord (déplacé par la fermeture d'admission, élargi par le VVT). Le turbo ajoute une pression d'admission qui monte avec le régime et la charge, au prix d'une contre-pression à l'échappement, d'un air plus chaud et du risque de cliquetis. L'altitude et la température changent la densité de l'air. Les performances utilisent la courbe de pleine charge, la traînée, le roulement, la pente, le vent, la masse, l'adhérence avec transfert de charge et un passage de rapports au meilleur effort de traction. La consommation sur cycle suit un profil de vitesse seconde par seconde et lit le carburant dans une carte moteur régime × couple. Hybride léger : assistance, récupération et stop-start. Électrique : énergie batterie, récupération et auxiliaires. Les valeurs sont des ordres de grandeur à recaler sur des mesures réelles.</footer>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const fmt=(v,d=0)=>v.toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+// MODEL-START
+const CYC={"nedc":{"v":[0,0,0,0,0,0,0,0,0,0,0,0,3.8,7.5,11.3,15,15,15,15,15,15,15,15,15,12,9,6,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.7,5.3,8,10.7,13.3,16,18.7,21.3,24,26.7,29.3,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,29.1,26.2,23.3,20.4,17.5,14.5,11.6,8.7,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.9,3.8,5.8,7.7,9.6,11.5,13.5,15.4,17.3,19.2,21.2,23.1,25,26.9,28.8,30.8,32.7,34.6,36.5,38.5,40.4,42.3,44.2,46.2,48.1,50,50,50,50,50,50,50,50,50,50,50,50,50,48.1,46.3,44.4,42.5,40.6,38.8,36.9,35,35,35,35,35,35,35,35,35,35,35,35,35,35,32.1,29.2,26.3,23.3,20.4,17.5,14.6,11.7,8.8,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3.8,7.5,11.3,15,15,15,15,15,15,15,15,15,12,9,6,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.7,5.3,8,10.7,13.3,16,18.7,21.3,24,26.7,29.3,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,29.1,26.2,23.3,20.4,17.5,14.5,11.6,8.7,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.9,3.8,5.8,7.7,9.6,11.5,13.5,15.4,17.3,19.2,21.2,23.1,25,26.9,28.8,30.8,32.7,34.6,36.5,38.5,40.4,42.3,44.2,46.2,48.1,50,50,50,50,50,50,50,50,50,50,50,50,50,48.1,46.3,44.4,42.5,40.6,38.8,36.9,35,35,35,35,35,35,35,35,35,35,35,35,35,35,32.1,29.2,26.3,23.3,20.4,17.5,14.6,11.7,8.8,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3.8,7.5,11.3,15,15,15,15,15,15,15,15,15,12,9,6,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.7,5.3,8,10.7,13.3,16,18.7,21.3,24,26.7,29.3,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,29.1,26.2,23.3,20.4,17.5,14.5,11.6,8.7,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.9,3.8,5.8,7.7,9.6,11.5,13.5,15.4,17.3,19.2,21.2,23.1,25,26.9,28.8,30.8,32.7,34.6,36.5,38.5,40.4,42.3,44.2,46.2,48.1,50,50,50,50,50,50,50,50,50,50,50,50,50,48.1,46.3,44.4,42.5,40.6,38.8,36.9,35,35,35,35,35,35,35,35,35,35,35,35,35,35,32.1,29.2,26.3,23.3,20.4,17.5,14.6,11.7,8.8,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3.8,7.5,11.3,15,15,15,15,15,15,15,15,15,12,9,6,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.7,5.3,8,10.7,13.3,16,18.7,21.3,24,26.7,29.3,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,29.1,26.2,23.3,20.4,17.5,14.5,11.6,8.7,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.9,3.8,5.8,7.7,9.6,11.5,13.5,15.4,17.3,19.2,21.2,23.1,25,26.9,28.8,30.8,32.7,34.6,36.5,38.5,40.4,42.3,44.2,46.2,48.1,50,50,50,50,50,50,50,50,50,50,50,50,50,48.1,46.3,44.4,42.5,40.6,38.8,36.9,35,35,35,35,35,35,35,35,35,35,35,35,35,35,32.1,29.2,26.3,23.3,20.4,17.5,14.6,11.7,8.8,5.8,2.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.7,3.4,5.1,6.8,8.5,10.2,12,13.7,15.4,17.1,18.8,20.5,22.2,23.9,25.6,27.3,29,30.7,32.4,34.1,35.9,37.6,39.3,41,42.7,44.4,46.1,47.8,49.5,51.2,52.9,54.6,56.3,58,59.8,61.5,63.2,64.9,66.6,68.3,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,67.5,65,62.5,60,57.5,55,52.5,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,50,51.5,53.1,54.6,56.2,57.7,59.2,60.8,62.3,63.8,65.4,66.9,68.5,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70.9,71.7,72.6,73.4,74.3,75.1,76,76.9,77.7,78.6,79.4,80.3,81.1,82,82.9,83.7,84.6,85.4,86.3,87.1,88,88.9,89.7,90.6,91.4,92.3,93.1,94,94.9,95.7,96.6,97.4,98.3,99.1,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,120,120,120,120,120,120,120,120,120,120,116.5,112.9,109.4,105.9,102.4,98.8,95.3,91.8,88.2,84.7,81.2,77.6,74.1,70.6,67.1,63.5,60,56.5,52.9,49.4,45.9,42.4,38.8,35.3,31.8,28.2,24.7,21.2,17.6,14.1,10.6,7.1,3.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"ph":[{"name":"Urbain (ECE)","t0":0,"t1":780},{"name":"Extra-urbain (EUDC)","t0":780,"t1":1180}]},"wltp":{"v":[0,0,0,0,0,0,0,0,0,0,0,0,0,2.7,5.4,8.1,10.8,13.5,16.2,18.9,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,20.1,17.8,14.4,11,7.6,4.2,0.7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.1,4.8,7.5,10.2,12.9,15.6,18.3,21,23.7,26.4,29.1,31.8,34.5,37.2,39.9,42.6,45.3,48,50.7,53.4,56.1,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,56.5,53.3,49.9,46.4,43,39.6,36.2,32.8,29.3,25.9,22.5,19.1,15.7,12.2,8.8,5.4,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.1,3.8,6.5,9.2,11.9,14.6,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,15.5,17,19.7,22.4,25.1,27.8,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,30.3,29.8,26.4,23,19.6,16.1,12.7,9.3,5.9,2.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.8,3.5,6.2,8.9,11.6,14.3,17,19.7,22.4,25.1,27.8,30.5,33.2,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,34.9,33.3,29.9,26.5,23,19.6,16.2,12.8,9.4,5.9,2.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.7,3.4,6.1,8.8,11.5,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,10.3,6.8,3.4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.7,5.4,8.1,10.8,13.5,16.2,18.9,21.6,24.3,27,29.7,32.4,35.1,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,37.3,39.5,42.2,44.9,47.6,50.3,53,55.7,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.4,56.3,52.8,49.4,46,42.6,39.2,35.7,32.3,28.9,25.5,22.1,18.6,15.2,11.8,8.4,5,1.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.5,4.2,6.9,9.6,12.3,15,17.7,20.4,23.1,25.8,28.5,31.2,33.9,36.6,39.3,42,44.7,47.4,50.1,52.8,55.5,58.2,60.9,63.6,66.3,69,71.7,74.4,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,76.6,73.8,70.4,67,63.6,60.1,56.7,53.3,49.9,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,47.8,45.4,42,38.6,35.1,31.7,28.3,24.9,21.5,18,14.6,11.2,7.8,4.4,0.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,4.7,7.4,10.1,12.8,15.5,18.2,20.9,23.6,26.3,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,27.2,23.9,20.5,17.1,13.7,10.3,6.8,3.4,0,2.7,5.4,8.1,10.8,13.5,16.2,18.9,21.6,24.3,27,29.7,32.4,35.1,37.8,40.5,43.2,45.9,48.6,51.3,54,56.7,59.4,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61.8,64.5,67.2,69.9,72.6,75.3,78,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,78.1,75.2,71.8,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,69.3,68,64.6,61.2,57.7,54.3,50.9,47.5,44.1,40.6,37.2,33.8,30.4,27,23.5,20.1,16.7,13.3,9.9,6.4,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0.3,3,5.7,8.4,11.1,13.8,16.5,19.2,21.9,24.6,27.3,30,32.7,35.4,38.1,40.8,43.5,46.2,48.9,51.6,54.3,57,59.7,62.4,65.1,67.8,70.5,73.2,75.9,78.6,81.3,84,86.7,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,87.5,89.1,91.8,94.5,97.2,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,97.4,94.6,91.2,87.8,84.4,81,77.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,74.5,73.8,70.3,66.9,63.5,60.1,56.7,53.2,49.8,46.4,43,39.6,36.1,32.7,29.3,25.9,22.5,19,15.6,12.2,8.8,5.4,1.9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.2,3.9,6.6,9.3,12,14.7,17.4,20.1,22.8,25.5,28.2,30.9,33.6,36.3,39,41.7,44.4,47.1,49.8,52.5,55.2,57.9,60.6,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,58.5,55.1,51.7,48.2,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,46.1,44.5,41,37.6,34.2,30.8,27.4,23.9,20.5,17.1,13.7,10.3,6.8,3.4,0,2.7,5.4,8.1,10.8,13.5,16.2,18.9,21.6,24.3,27,29.7,32.4,35.1,37.8,40.5,43.2,45.9,48.6,51.3,54,56.7,59.4,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,62.9,65.6,68.3,71,73.7,76.4,79.1,81.8,84.5,87.2,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,88.5,90.8,93.5,96.2,98.9,101.6,104.3,107,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,108.5,110.5,113.2,115.9,118.6,121.3,124,126.7,129.4,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,131.3,129.2,125.7,122.3,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,119.5,117.8,114.4,111,107.6,104.1,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,101.5,99.2,95.8,92.3,88.9,85.5,82.1,78.7,75.2,71.8,68.4,65,61.6,58.1,54.7,51.3,47.9,44.5,41,37.6,34.2,30.8,27.4,23.9,20.5,17.1,13.7,10.3,6.8,3.4,0],"ph":[{"name":"Basse","t0":0,"t1":589},{"name":"Moyenne","t0":589,"t1":1022},{"name":"Haute","t0":1022,"t1":1477},{"name":"Tr\u00e8s haute","t0":1477,"t1":1800}]}};
+const R_AIR=287, LHV=44e6, AFR=14.7, GC=1.37, GB=1.26, NS=1440, DS=0.5;
+const OFFS={2:[0,360],3:[0,240,480],4:[0,540,180,360]};
+const RHO=1.2,GRAV=9.81,ETA_T=0.92,IDLE=900;
+const KWH_L=9.1,KG_L=0.745,CO2_L=2.33;
+function geom(P){const b=P.bore/1e3,s=P.stroke/1e3,r=s/2,l=1.75*s,A=Math.PI*b*b/4,Vd=A*s,Vc=Vd/(P.cr-1);return{b,s,r,l,A,Vd,Vc};}
+function vol(g,th){const f=th*Math.PI/180,sn=Math.sin(f);return g.Vc+g.A*(g.r+g.l-g.r*Math.cos(f)-Math.sqrt(g.l*g.l-g.r*g.r*sn*sn));}
+/* air ambiant : pression selon l'altitude (atmosphère standard), masse volumique selon la température */
+function air(P){const alt=P.alt||0,tA=P.tAir==null?20:P.tAir,patm=101325*Math.pow(1-2.25577e-5*alt,5.25588),T=tA+273.15;return{patm,T,tA,rho:patm/(287.05*T)};}
+/* suralimentation : la pression d'admission monte avec le régime (turbo qui souffle) et la charge */
+function boostOf(P,rpm,thr,a){
+  const mapNA=a.patm*(0.18+0.82*thr),b=P.boost||0;
+  if(b<=0)return{map:mapNA,bf:0};
+  const sp=P.spool||1800,u=clamp((rpm-0.7*sp)/(0.6*sp),0,1),bf=u*u*(3-2*u)/(1+Math.pow(rpm/(1.9*(P.rT||5000)),6)),ld=clamp((thr-0.3)/0.7,0,1);
+  return{map:mapNA+(b*1e5+0.75*Math.max(101325-a.patm,0))*bf*ld,bf};
+}
+/* remplissage : cloche autour du régime d'accord, déplacée par la fermeture d'admission (RFA), élargie par le VVT */
+function veOf(P,rpm){
+  const d=(P.ivc==null?40:P.ivc)-40,rTe=P.rT*(1+0.010*d),z=(rpm-rTe)/(0.55*rTe),g1=Math.exp(-z*z),base=0.52-0.004*d,vv=P.vvt||0;
+  let g=g1;
+  if(vv>0){const z2=(rpm-0.58*P.rT)/(0.5*P.rT),g2=0.95*Math.exp(-z2*z2);g=1-(1-g1)*(1-vv*g2);}
+  return base+(1.05-base)*g;
+}
+function knockRetard(P,PR,tA){
+  const crK=P.cr*(1+0.22*(Math.max(PR||1,1)-1)),lim=10.5+0.35*(P.ron-91)-0.04*((tA==null?20:tA)-20);
+  return clamp((crK-lim)*4.5,0,18);
+}
+function pistonSpeed(P,rpm){return 2*(P.stroke/1000)*rpm/60;}
+function limitRpm(P){return (P.vpm||20)*60/(2*(P.stroke/1000));}
+/* Climatisation : puissance mécanique prélevée au vilebrequin (kW). */
+function acPower(P,rpm,thr){
+  if(!P.acMode||P.acMode==='off'||(P.acCut&&thr>=0.95))return{c:0,f:0,t:0};
+  const tA=P.tAir==null?20:P.tAir,lvl=P.acMode==='max'?1:0.65,p0=0.13*Math.max(tA-12,2)*lvl,rf=Math.min(1.25,0.6+0.4*rpm/3000);
+  const c=p0*rf,f=0.35+0.25*lvl;
+  return{c,f,t:c+f};
+}
+function simulate(P,rpm,thr){
+  const g=geom(P),a=air(P),bo=boostOf(P,rpm,thr,a),map=bo.map,PR=map/a.patm;
+  const b=P.boost||0;
+  const pexh=a.patm*1.006+rpm*3.5*(0.4+0.6*thr)+(b>0?1.1*Math.max(map-a.patm,0)*(0.75+0.25*clamp(rpm/(4*(P.spool||1800)),0,1)):0);
+  const ve=veOf(P,rpm);
+  const pivc=map*ve*1.04, pin=pivc*0.985;
+  const dur=clamp(36+rpm/300,36,64);
+  const retard=knockRetard(P,PR,a.tA);
+  const advBurn=clamp(0.48*dur-8+(1-thr)*6-retard,-5,40);
+  const delay=6+rpm/700;
+  const ths=360-advBurn;
+  const dTc=PR>1?a.T*(Math.pow(PR,0.286)-1)/0.68:0;
+  const Tivc=335+Math.min(rpm,12000)/400+(a.T-293.15)*0.85+0.30*dTc;
+  const ivc=P.ivc==null?40:P.ivc,thIvc=180+ivc,thEvo=490;
+  const m=pivc*vol(g,thIvc)/(R_AIR*Tivc);
+  const etaQ=0.76+0.05*Math.min(rpm/9000,1);
+  const Q=m/AFR*LHV*etaQ;
+  const p=new Float32Array(NS), xb=new Float32Array(NS), V=new Float32Array(NS);
+  const wb=th=>{ if(th<=ths) return 0; const u=(th-ths)/dur; return u>=1?1:1-Math.exp(-6.908*u*u*u); };
+  let pc=pivc, pevo=pivc;
+  for(let i=0;i<NS;i++){
+    const th=i*DS; V[i]=vol(g,th); xb[i]=wb(th);
+    if(th<thIvc){p[i]=pin;continue;}
+    if(th<thEvo){
+      p[i]=pc;
+      const V0=V[i], V1=vol(g,th+DS), x0=xb[i], x1=wb(th+DS);
+      const gam=GC-(GC-GB)*x0;
+      pc+=(-gam*pc*(V1-V0)+(gam-1)*Q*(x1-x0))/V0;
+      pevo=pc;continue;
+    }
+    p[i]=th<thEvo+50?pexh+(pevo-pexh)*Math.exp(-(th-thEvo)/9):pexh;
+  }
+  let W=0,pmax=0,ipk=0;
+  for(let i=0;i<NS;i++){const j=(i+1)%NS;W+=0.5*(p[i]+p[j])*(V[j]-V[i]);if(p[i]>pmax){pmax=p[i];ipk=i;}}
+  const imep=W/g.Vd/1e5, pmaxBar=pmax/1e5;
+  const Sp=pistonSpeed(P,rpm);
+  const fmep=0.4+0.005*pmaxBar+0.09*Sp+0.0009*Sp*Sp;
+  const ac=acPower(P,rpm,thr),fmepAc=ac.t>0?ac.t*1000*120/(g.Vd*P.n*rpm)/1e5:0;
+  const bmep=imep-fmep-fmepAc;
+  const T=bmep*1e5*g.Vd*P.n/(4*Math.PI);
+  const Pw=T*rpm*2*Math.PI/60;
+  const mf=m/AFR;
+  const enr=1+(b>0?0.16:0.06)*clamp((thr-0.85)/0.15,0,1)*(rpm>2500?1:0.5);
+  const etaB=bmep*1e5*g.Vd/(mf*LHV);
+  const bsfc=etaB>0.02?81.8/etaB:NaN;
+  return{p,xb,V,g,imep,bmep,fmep,pmaxBar,angPk:ipk*DS-360,T,Pw,kW:Pw/1000,ch:Pw/1000*1.35962,etaB,bsfc,Sp,
+    advSpark:advBurn+delay,advBurn,retard,thSpark:360-(advBurn+delay),ths,pivc,ve,mf,mfFuel:mf*enr,thIvc,map,PR,patm:a.patm,rho:a.rho,boostBar:(map-a.patm)/1e5,Tivc,
+    acKW:ac.t,acC:ac.c,acF:ac.f,acNm:ac.t*1000/(rpm*Math.PI/30)};
+}
+
+/* ---------- mémoïsation ---------- */
+const ENG_KEYS=['n','disp','ratio','cr','ron','rT','vpm','boost','spool','vvt','ivc','alt','tAir','acMode','acCut'];
+const keyOf=(P,keys)=>keys.map(k=>P[k]).join('|');
+const MEMO={};
+function memo(name,key,fn){
+  const c=MEMO[name]||(MEMO[name]=new Map());
+  if(c.has(key))return c.get(key);
+  if(c.size>60)c.clear();
+  const v=fn();c.set(key,v);return v;
+}
+function peakStats(pts,lim){
+  const use=pts.filter(p=>p.rpm<=lim);const a=use.length?use:[pts[0]];
+  let T=a[0],P=a[0],E=a[0];a.forEach(p=>{if(p.T>T.T)T=p;if(p.ch>P.ch)P=p;if(p.eta>E.eta)E=p;});
+  return{T,P,E};
+}
+function engCurve(P){
+  return memo('eng',keyOf(P,ENG_KEYS),()=>{
+    const lim=limitRpm(P),xmax=Math.ceil(Math.max(lim*1.1,4000)/1000)*1000,N=46,a=[];
+    for(let i=0;i<=N;i++){const rpm=800+(xmax-800)*i/N,r=simulate(P,rpm,1);a.push({rpm,T:Math.max(r.T,0),ch:Math.max(r.ch,0),eta:Math.max(r.etaB*100,0),rawT:r.T,bst:Math.max(r.boostBar,0)});}
+    return{pts:a,xmax,lim};
+  });
+}
+/* carte de consommation : couple net et débit de carburant sur une grille régime x papillon */
+const FM_THR=[0,0.08,0.16,0.25,0.35,0.5,0.7,0.85,1];
+function fuelMapOf(P){
+  return memo('fm',keyOf(P,ENG_KEYS),()=>{
+    const lim=limitRpm(P),rp=[800,1000,1250,1500,1800,2200,2600,3000,3500,4000,4500,5000,5500,6000,7000,8000,9000,10500,12000].filter(r=>r<lim*0.97);rp.push(Math.round(lim));
+    const rows=rp.map(rpm=>{const T=[],F=[];FM_THR.forEach(th=>{const r=simulate(P,rpm,th);T.push(r.T);F.push((r.mfFuel*P.n*rpm/120+0.5e5*(r.g.Vd*P.n)*rpm/120/0.33/LHV)*1.04);});return{rpm,T,F};});
+    return{rows,lim};
+  });
+}
+function fmBracket(fm,rpm){const rows=fm.rows;let i=0;while(i<rows.length-2&&rpm>rows[i+1].rpm)i++;const r0=rows[i],r1=rows[i+1];return{r0,r1,f:clamp((rpm-r0.rpm)/(r1.rpm-r0.rpm),0,1)};}
+function fmTmax(fm,rpm){const b=fmBracket(fm,rpm),k=FM_THR.length-1;return b.r0.T[k]+(b.r1.T[k]-b.r0.T[k])*b.f;}
+/* débit de carburant (kg/s) pour fournir le couple net demandé à ce régime */
+function fuelAt(fm,rpm,Treq){
+  const b=fmBracket(fm,rpm);let pT=null,pF=null;
+  for(let k=0;k<FM_THR.length;k++){
+    const T=b.r0.T[k]+(b.r1.T[k]-b.r0.T[k])*b.f,F=b.r0.F[k]+(b.r1.F[k]-b.r0.F[k])*b.f;
+    if(Treq<=T){return k===0?F:pF+(F-pF)*clamp((Treq-pT)/(T-pT||1),0,1);}
+    pT=T;pF=F;
+  }
+  return pF;
+}
+
+/* ---------- véhicule ---------- */
+function gearRatios(P){if(P.ng<2)return[P.g1];const a=[];for(let i=0;i<P.ng;i++)a.push(P.g1*Math.pow(P.gn/P.g1,i/(P.ng-1)));return a;}
+function torqueFn(pts){
+  return rpm=>{
+    if(rpm<=pts[0].rpm)return pts[0].T;
+    for(let i=1;i<pts.length;i++)if(rpm<=pts[i].rpm){const f=(rpm-pts[i-1].rpm)/(pts[i].rpm-pts[i-1].rpm);return pts[i-1].T+f*(pts[i].T-pts[i-1].T);}
+    return pts[pts.length-1].T;
+  };
+}
+/* chaîne de traction : thermique seul, hybride léger 48 V (moteur électrique sur le vilebrequin) ou électrique */
+function driveOf(P,V,ec){
+  if(V.pt==='ev'){
+    const lim=V.mW||14000,pts=[];
+    for(let rpm=0;rpm<=lim+250;rpm+=250){const w=rpm*Math.PI/30,T=w>0?Math.min(V.mT,V.mP*1000/w):V.mT;pts.push({rpm,T,ch:T*w/1000*1.35962,eta:0,bst:0});}
+    return{pt:'ev',pts,ice:null,lim,xmax:lim,idle:0,etaT:0.95};
+  }
+  if(V.pt==='mhev'){
+    const pts=ec.pts.map(p=>{const w=p.rpm*Math.PI/30,Tm=Math.min(V.mT,V.mP*1000/w),T=p.T+Tm;return{rpm:p.rpm,T,ch:T*w/1000*1.35962,eta:p.eta,bst:p.bst,Tm};});
+    return{pt:'mhev',pts,ice:ec.pts,lim:ec.lim,xmax:ec.xmax,idle:IDLE,etaT:ETA_T};
+  }
+  return{pt:'ice',pts:ec.pts,ice:null,lim:ec.lim,xmax:ec.xmax,idle:IDLE,etaT:ETA_T};
+}
+/* masse, traînée, pente et vent selon les conditions */
+function vehParams(V,E){
+  const a=air(E),tr=V.trailer?1:0,m=V.m+(V.load||0)+tr*750,scx=V.scx+tr*0.35,th=Math.atan((V.slope||0)/100),w=(V.wind||0)/3.6;
+  return{a,m,scx,w,th,rho:a.rho,Fr:V.crr*m*GRAV*Math.cos(th)+m*GRAV*Math.sin(th)};
+}
+function runVehicle(P,D,E){
+  const vp=vehParams(P,E),m=vp.m,rho=vp.rho,pts=D.pts,lim=D.lim,idle=D.idle,etaT=D.etaT;
+  const Tfn=torqueFn(pts),TfnI=D.ice?torqueFn(D.ice):Tfn,G=gearRatios(P),N=G.length,r=P.rw/1000;
+  const Fa=v=>0.5*rho*vp.scx*(v+vp.w)*Math.abs(v+vp.w),Fr=vp.Fr;
+  const rpmOf=(v,j)=>v/r*G[j]*P.fd*30/Math.PI;
+  let assist=D.pt==='mhev',eLeft=D.pt==='mhev'?0.8*(P.mE||0.5)*3.6e6:0;
+  if(eLeft<=0)assist=false;
+  const FeI=(rpm,j)=>TfnI(Math.max(rpm,idle))*G[j]*P.fd*etaT/r;
+  const FeA=(rpm,j)=>Tfn(Math.max(rpm,idle))*G[j]*P.fd*etaT/r;
+  const Fe=(rpm,j)=>assist?FeA(rpm,j):FeI(rpm,j);
+  const delta=j=>1.04+0.0025*G[j]*G[j];
+  /* vitesse maximale (sans assistance, régime établi) : plus haute vitesse où la force aux roues couvre la résistance */
+  const margin=v=>{let best=0,bj=0;for(let j=0;j<N;j++){const rp=rpmOf(v,j);if(rp>lim)continue;const F=FeI(rp,j);if(F>best){best=F;bj=j;}}return{mg:best-Fa(v)-Fr,bj};};
+  let vmax=0,gV=N-1,vOk=0;
+  for(let v=1;v<140;v+=0.05){const e=margin(v);if(e.mg>=0){vOk=v;gV=e.bj;}}
+  if(vOk>0){const m0=margin(vOk).mg,m1=margin(vOk+0.05).mg;vmax=vOk+(m0<m1||m0===m1?0:0.05*m0/(m0-m1));}
+  let pk=pts[0];pts.forEach(p=>{if(p.rpm<=lim&&p.T>pk.T)pk=p;});
+  const launch=Math.min(0.65*lim,Math.max(1500,0.9*pk.rpm)),vL=launch*Math.PI/30*r/(G[0]*P.fd);
+  const dt=0.01,TMAX=120,vs=[0],xs=[0],shifts=[];
+  let t=0,v=0,x=0,g=0,sh=0,a=0,slip=0,lock=0,lastRpm=launch;
+  while(t<TMAX&&vmax>0){
+    let F=0;
+    if(lock>0)lock-=dt;
+    if(sh>0)sh-=dt;
+    else if(v<vL){g=0;F=Fe(launch,0);lastRpm=launch;}
+    else{
+      let best=-1,bj=g;
+      for(let j=0;j<N;j++){const rp=rpmOf(v,j);if(rp>lim||(j>0&&rp<1200))continue;const f=Fe(rp,j);if(f>best){best=f;bj=j;}}
+      const rc=rpmOf(v,g),fc=rc>lim?0:Fe(rc,g);
+      if(bj>g&&(rc>lim||(lock<=0&&best>fc*1.03))){g=bj;sh=P.ts;lock=1.2;shifts.push({t,g});}
+      else{F=fc;lastRpm=rc;}
+    }
+    if(assist&&F>0){const rp=Math.max(lastRpm,idle),dT=Tfn(rp)-TfnI(rp);eLeft-=dT*rp*Math.PI/30*dt/0.9;if(eLeft<=0)assist=false;}
+    const sh0=P.lay==='AV'?0.58-0.19*Math.max(a,0)/GRAV:P.lay==='AR'?0.42+0.19*Math.max(a,0)/GRAV:1;
+    const Ft=P.mu*m*GRAV*Math.cos(vp.th)*clamp(sh0,0.2,1),Fd=Math.min(F,Ft);
+    if(F>Ft)slip+=dt;
+    a=(Fd-Fa(v)-Fr)/(m*delta(g));
+    v=Math.max(0,v+a*dt);x+=v*dt;t+=dt;vs.push(v);xs.push(x);
+    if(v>=0.995*vmax&&x>=1000)break;
+  }
+  const timeAtV=kmh=>{const vt=kmh/3.6;for(let i=1;i<vs.length;i++)if(vs[i]>=vt){const f=(vt-vs[i-1])/((vs[i]-vs[i-1])||1);return(i-1+f)*dt;}return null;};
+  const vAtT=tt=>vs[Math.min(vs.length-1,Math.round(tt/dt))]*3.6;
+  const atDist=d=>{for(let i=1;i<xs.length;i++)if(xs[i]>=d){const f=(d-xs[i-1])/((xs[i]-xs[i-1])||1);return{t:(i-1+f)*dt,v:(vs[i-1]+f*(vs[i]-vs[i-1]))*3.6};}return null;};
+  const elastic=(j,k1,k2)=>{
+    if(j<0||j>=N)return null;let u=k1/3.6,tt=0;
+    while(u<k2/3.6&&tt<60){
+      const rp=rpmOf(u,j);if(rp>lim)return null;
+      const acc=(FeA(rp,j)-Fa(u)-Fr)/(m*delta(j));if(acc<0.02)return null;
+      u+=acc*0.01;tt+=0.01;
+    }
+    return tt<60?tt:null;
+  };
+  const rpmV=rpmOf(vmax,gV);
+  return{vmax:vmax*3.6,gV,rpmV,byRpm:rpmV>=0.985*lim,G,N,lim,launch,vs,xs,dt,shifts,slip,timeAtV,vAtT,atDist,elastic,Fa,Fr,Tfn,P,rpmOf,m,rho,idle,etaT,
+    t99:timeAtV(0.99*vmax*3.6),assistEnd:D.pt==='mhev'&&!assist&&t>0?t:null};
+}
+
+/* ---------- cycles de consommation ---------- */
+/* Suit un profil de vitesse seconde par seconde : choix du rapport, couple demandé, carburant lu dans la carte moteur.
+   Hybride léger : stop-start, récupération au freinage, assistance ; le bilan de batterie est ramené en carburant.
+   Électrique : énergie batterie, récupération, auxiliaires. */
+function runCycle(Pe,V,D,fm,cyc,phases,steadyMode){
+  const vp=vehParams(V,Pe),rho=vp.rho,G=gearRatios(V),N=G.length,r=V.rw/1000,etaT=D.etaT,pt=D.pt,m=vp.m;
+  const lim=D.lim,Fa=v=>0.5*rho*vp.scx*(v+vp.w)*Math.abs(v+vp.w);
+  const rpmOf=(v,j)=>v/r*G[j]*V.fd*30/Math.PI,dl=j=>1.04+0.0025*G[j]*G[j];
+  const n=cyc.length-1,s2=new Float32Array(n),AUX=pt==='ev'?0.6:0.3;
+  const acEl=pt==='ev'?acPower(Pe,2000,0.5).t:0;
+  const mR=V.mR==null?0.6:V.mR,mP=(V.mP||0)*1000,Emax=V.mE||0.5;
+  let E=0.5*Emax,E0=E,fuel=0,elec=0,sat=0,regenKWh=0,stopSec=0;
+  const ph=(phases||[{name:'Cycle',t0:0,t1:n}]).map(p=>({name:p.name,t0:p.t0,t1:p.t1,x:0,fuel:0,elec:0,t:0}));
+  let pi=0;
+  for(let i=0;i<n;i++){
+    while(pi<ph.length-1&&i>=ph[pi].t1)pi++;
+    const v=cyc[i]/3.6,a=(cyc[i+1]-cyc[i])/3.6,Fres=Fa(v)+vp.Fr;
+    let fl=0,el=0,x=v;
+    if(pt==='ev'){
+      const F=Fres+m*1.05*a,Pw=F*v;
+      if(Pw>=0){el=Pw/0.82+(AUX+acEl)*1000;if(Pw>mP*1.001)sat++;}
+      else{const rg=Math.min(-Pw*mR,mP)*0.75;el=-rg+(AUX+acEl)*1000;regenKWh+=rg/3.6e6;}
+      s2[i]=el/1000;
+    }else{
+      const Fest=Fres+m*1.06*a;
+      let j=0;
+      if(v>0.1){
+        let found=false;
+        for(let jj=N-1;jj>=0;jj--){
+          const rp=rpmOf(v,jj);
+          if(jj>0&&rp<(a>0.15?1500:1250))continue;
+          if(rp>0.92*lim)continue;
+          const Tq=Fest>0?Fest*r/(G[jj]*V.fd*etaT):0;
+          if(Tq<=0.94*fmTmax(fm,Math.max(rp,800))||jj===0){j=jj;found=true;break;}
+        }
+        if(!found)j=0;
+      }
+      const rpm=Math.max(rpmOf(v,j),850),w=rpm*Math.PI/30;
+      const F=Fres+m*dl(j)*a;
+      let Tq=F>0?F*r/(G[j]*V.fd*etaT):0;
+      const Taux=AUX*1000/w;
+      let Tm=0;
+      if(pt==='mhev'){
+        if(v<0.1&&a<=0.01){ /* stop-start : moteur coupé, auxiliaires sur la batterie */
+          stopSec++;E-=AUX*1000/3.6e6/0.9;s2[i]=0;
+          ph[pi].t++;ph[pi].x+=0;continue;
+        }
+        if(!steadyMode&&F>0&&E>0.01*Emax){Tm=Math.min(V.mT,mP/w,0.5*Tq);E-=Tm*w/0.9/3.6e6;}
+        else if(!steadyMode&&F<0&&v>2){const rg=Math.min(-F*v*mR,mP)*0.85;E=Math.min(Emax,E+rg/3.6e6);regenKWh+=rg/3.6e6;}
+      }
+      const Tice=Tq+Taux-Tm;
+      if(Tice<=0&&rpm>=1100&&v>0.3)fl=0;
+      else fl=fuelAt(fm,rpm,Math.max(Tice,0));
+      if(Tice>fmTmax(fm,rpm)*1.02)sat++;
+      s2[i]=rpm;
+    }
+    fuel+=fl;elec+=el/3.6e6;
+    const p=ph[pi];p.x+=x;p.fuel+=fl;p.elec+=el/3.6e6;p.t++;
+  }
+  let pen=0;
+  if(pt==='mhev'&&!steadyMode){const def=(E0-E);pen=def/(0.28*0.85)/KWH_L*KG_L;fuel+=pen;} /* kWh manquants -> carburant */
+  const dist=ph.reduce((s,p)=>s+p.x,0);
+  const toL=kg=>kg/KG_L;
+  const res=q=>{const L=toL(q.fuel),km=q.x/1000;return{dist:q.x,t:q.t,avg:q.t?q.x/q.t*3.6:0,L100:km>0?L/km*100:0,kwh100:km>0?q.elec/km*100:0};};
+  const tot=res({fuel,x:dist,t:n,elec});
+  const all=ph.map(p=>{const o=res(p);o.name=p.name;o.t0=p.t0;o.t1=p.t1;o.co2=o.L100*CO2_L*10;o.eq=o.L100+o.kwh100/KWH_L;return o;});
+  tot.co2=tot.L100*CO2_L*10;tot.eq=tot.L100+tot.kwh100/KWH_L;tot.phases=all;tot.s2=s2;tot.s2Label=pt==='ev'?'kW batterie':'tr/min';
+  tot.sat=sat;tot.regenKWh=regenKWh;tot.stopSec=stopSec;tot.penL=pen/KG_L;tot.pt=pt;tot.v=cyc;
+  return tot;
+}
+function steady(Pe,V,D,fm,kmh){
+  const cyc=new Array(42).fill(kmh);
+  return runCycle(Pe,V,D,fm,cyc,null,true);
+}
+
+/* ---------- évaluation complète d'une configuration (mémoïsée) ---------- */
+const VEH_KEYS=['m','scx','crr','lay','mu','rw','ng','g1','gn','fd','ts','pt','mP','mT','mE','mR','mW','slope','wind','load','trailer'];
+function evalCfg(Se,Vx,o){
+  o=o||{};
+  const e=memo('ev',keyOf(Se,ENG_KEYS)+'#'+keyOf(Vx,VEH_KEYS),()=>{
+    const ec=engCurve(Se),D=driveOf(Se,Vx,ec),R=runVehicle(Vx,D,Se),sE=peakStats(ec.pts,ec.lim),sD=peakStats(D.pts,D.lim);
+    const k={ch:sE.P.ch,chRpm:sE.P.rpm,T:sE.T.T,TRpm:sE.T.rpm,eta:sE.E.eta,sysCh:sD.P.ch,sysT:sD.T.T,sysChRpm:sD.P.rpm,sysTRpm:sD.T.rpm,vmax:R.vmax,t2:R.vAtT(2),t10:R.vAtT(10),t100:R.timeAtV(100),t0v:R.t99,
+      d400:(R.atDist(400)||{}).t,d1000:(R.atDist(1000)||{}).t,el:R.elastic(R.N-1,80,120),mass:R.m,wkg:R.m/Math.max(sD.P.ch,1)};
+    return{k,ec,D,R};
+  });
+  const k=e.k,D=e.D;
+  if((o.cycle||o.nedc)&&!k.c90){
+    const fm=D.pt==='ev'?null:fuelMapOf(Se);e.fm=fm;
+    k.c90=steady(Se,Vx,D,fm,90);k.c120=steady(Se,Vx,D,fm,120);
+    k.wltp=runCycle(Se,Vx,D,fm,CYC.wltp.v,CYC.wltp.ph);
+  }
+  if(o.nedc&&!k.nedc){k.nedc=runCycle(Se,Vx,D,e.fm||null,CYC.nedc.v,CYC.nedc.ph);}
+  return e;
+}
+
+// MODEL-END
+
+/* ---------- couleurs ---------- */
+const TOK=['bg','panel','ink','muted','line','accent','heat','good','warn','s-int','s-comp','s-pow','s-exh','metal','metal-d','rod','block','head','guide','spark'];
+let K={};
+function readColors(){const cs=getComputedStyle(document.documentElement);TOK.forEach(t=>{K[t]=cs.getPropertyValue('--'+t).trim();});}
+function rgb(h){h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function mix(a,b,t){t=clamp(t,0,1);const A=rgb(a),B=rgb(b);return'rgb('+A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(',')+')';}
+
+/* ---------- canvas ---------- */
+function fit(cv,cssH){
+  const w=cv.clientWidth||300,dpr=Math.min(window.devicePixelRatio||1,2);
+  const W=Math.round(w*dpr),H=Math.round(cssH*dpr);
+  if(cv.width!==W)cv.width=W; if(cv.height!==H)cv.height=H;
+  cv.style.height=cssH+'px';
+  const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,cssH);
+  return{x,w,h:cssH};
+}
+function niceTicks(max,n){
+  const raw=max/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/mag;
+  const step=(f<1.5?1:f<3?2:f<7?5:10)*mag,top=Math.ceil(max/step-1e-9)*step,arr=[];
+  for(let v=0;v<=top+1e-9;v+=step)arr.push(v);
+  return{step,top,arr};
+}
+const MONO="11px 'IBM Plex Mono',ui-monospace,monospace";
+
+/* ---------- soupapes et temps ---------- */
+function strokeOf(th){return th<180?0:th<360?1:th<540?2:3;}
+const STROKE_NAMES=['Admission','Compression','Détente','Échappement'];
+function strokeColor(i){return K[['s-int','s-comp','s-pow','s-exh'][i]];}
+function liftIntake(th){const u=((th-705+720)%720)/(235+((S.ivc==null?40:S.ivc)-40));return u<=1?Math.pow(Math.sin(Math.PI*u),1.4):0;}
+function liftExhaust(th){const u=((th-490+720)%720)/240;return u<=1?Math.pow(Math.sin(Math.PI*u),1.4):0;}
+function gasColor(th){
+  const i=Math.round(th*2)%NS;
+  if(th>=705||th<SIM.thIvc)return mix(K['panel'],K['s-int'],0.75);
+  if(th>=490)return mix(K['panel'],K['s-exh'],0.7);
+  const x=SIM.xb[i];
+  if(x<=0){const pk=Math.max(SIM.p[Math.round(SIM.thSpark*2)]||1,SIM.pivc+1);return mix(K['s-int'],K['s-comp'],(SIM.p[i]-SIM.pivc)/(pk-SIM.pivc));}
+  const hot=mix(K['s-comp'],K['s-pow'],Math.min(1,x*1.4));
+  const cool=clamp((th-385)/105,0,1);
+  return mix(hot,K['s-exh'],cool*0.75);
+}
+
+/* ---------- moteur en coupe ---------- */
+function drawEngine(){
+  const cv=$('cvEngine'),n=S.n,b=S.bore,s=S.stroke,r=s/2,l=1.75*s,hc=s/(S.cr-1),cH=0.42*b,pitch=b*1.34,headH=0.7*b;
+  const Yt=headH,yC=Yt+hc+cH+l+r,wallB=Yt+hc+s+0.8*b,totW=n*pitch,totH=yC+r+0.05*b;
+  const cw=cv.clientWidth||320,sc=Math.min((cw-24)/totW,360/totH);
+  const{x,w,h}=fit(cv,Math.round(totH*sc+70));
+  const offX=(w-totW*sc)/2,offY=38,lw=px=>px/sc,offs=OFFS[n];
+  x.save();x.translate(offX,offY);x.scale(sc,sc);
+  x.fillStyle=K['block'];x.fillRect(0,Yt,totW,wallB-Yt);
+  x.fillStyle=K['head'];x.fillRect(0,0,totW,Yt);
+  for(let k=0;k<n;k++){
+    const cx=(k+0.5)*pitch,th=((S.theta-offs[k])%720+720)%720,ph=(th%360)*Math.PI/180;
+    const xp=r*Math.cos(ph)+Math.sqrt(l*l-r*r*Math.sin(ph)*Math.sin(ph));
+    const crown=Yt+hc+(r+l-xp),pin=crown+cH;
+    const cpx=cx+r*Math.sin(ph),cpy=yC-r*Math.cos(ph);
+    const li=liftIntake(th)*0.11*b,le=liftExhaust(th)*0.11*b;
+    const xi=cx-0.25*b,xe=cx+0.25*b,pw=0.22*b;
+    // alésage et gaz
+    x.fillStyle=K['panel'];x.fillRect(cx-b/2,Yt,b,wallB-Yt);
+    x.fillStyle=gasColor(th);x.fillRect(cx-b/2,Yt,b,crown-Yt);
+    // conduits
+    x.fillStyle=K['panel'];x.fillRect(xi-pw/2,0.14*b,pw,Yt-0.14*b);x.fillRect(xe-pw/2,0.14*b,pw,Yt-0.14*b);
+    if(li>0.01){x.fillStyle=mix(K['panel'],K['s-int'],0.8*Math.min(1,li/(0.05*b)));x.fillRect(xi-pw/2,0.14*b,pw,Yt-0.14*b);}
+    if(le>0.01){x.fillStyle=mix(K['panel'],K['s-exh'],0.8*Math.min(1,le/(0.05*b)));x.fillRect(xe-pw/2,0.14*b,pw,Yt-0.14*b);}
+    // bielle puis piston
+    x.strokeStyle=K['rod'];x.lineWidth=0.11*b;x.lineCap='round';
+    x.beginPath();x.moveTo(cx,pin);x.lineTo(cpx,cpy);x.stroke();
+    x.fillStyle=K['metal'];x.fillRect(cx-b/2+0.012*b,crown,b*0.976,0.7*b);
+    x.fillStyle=K['metal-d'];x.fillRect(cx-b/2+0.012*b,crown+0.09*b,b*0.976,0.025*b);x.fillRect(cx-b/2+0.012*b,crown+0.15*b,b*0.976,0.025*b);
+    x.beginPath();x.arc(cx,pin,0.07*b,0,6.2832);x.fillStyle=K['rod'];x.fill();
+    // soupapes
+    [[xi,li],[xe,le]].forEach(v=>{
+      x.strokeStyle=K['ink'];x.lineWidth=0.035*b;x.lineCap='butt';
+      x.beginPath();x.moveTo(v[0],0.06*b);x.lineTo(v[0],Yt+v[1]);x.stroke();
+      x.fillStyle=K['metal-d'];x.fillRect(v[0]-0.15*b,Yt+v[1]-0.05*b,0.3*b,0.05*b);
+    });
+    // bougie
+    x.fillStyle=K['metal'];x.fillRect(cx-0.045*b,0,0.09*b,Yt+0.02*b);x.fillRect(cx-0.075*b,-0.13*b,0.15*b,0.13*b);
+    const da=Math.abs(((th-SIM.thSpark+360)%720)-360);
+    if(da<6){x.fillStyle=K['spark'];x.beginPath();x.arc(cx,Yt+0.04*b,0.13*b*(1-da/8),0,6.2832);x.fill();}
+    // vilebrequin
+    x.strokeStyle=K['guide'];x.lineWidth=lw(1.2);x.beginPath();x.arc(cx,yC,r,0,6.2832);x.stroke();
+    x.strokeStyle=K['metal-d'];x.lineWidth=0.16*b;x.lineCap='round';
+    x.beginPath();x.moveTo(cx-0.7*r*Math.sin(ph),yC+0.7*r*Math.cos(ph));x.lineTo(cpx,cpy);x.stroke();
+    x.beginPath();x.arc(cx-0.62*r*Math.sin(ph),yC+0.62*r*Math.cos(ph),0.3*r,0,6.2832);x.fillStyle=K['metal-d'];x.fill();
+    x.beginPath();x.arc(cpx,cpy,0.12*b,0,6.2832);x.fillStyle=K['metal'];x.fill();x.strokeStyle=K['ink'];x.lineWidth=lw(1);x.stroke();
+    x.beginPath();x.arc(cx,yC,0.11*b,0,6.2832);x.fillStyle=K['ink'];x.fill();
+  }
+  // parois entre cylindres
+  x.strokeStyle=K['ink'];x.lineWidth=lw(1);
+  x.strokeRect(0,0,totW,wallB);
+  for(let k=0;k<n;k++){const cx=(k+0.5)*pitch;x.beginPath();x.moveTo(cx-b/2,Yt);x.lineTo(cx-b/2,wallB);x.moveTo(cx+b/2,Yt);x.lineTo(cx+b/2,wallB);x.stroke();}
+  x.restore();
+  x.textAlign='center';x.font=MONO;
+  for(let k=0;k<n;k++){
+    const th=((S.theta-offs[k])%720+720)%720,st=strokeOf(th),px=offX+(k+0.5)*pitch*sc;
+    const label=STROKE_NAMES[st],tw=x.measureText(label).width;
+    x.fillStyle=strokeColor(st);x.fillRect(px-tw/2-12,12,8,8);
+    x.fillStyle=K['ink'];x.textAlign='left';x.fillText(label,px-tw/2-1,20);
+    x.textAlign='center';x.fillStyle=K['muted'];x.fillText('Cyl. '+(k+1),px,offY+totH*sc+22);
+  }
+}
+
+/* ---------- diagramme des temps ---------- */
+function drawCycle(){
+  const n=S.n,rowH=24,top=14,hh=top+n*rowH+26,{x,w}=fit($('cvCycle'),hh);
+  const L=30,R=6,pw=w-L-R,X=a=>L+a/720*pw,offs=OFFS[n];
+  x.font=MONO;x.textBaseline='middle';
+  for(let k=0;k<n;k++){
+    const y=top+k*rowH;x.fillStyle=K['muted'];x.textAlign='left';x.fillText('C'+(k+1),0,y+rowH/2-1);
+    for(let st=0;st<4;st++){
+      const start=(offs[k]+180*st)%720;x.fillStyle=strokeColor(st);
+      const seg=(a,bb)=>{x.fillRect(X(a)+0.5,y+2,X(bb)-X(a)-1,rowH-5);};
+      if(start+180<=720)seg(start,start+180);else{seg(start,720);seg(0,start+180-720);}
+      if(pw/4>74){x.fillStyle=K['ink'];x.textAlign='center';const c=(start+90)%720;x.fillText(STROKE_NAMES[st],X(c),y+rowH/2-1);}
+      const sp=(offs[k]+SIM.thSpark)%720;
+    }
+    const sp=(offs[k]+SIM.thSpark+720)%720;x.fillStyle=K['spark'];x.beginPath();x.moveTo(X(sp),y+rowH-3);x.lineTo(X(sp)-4,y+rowH+2);x.lineTo(X(sp)+4,y+rowH+2);x.fill();
+  }
+  const yb=top+n*rowH+8;x.textAlign='center';x.fillStyle=K['muted'];
+  [0,180,360,540,720].forEach(a=>{x.textAlign=a===0?'left':a===720?'right':'center';x.fillText(a+'°',X(a),yb+8);});
+  x.strokeStyle=K['ink'];x.lineWidth=1.5;x.beginPath();x.moveTo(X(S.theta),top-6);x.lineTo(X(S.theta),top+n*rowH);x.stroke();
+}
+
+/* ---------- pression et volume ---------- */
+function drawPV(){
+  const{x,w,h}=fit($('cvPV'),230),g=SIM.g,vmax=(g.Vc+g.Vd)*1e6*1.02;
+  const pm=niceTicks(Math.max(SIM.pmaxBar,2),4),vt=niceTicks(vmax,4);
+  const L=38,R=10,T=10,B=28,pw=w-L-R,ph=h-T-B,X=v=>L+v/vt.top*pw,Y=p=>T+ph-(p/pm.top)*ph;
+  x.font=MONO;x.fillStyle=K['muted'];x.strokeStyle=K['line'];x.lineWidth=1;
+  pm.arr.forEach(p=>{x.beginPath();x.moveTo(L,Y(p));x.lineTo(L+pw,Y(p));x.stroke();x.textAlign='right';x.textBaseline='middle';x.fillText(fmt(p),L-5,Y(p));});
+  vt.arr.forEach(v=>{x.textAlign='center';x.textBaseline='top';x.fillText(fmt(v),X(v),T+ph+6);});
+  x.textAlign='right';x.fillText('V (cm³)',L+pw,T+ph+16-6);
+  x.save();x.translate(10,T+10);x.textAlign='left';x.fillText('p (bar)',L-8,-9);x.restore();
+  x.strokeStyle=K['accent'];x.lineWidth=2;x.lineJoin='round';x.beginPath();
+  for(let i=0;i<=NS;i++){const j=i%NS,v=SIM.V[j]*1e6,p=SIM.p[j]/1e5;i?x.lineTo(X(v),Y(p)):x.moveTo(X(v),Y(p));}
+  x.stroke();
+  const j=Math.round((((S.theta%720)+720)%720)*2)%NS;
+  x.fillStyle=K['heat'];x.beginPath();x.arc(X(SIM.V[j]*1e6),Y(SIM.p[j]/1e5),5,0,6.2832);x.fill();
+}
+
+
+/* ---------- graphique générique : séries, un ou deux axes verticaux, repères verticaux ---------- */
+function plotXY(id,o){
+  const{x,w,h}=fit($(id),o.h||230),ax=o.axes,two=ax.length>1,L=38,R=two?38:10,T=18,B=28,pw=w-L-R,ph=h-T-B;
+  const nt=ax.map(a=>niceTicks(Math.max(a.max,1e-6)*1.05,4)),xt=niceTicks(o.xmax,5);
+  const X=v=>L+v/o.xmax*pw,Y=(i,v)=>T+ph-clamp(v,-1e9,1e9)/nt[i].top*ph;
+  x.font=MONO;x.lineWidth=1;
+  nt[0].arr.forEach(v=>{x.strokeStyle=K['line'];x.beginPath();x.moveTo(L,Y(0,v));x.lineTo(L+pw,Y(0,v));x.stroke();x.fillStyle=K[ax[0].col];x.textAlign='right';x.textBaseline='middle';x.fillText(fmt(v,v%1?1:0),L-5,Y(0,v));});
+  if(two)nt[1].arr.forEach(v=>{x.fillStyle=K[ax[1].col];x.textAlign='left';x.textBaseline='middle';x.fillText(fmt(v,v%1?1:0),L+pw+5,Y(1,v));});
+  x.fillStyle=K['muted'];x.textBaseline='top';
+  (o.xticks||xt.arr).forEach(v=>{if(v<=o.xmax+1e-9){x.textAlign='center';x.fillText(o.xfmt?o.xfmt(v):fmt(v),X(v),T+ph+6);}});
+  x.textAlign='left';x.fillStyle=K[ax[0].col];x.textBaseline='top';x.fillText(ax[0].lab,2,0);
+  if(two){x.textAlign='right';x.fillStyle=K[ax[1].col];x.fillText(ax[1].lab,w-2,0);}
+  x.textAlign='right';x.fillStyle=K['muted'];x.fillText(o.xlab||'',L+pw,T+ph+16);
+  (o.vlines||[]).forEach(vl=>{x.strokeStyle=K['muted'];x.globalAlpha=0.5;x.setLineDash([3,4]);x.beginPath();x.moveTo(X(vl.x),T);x.lineTo(X(vl.x),T+ph);x.stroke();x.setLineDash([]);x.globalAlpha=1;
+    if(vl.label){x.fillStyle=K['muted'];x.textAlign='left';x.textBaseline='top';x.fillText(vl.label,X(vl.x)+4,T+2);}});
+  o.series.forEach(s=>{
+    x.strokeStyle=K[s.col];x.lineWidth=s.lw||2.1;x.lineJoin='round';x.globalAlpha=s.alpha==null?1:s.alpha;
+    x.setLineDash(s.dash||[]);x.beginPath();
+    s.pts.forEach((p,i)=>{const px=X(p[0]),py=Y(s.axis||0,p[1]);i?x.lineTo(px,py):x.moveTo(px,py);});
+    x.stroke();x.setLineDash([]);x.globalAlpha=1;
+  });
+}
+
+/* ---------- courbes à pleine charge (moteur, système hybride ou moteur électrique) ---------- */
+function drawCurves(){
+  const{x,w,h}=fit($('cvCurves'),230),D=DR,xmax=Math.max(D.xmax,D.pt==='ev'?0:S.rpm*1.02),pts=D.pts;
+  let ref=[];
+  if(S.acMode!=='off'&&EV_OFF&&D.pt!=='ev')ref=EV_OFF.D.pts;else if(D.pt==='mhev')ref=D.ice;
+  const all=pts.concat(ref);
+  const Tm=niceTicks(Math.max(...all.map(p=>p.T),1)*1.05,4),Pm=niceTicks(Math.max(...all.map(p=>p.ch),1)*1.05,4);
+  const L=34,R=34,Tp=14,B=28,pw=w-L-R,ph=h-Tp-B,X=v=>L+v/xmax*pw,YT=v=>Tp+ph-v/Tm.top*ph,YP=v=>Tp+ph-v/Pm.top*ph;
+  x.font=MONO;x.textBaseline='middle';
+  Tm.arr.forEach(v=>{x.strokeStyle=K['line'];x.lineWidth=1;x.beginPath();x.moveTo(L,YT(v));x.lineTo(L+pw,YT(v));x.stroke();x.fillStyle=K['accent'];x.textAlign='right';x.fillText(fmt(v),L-5,YT(v));});
+  Pm.arr.forEach(v=>{x.fillStyle=K['heat'];x.textAlign='left';x.fillText(fmt(v),L+pw+5,YP(v));});
+  const xt=niceTicks(xmax,5);x.textBaseline='top';x.fillStyle=K['muted'];
+  xt.arr.forEach(v=>{if(v<=xmax){x.textAlign='center';x.fillText(fmt(v/1000,0)+'k',X(v),Tp+ph+6);}});
+  x.textAlign='left';x.fillText('N·m',2,2);x.textAlign='right';x.fillStyle=K['heat'];x.fillText('ch',w-2,2);
+  x.textAlign='right';x.fillStyle=K['muted'];x.fillText('tr/min',L+pw,Tp+ph+16);
+  if(D.lim<xmax){x.setLineDash([4,4]);x.strokeStyle=K['muted'];x.lineWidth=1;x.beginPath();x.moveTo(X(D.lim),Tp);x.lineTo(X(D.lim),Tp+ph);x.stroke();x.setLineDash([]);}
+  const line=(arr,key,Y,col)=>{x.beginPath();arr.forEach((p,i)=>{const px=X(p.rpm),py=Y(p[key]);i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();};
+  x.lineJoin='round';
+  if(ref.length){x.setLineDash([5,4]);x.globalAlpha=0.6;x.lineWidth=1.6;x.strokeStyle=K['accent'];line(ref,'T',YT);x.strokeStyle=K['heat'];line(ref,'ch',YP);x.setLineDash([]);x.globalAlpha=1;}
+  x.lineWidth=2.2;x.strokeStyle=K['accent'];line(pts,'T',YT);x.strokeStyle=K['heat'];line(pts,'ch',YP);
+  if(D.pt!=='ev'){
+    const rx=X(S.rpm);x.strokeStyle=K['ink'];x.lineWidth=1;x.globalAlpha=0.5;x.beginPath();x.moveTo(rx,Tp);x.lineTo(rx,Tp+ph);x.stroke();x.globalAlpha=1;
+    [[SIM.T,YT,'accent'],[SIM.ch,YP,'heat']].forEach(m=>{const py=clamp(m[1](m[0]),Tp,Tp+ph);x.beginPath();x.arc(rx,py,5,0,6.2832);x.fillStyle=K[m[2]];x.fill();x.strokeStyle=K['panel'];x.lineWidth=2;x.stroke();});
+  }
+}
+
+/* ---------- objectif ---------- */
+const VARS={disp:{t:'S',min:125,max:3000,step:5,dec:0,txt:'une cylindrée de ',unit:' cm³',name:'la cylindrée totale'},
+  cr:{t:'S',min:8,max:14.5,step:0.1,dec:1,txt:'un rapport volumétrique de ',unit:' : 1',name:'le rapport volumétrique'},
+  rT:{t:'S',min:3000,max:12000,step:100,dec:0,txt:'un régime d\'accord de ',unit:' tr/min',name:'le régime d\'accord'},
+  boost:{t:'S',min:0,max:2,step:0.05,dec:2,txt:'une pression de suralimentation de ',unit:' bar',name:'la pression de suralimentation'},
+  fd:{t:'V',min:2.5,max:12,step:0.05,dec:2,txt:'un rapport de pont de ',unit:'',name:'le rapport de pont'},
+  m:{t:'V',min:500,max:2500,step:10,dec:0,txt:'une masse de ',unit:' kg',name:'la masse du véhicule'}};
+/* hi : plus c'est grand, mieux c'est. get : valeur de l'indicateur pour une configuration. */
+const KINDS={
+  ch:{hi:true,f:v=>fmt(v)+' ch',step:5,get:(s)=>{const e=engCurve(s);return peakStats(e.pts,e.lim).P.ch;}},
+  T:{hi:true,f:v=>fmt(v)+' N·m',step:5,get:(s)=>{const e=engCurve(s);return peakStats(e.pts,e.lim).T.T;}},
+  eta:{hi:true,f:v=>fmt(v,1)+' %',step:0.5,get:(s)=>{const e=engCurve(s);return peakStats(e.pts,e.lim).E.eta;}},
+  t100:{hi:false,f:v=>fmt(v,1)+' s',step:0.1,get:(s,vv)=>{const k=evalCfg(s,vv).k;return k.t100==null?60+Math.max(0,100-k.vmax)*0.5:k.t100;}},
+  vmax:{hi:true,f:v=>fmt(v)+' km/h',step:1,get:(s,vv)=>evalCfg(s,vv).k.vmax},
+  t400:{hi:false,f:v=>fmt(v,1)+' s',step:0.1,get:(s,vv)=>{const d=evalCfg(s,vv).k.d400;return d==null?60:d;}},
+  wltp:{hi:false,f:v=>fmt(v,1)+' L/100 km',step:0.1,get:(s,vv)=>evalCfg(s,vv,{cycle:true}).k.wltp.eq}
+};
+function fmtMetric(kind,v){return KINDS[kind].f(v);}
+function withVar(name,v){const s=Object.assign({},S),vv=Object.assign({},V);if(VARS[name].t==='S'){s[name]=v;if(name==='disp')derive(s);}else vv[name]=v;return{s,v:vv};}
+const curVar=name=>VARS[name].t==='S'?S[name]:V[name];
+function solveGoal(){
+  const kind=S.gkind,target=S.gval,vn=S.gvar,Vr=VARS[vn],N=36,xs=[],ys=[],K1=KINDS[kind];
+  const f=v=>{const c=withVar(vn,v);return K1.get(c.s,c.v)-target;};
+  for(let i=0;i<=N;i++){const v=Vr.min+(Vr.max-Vr.min)*i/N;xs.push(v);ys.push(f(v));}
+  let pick=-1,dist=1e18;
+  for(let i=0;i<N;i++){if(ys[i]===0||ys[i]*ys[i+1]<0){const d=Math.abs((xs[i]+xs[i+1])/2-curVar(vn));if(d<dist){dist=d;pick=i;}}}
+  if(pick>=0){
+    let lo=xs[pick],hi=xs[pick+1],flo=ys[pick];
+    for(let k=0;k<16;k++){const mid=(lo+hi)/2,fm=f(mid);if(fm*flo<=0)hi=mid;else{lo=mid;flo=fm;}}
+    return{ok:true,value:(lo+hi)/2};
+  }
+  const above=ys.every(y=>y>0),idx=ys.indexOf(above?Math.min(...ys):Math.max(...ys));
+  return{ok:false,above,value:xs[idx],metric:ys[idx]+target};
+}
+function roundVar(vn,v){const V2=VARS[vn];return +(Math.round(clamp(v,V2.min,V2.max)/V2.step)*V2.step).toFixed(V2.dec);}
+function runGoal(){
+  if(S.gkind==='none'||!(S.gval>0))return;
+  const btn=$('gsolve');btn.disabled=true;$('gmsg').textContent='Calcul en cours…';
+  setTimeout(()=>{
+    const res=solveGoal(),vn=S.gvar,V2=VARS[vn],K1=KINDS[S.gkind];
+    const nv=roundVar(vn,res.value);
+    if(V2.t==='S'){S[vn]=nv;if(vn==='disp')derive(S);presetSel.value='custom';}else{V[vn]=nv;vpresetSel.value='custom';}
+    comboSel.value='custom';syncInputs();syncVeh();recompute();
+    const cur=K1.get(S,V),txt=V2.txt+fmt(nv,V2.dec)+V2.unit;
+    const goodSide=K1.hi?res.above:!res.above; /* true : l'objectif est déjà dépassé partout */
+    if(res.ok)$('gmsg').textContent='Objectif atteint avec '+txt+' : '+fmtMetric(S.gkind,cur)+'.';
+    else if(goodSide)$('gmsg').textContent='Objectif trop facile : même avec '+txt+', on obtient '+fmtMetric(S.gkind,cur)+'.';
+    else $('gmsg').textContent='Inatteignable en ajustant '+V2.name+' (de '+fmt(V2.min,V2.dec)+' à '+fmt(V2.max,V2.dec)+'). Meilleur réglage : '+txt+', soit '+fmtMetric(S.gkind,cur)+'. Essaie un autre paramètre.';
+    btn.disabled=false;
+  },20);
+}
+
+/* ---------- calculs et affichage ---------- */
+const modeP=m=>Object.assign({},S,{acMode:m});
+let SIM=null,SIM_OFF=null,SIM_ON=null,CURVE=null,CURVE_OFF=null,CURVE_ON=null,DR=null,EV_OFF=null,EV_ON=null,EVC=null,VEH=null,VEH_OFF=null,VEH_ON=null,dirty=true;
+let EK_OFF=null,EK_ON=null,heavyT=null;
+function setDelta(id,cur,off,dec,unit){
+  const el=$('dl-'+id);if(!el)return;
+  if(S.acMode==='off'||cur==null||off==null||isNaN(cur)||isNaN(off)){el.textContent='';return;}
+  const d=cur-off;
+  el.textContent=Math.abs(d)<Math.pow(10,-dec)/2?'clim : inchangé':'clim '+(d>0?'+':'−')+fmt(Math.abs(d),dec)+' '+unit;
+}
+const ord=i=>i===0?'1re':(i+1)+'e';
+const stdEnv=()=>S.alt===0&&S.tAir===20&&!V.slope&&!V.wind&&!V.load&&!V.trailer;
+function envText(){
+  const a=[];
+  if(S.alt)a.push(fmt(S.alt)+' m');if(S.tAir!==20)a.push(S.tAir+' °C');if(V.slope)a.push('pente '+fmt(V.slope,1)+' %');if(V.wind)a.push((V.wind>0?'vent de face ':'vent arrière ')+Math.abs(V.wind)+' km/h');
+  if(V.load)a.push('+'+V.load+' kg');if(V.trailer)a.push('remorque');return a.join(', ');
+}
+function recompute(){
+  const onMode=S.acMode==='off'?'max':S.acMode,offP=modeP('off'),onP=modeP(onMode);
+  SIM=simulate(S,S.rpm,S.thr/100);SIM_OFF=simulate(offP,S.rpm,S.thr/100);SIM_ON=simulate(onP,S.rpm,S.thr/100);
+  EV_OFF=evalCfg(offP,V);EV_ON=evalCfg(onP,V);
+  CURVE_OFF=EV_OFF.ec;CURVE_ON=EV_ON.ec;EVC=S.acMode==='off'?EV_OFF:EV_ON;CURVE=EVC.ec;DR=EVC.D;
+  VEH_OFF=EV_OFF.R;VEH_ON=EV_ON.R;VEH=EVC.R;
+  const lim=CURVE.lim,st=peakStats(CURVE.pts,lim),pT=st.T,pP=st.P,pE=st.E,r50=v=>fmt(Math.round(v/50)*50),sd=peakStats(DR.pts,DR.lim);
+  let pk='Couple max <b>'+fmt(pT.T)+' N·m</b> à '+r50(pT.rpm)+' tr/min<br>Puissance max <b>'+fmt(pP.ch)+' ch</b> ('+fmt(pP.ch/1.35962)+' kW) à '+r50(pP.rpm)+' tr/min<br>Rendement frein max <b>'+fmt(pE.eta,1)+' %</b> à '+r50(pE.rpm)+' tr/min<br>Limité à '+fmt(S.vpm,1)+' m/s de vitesse piston.';
+  if(V.pt==='mhev')pk='Moteur thermique seul : '+fmt(pP.ch)+' ch, '+fmt(pT.T)+' N·m.<br>Avec le moteur électrique 48 V : <b>'+fmt(sd.P.ch)+' ch</b> à '+r50(sd.P.rpm)+' tr/min, <b>'+fmt(sd.T.T)+' N·m</b> à '+r50(sd.T.rpm)+' tr/min.';
+  if(V.pt==='ev')pk='Moteur électrique : puissance max <b>'+fmt(sd.P.ch)+' ch</b> ('+fmt(sd.P.ch/1.35962)+' kW), couple max <b>'+fmt(sd.T.T)+' N·m</b> dès l\'arrêt, jusqu\'à '+r50(sd.T.rpm>0?V.mP*1000/V.mT*30/Math.PI:0)+' tr/min, puis puissance constante. Régime max '+fmt(DR.lim)+' tr/min.';
+  if(S.acMode!=='off'&&V.pt!=='ev')pk+='<br>Clim active : valeurs nettes, pointillés = sans clim.';
+  if(V.pt==='mhev'&&S.acMode==='off')pk+='<br>Pointillés : moteur thermique seul.';
+  $('peaks').innerHTML=pk;
+  $('r-T').textContent=fmt(SIM.T);
+  $('r-P').textContent=fmt(SIM.ch);$('r-kW').textContent=fmt(SIM.kW,1)+' kW';
+  $('r-bmep').textContent=fmt(SIM.bmep,1);$('r-imep').textContent='indiquée '+fmt(SIM.imep,1);
+  $('r-pmax').textContent=fmt(SIM.pmaxBar);$('r-pang').textContent=fmt(SIM.angPk)+'° après PMH';
+  $('r-eta').textContent=fmt(Math.max(SIM.etaB*100,0),1);
+  $('r-bsfc').textContent=isNaN(SIM.bsfc)?'–':fmt(SIM.bsfc);
+  setDelta('T',SIM.T,SIM_OFF.T,0,'N·m');setDelta('P',SIM.ch,SIM_OFF.ch,0,'ch');setDelta('bmep',SIM.bmep,SIM_OFF.bmep,1,'bar');
+  setDelta('eta',Math.max(SIM.etaB*100,0),Math.max(SIM_OFF.etaB*100,0),1,'pt');setDelta('bsfc',SIM.bsfc,SIM_OFF.bsfc,0,'g/kWh');
+  const g=SIM.g,cc=g.Vd*S.n*1e6;
+  const dd=[['Cylindrée totale',fmt(cc)+' cm³'],['Par cylindre',fmt(g.Vd*1e6,1)+' cm³'],['Alésage × course',fmt(S.bore,1)+' × '+fmt(S.stroke,1)+' mm'],
+    ['Vitesse moy. piston',fmt(SIM.Sp,1)+' m/s'],['Régime limite ('+fmt(S.vpm,1)+' m/s)',fmt(Math.round(lim/50)*50)+' tr/min'],['Ordre d\'allumage',FIRING[S.n].split(',')[0]]];
+  if(S.boost>0)dd.push(['Pression d\'admission ici',fmt(SIM.map/1e5,2)+' bar abs.']);
+  $('derived').innerHTML=dd.map(r=>'<dt>'+r[0]+'</dt><dd>'+r[1]+'</dd>').join('');
+  $('firing').textContent='Ordre d\'allumage '+FIRING[S.n]+'. Triangles : étincelle.';
+  const chips=['<span class="chip">Allumage '+fmt(SIM.advSpark)+'° avant PMH</span>'];
+  if(S.boost>0)chips.push('<span class="chip ok">Turbo : +'+fmt(Math.max(SIM.boostBar,0),2)+' bar à '+fmt(S.rpm)+' tr/min</span>');
+  if(S.vvt>0)chips.push('<span class="chip">VVT '+fmt(S.vvt*100)+' %</span>');
+  if(S.acMode!=='off')chips.push('<span class="chip warn">Clim '+(S.acMode==='max'?'à fond':'normale')+' : '+(SIM.acKW>0?'−'+fmt(SIM.acKW,1)+' kW ('+fmt(SIM.acNm,1)+' N·m) prélevés ici':'compresseur coupé à pleine charge')+'</span>');
+  if(S.gkind!=='none'&&S.gval>0){
+    const cur=KINDS[S.gkind].get(S,V),diff=(cur-S.gval)/S.gval*100;
+    chips.unshift('<span class="chip '+(Math.abs(diff)<=1.5?'ok':'')+'">Objectif '+fmtMetric(S.gkind,S.gval)+' · actuel '+fmtMetric(S.gkind,cur)+' ('+(diff>=0?'+':'−')+fmt(Math.abs(diff),1)+' %)</span>');
+  }
+  if(SIM.retard>0.05)chips.push('<span class="chip warn">Cliquetis : allumage retardé de '+fmt(SIM.retard,1)+'°</span>');
+  if(S.rpm>lim)chips.push('<span class="chip warn">Au-delà de '+fmt(S.vpm,1)+' m/s de vitesse piston</span>');
+  if(SIM.T<0)chips.push('<span class="chip warn">Frein moteur : couple négatif</span>');
+  if(V.pt==='ev')chips.push('<span class="chip warn">Voiture électrique : moteur thermique inactif</span>');
+  $('chips').innerHTML=chips.join('');
+  const o=(id,t)=>{const e=$(id);if(e)e.textContent=t;};
+  o('o-n',S.n);o('o-disp',fmt(S.disp)+' cm³');
+  o('o-ratio',fmt(S.ratio,2)+(S.ratio<0.95?' · course longue':S.ratio>1.05?' · course courte':' · carré'));
+  o('o-cr',fmt(S.cr,1)+' : 1');o('o-rT',fmt(S.rT)+' tr/min');o('o-vpm',fmt(S.vpm,1)+' m/s');o('o-rpm',fmt(S.rpm)+' tr/min');o('o-thr',S.thr+' %');
+  o('o-boost',S.boost>0?'+'+fmt(S.boost,2)+' bar':'atmosphérique');o('o-spool',fmt(S.spool)+' tr/min');o('o-vvt',S.vvt>0?fmt(S.vvt*100)+' %':'sans');
+  o('o-ivc',(S.ivc)+'°'+(S.ivc>=60?' · tardive':S.ivc<=28?' · précoce':''));
+  o('o-act',S.tAir+' °C');o('o-tAir',S.tAir+' °C');o('o-alt',fmt(S.alt)+' m');o('o-slope',(V.slope>0?'+':'')+fmt(V.slope,1)+' %');
+  o('o-wind',V.wind>0?'face '+V.wind+' km/h':V.wind<0?'arrière '+(-V.wind)+' km/h':'nul');o('o-load',fmt(V.load)+' kg');
+  readColors();recomputeVehicle();drawCurves();dirty=true;
+  scheduleHeavy();
+}
+
+/* ---------- véhicule ---------- */
+const VDEF={pt:'ice',mP:10,mT:50,mE:0.5,mR:0.6,mW:14000};
+const VPRESETS={
+  clio:{label:'Citadine type Clio, 5 rapports',m:1110,scx:0.68,crr:0.012,lay:'AV',mu:1,rw:300,ng:5,g1:3.73,gn:0.76,fd:4.2,ts:0.35},
+  clioRS:{label:'Compacte sportive type Clio RS, 6 rapports',m:1280,scx:0.7,crr:0.011,lay:'AV',mu:1.1,rw:310,ng:6,g1:3.73,gn:0.76,fd:3.7,ts:0.25},
+  city:{label:'Citadine légère',m:900,scx:0.62,crr:0.012,lay:'AV',mu:1,rw:290,ng:5,g1:3.6,gn:0.85,fd:4.1,ts:0.35},
+  compact:{label:'Compacte',m:1250,scx:0.68,crr:0.011,lay:'AV',mu:1,rw:315,ng:6,g1:3.8,gn:0.72,fd:3.9,ts:0.3},
+  hot:{label:'Compacte sportive turbo, 6 rapports',m:1400,scx:0.78,crr:0.011,lay:'AV',mu:1.15,rw:325,ng:6,g1:3.6,gn:0.74,fd:3.8,ts:0.2},
+  sport:{label:'Berline sportive',m:1550,scx:0.72,crr:0.011,lay:'AR',mu:1.1,rw:335,ng:6,g1:3.6,gn:0.68,fd:3.4,ts:0.2},
+  roadster:{label:'Roadster léger',m:1050,scx:0.6,crr:0.011,lay:'AR',mu:1.1,rw:315,ng:6,g1:3.5,gn:0.8,fd:3.7,ts:0.25},
+  suv:{label:'SUV familial',m:1800,scx:0.9,crr:0.012,lay:'4x4',mu:1,rw:350,ng:6,g1:4,gn:0.7,fd:3.7,ts:0.4},
+  compactMH:{label:'Compacte hybride léger 48 V',m:1300,scx:0.68,crr:0.011,lay:'AV',mu:1,rw:315,ng:6,g1:3.8,gn:0.72,fd:3.9,ts:0.3,pt:'mhev',mP:10,mT:50,mE:0.5,mR:0.6},
+  evCity:{label:'Citadine électrique (100 kW)',m:1500,scx:0.68,crr:0.010,lay:'AV',mu:1,rw:310,ng:1,g1:1,gn:1,fd:9.3,ts:0.2,pt:'ev',mP:100,mT:245,mE:52,mR:0.7,mW:11500},
+  evSport:{label:'Berline électrique sportive (220 kW)',m:1900,scx:0.62,crr:0.010,lay:'AR',mu:1.1,rw:340,ng:1,g1:1,gn:1,fd:9,ts:0.2,pt:'ev',mP:220,mT:430,mE:75,mR:0.8,mW:16000}
+};
+const V=Object.assign({m:900,scx:0.62,crr:0.012,lay:'AV',mu:1,rw:290,ng:5,g1:3.6,gn:0.85,fd:4.1,ts:0.35,slope:0,wind:0,load:0,trailer:false},VDEF);
+const phaseOf=(k,key)=>k[key];
+function fuelUnit(){return V.pt==='ev'?'kWh/100 km':'L/100 km';}
+function consOf(r){return V.pt==='ev'?r.kwh100:r.L100;}
+function recomputeVehicle(){
+  const R=VEH,f1=(q,d=1)=>q==null?'—':fmt(q,d);
+  const kw=(id,tx)=>{$(id).textContent=tx;};
+  kw('v-vmax',fmt(R.vmax));kw('v-vmax-sub',ord(R.gV)+' · '+fmt(Math.round(R.rpmV/50)*50)+' tr/min');
+  kw('v-t2',fmt(R.vAtT(2)));kw('v-t10',fmt(R.vAtT(10)));
+  const t100=R.timeAtV(100);kw('v-100',f1(t100));kw('v-100-sub',t100==null?'Vmax trop basse':'départ arrêté');
+  kw('v-0vmax',f1(R.t99));
+  const d4=R.atDist(400);kw('v-400',d4?fmt(d4.t,1):'—');kw('v-400-sub',d4?fmt(d4.v)+' km/h en sortie':'non atteint');
+  const d10=R.atDist(1000),O=VEH_OFF,d4o=O.atDist(400);
+  setDelta('vmax',R.vmax,O.vmax,0,'km/h');setDelta('t2',R.vAtT(2),O.vAtT(2),0,'km/h');setDelta('t10',R.vAtT(10),O.vAtT(10),0,'km/h');
+  setDelta('100',t100,O.timeAtV(100),1,'s');setDelta('0vmax',R.t99,O.t99,1,'s');setDelta('400',d4?d4.t:null,d4o?d4o.t:null,1,'s');
+  const items=[['0 à 50 km/h',R.timeAtV(50),'s',1],['0 à 130 km/h',R.timeAtV(130),'s',1],['0 à 160 km/h',R.timeAtV(160),'s',1],['0 à 200 km/h',R.timeAtV(200),'s',1],
+    ['1000 m D.A.',d10?d10.t:null,'s',1],['Vitesse à 5 s',R.vAtT(5),'km/h',0],['Vitesse à 20 s',R.vAtT(20),'km/h',0],
+    ['80-120, '+(R.N>1?ord(R.N-1)+' (dernier)':'rapport unique'),R.elastic(R.N-1,80,120),'s',1],[R.N>1?'80-120, '+ord(R.N-2)+' rapport':'80-120, —',R.N>1?R.elastic(R.N-2,80,120):null,'s',1]];
+  $('chrono').innerHTML=items.map(it=>'<div><dt>'+it[0]+'</dt><dd>'+(it[1]==null?'—':fmt(it[1],it[3])+' <small>'+it[2]+'</small>')+'</dd></div>').join('');
+  const sd=peakStats(DR.pts,DR.lim),pch=sd.P.ch,chips=[];
+  chips.push('<span class="chip">'+fmt(R.m/pch,1)+' kg/ch · '+fmt(pch/R.m*1000)+' ch/t</span>');
+  if(V.pt==='ice'||V.pt==='mhev')chips.push('<span class="chip">Lancement à '+fmt(Math.round(R.launch/50)*50)+' tr/min</span>');
+  chips.push('<span class="chip '+(R.byRpm?'warn':'')+'">'+(R.byRpm?(V.pt==='ev'?'Vmax bridée par le régime max du moteur électrique':'Vmax limitée par le régime : un rapport plus long ou un pont plus court permettrait d\'aller plus vite'):'Vmax limitée par la puissance (traînée aérodynamique)')+'</span>');
+  if(R.slip>0.15)chips.push('<span class="chip warn">Adhérence limitante au départ pendant '+fmt(R.slip,1)+' s</span>');
+  if(V.pt==='mhev')chips.push('<span class="chip ok">Assistance 48 V : +'+fmt(sd.P.ch-peakStats(CURVE.pts,CURVE.lim).P.ch)+' ch'+(R.assistEnd?' · batterie vide à '+fmt(R.assistEnd,0)+' s':'')+'</span>');
+  const env=envText();if(env)chips.push('<span class="chip warn">Conditions : '+env+'</span>');
+  $('vchips').innerHTML=chips.join('');
+  const G=R.G,spd=1000*Math.PI/30*(V.rw/1000)/(G[R.N-1]*V.fd)*3.6;
+  $('vderived').innerHTML=[['Rapports de boîte',G.map(q=>fmt(q,2)).join(' · ')],['Vitesse à 1 000 tr/min, dernier',fmt(spd,1)+' km/h'],
+    ['Régime à 120 km/h, dernier',fmt(Math.round(R.rpmOf(120/3.6,R.N-1)/10)*10)+' tr/min'],['Masse totale / SCx',fmt(R.m)+' kg · '+fmt(vehParams(V,S).scx,2)+' m²'],['Rapport poids/puissance',fmt(R.m/pch,1)+' kg/ch']]
+    .map(r2=>'<dt>'+r2[0]+'</dt><dd style="overflow-wrap:anywhere">'+r2[1]+'</dd>').join('');
+  $('vnote').textContent='Pleine charge, départ arrêté, passage de rapports au meilleur effort de traction'+(env?', conditions : '+env:', sans vent ni pente')+'. Résultats indicatifs.';
+  const o=(id,t)=>{const e=$(id);if(e)e.textContent=t;};
+  o('o-vm',fmt(V.m)+' kg');o('o-vscx',fmt(V.scx,2)+' m²');o('o-vcrr',fmt(V.crr,3));o('o-vmu',fmt(V.mu,2));o('o-vrw',fmt(V.rw)+' mm');
+  o('o-vg1',fmt(V.g1,2));o('o-vgn',fmt(V.gn,2));o('o-vfd',fmt(V.fd,2));o('o-vts',fmt(V.ts,2)+' s');
+  o('o-mP',fmt(V.mP)+' kW ('+fmt(V.mP*1.35962)+' ch)');o('o-mT',fmt(V.mT)+' N·m');o('o-mE',fmt(V.mE,V.pt==='ev'?0:2)+' kWh');o('o-mR',fmt(V.mR*100)+' %');
+  const a=air(S);
+  $('envderived').innerHTML=[['Pression atmosphérique',fmt(a.patm/100)+' hPa'],['Masse volumique de l\'air',fmt(a.rho,3)+' kg/m³ ('+(a.rho/1.204>=1?'+':'−')+fmt(Math.abs(a.rho/1.204-1)*100,0)+' %)'],
+    ['Puissance moteur max',fmt(peakStats(CURVE.pts,CURVE.lim).P.ch)+' ch ('+(()=>{const b=peakStats(engCurve(Object.assign({},S,{alt:0,tAir:20})).pts,CURVE.lim).P.ch,c=peakStats(CURVE.pts,CURVE.lim).P.ch;return (c>=b?'+':'−')+fmt(Math.abs(c/b-1)*100,0)+' %';})()+' vs standard)'],
+    ['Masse totale',fmt(R.m)+' kg']].map(r2=>'<dt>'+r2[0]+'</dt><dd>'+r2[1]+'</dd>').join('');
+  readColors();drawVSpeed();drawVTrac();
+}
+function drawVSpeed(){
+  if(!VEH)return;
+  const R=VEH,{x,w,h}=fit($('cvVSpeed'),230);
+  const tEnd=Math.min(R.t99!=null?R.t99*1.05:R.vs.length*R.dt,120),tx=niceTicks(Math.max(tEnd,2),5),vy=niceTicks(Math.max(R.vmax*1.05,20),4);
+  const L=36,Rr=8,T=10,B=26,pw=w-L-Rr,ph=h-T-B,X=t=>L+t/tx.top*pw,Y=q=>T+ph-q/vy.top*ph;
+  x.font=MONO;x.lineWidth=1;
+  vy.arr.forEach(q=>{x.strokeStyle=K['line'];x.beginPath();x.moveTo(L,Y(q));x.lineTo(L+pw,Y(q));x.stroke();x.fillStyle=K['muted'];x.textAlign='right';x.textBaseline='middle';x.fillText(fmt(q),L-5,Y(q));});
+  tx.arr.forEach(q=>{x.fillStyle=K['muted'];x.textAlign='center';x.textBaseline='top';x.fillText(fmt(q),X(q),T+ph+6);});
+  x.textAlign='right';x.fillText('s',L+pw,T+ph+16-6);x.textAlign='left';x.fillText('km/h',2,0);
+  if(R.vmax>100){x.setLineDash([4,4]);x.strokeStyle=K['muted'];x.beginPath();x.moveTo(L,Y(100));x.lineTo(L+pw,Y(100));x.stroke();x.setLineDash([]);}
+  const sh=R.shifts;
+  x.strokeStyle=K['line'];sh.forEach(s=>{if(s.t<tx.top){x.beginPath();x.moveTo(X(s.t),T);x.lineTo(X(s.t),T+ph);x.stroke();}});
+  x.fillStyle=K['muted'];x.textAlign='center';x.textBaseline='bottom';
+  const bounds=[0].concat(sh.map(s=>s.t)),gears=[0].concat(sh.map(s=>s.g));
+  if(R.N>1)bounds.forEach((t0,i)=>{const t1=Math.min(i+1<bounds.length?bounds[i+1]:tx.top,tx.top);if(t0<tx.top&&X(t1)-X(t0)>18)x.fillText(String(gears[i]+1),(X(t0)+X(t1))/2,T+ph-3);});
+  x.strokeStyle=K['accent'];x.lineWidth=2.2;x.lineJoin='round';x.beginPath();
+  const step=Math.max(1,Math.round(tx.top/(pw/2)/R.dt));let first=true;
+  for(let i=0;i<R.vs.length&&i*R.dt<=tx.top;i+=step){const px=X(i*R.dt),py=Y(R.vs[i]*3.6);first?x.moveTo(px,py):x.lineTo(px,py);first=false;}
+  x.stroke();
+  [2,10].forEach(tt=>{if(tt<=tx.top&&tt<=R.vs.length*R.dt){const q=R.vAtT(tt);x.beginPath();x.arc(X(tt),Y(q),4.5,0,6.2832);x.fillStyle=K['heat'];x.fill();x.strokeStyle=K['panel'];x.lineWidth=2;x.stroke();
+    x.fillStyle=K['ink'];x.textAlign=X(tt)>L+pw-60?'right':'left';x.textBaseline='bottom';x.fillText(fmt(q)+' km/h',X(tt)+(X(tt)>L+pw-60?-7:7),Y(q)-4);}});
+}
+function drawVTrac(){
+  if(!VEH)return;
+  const R=VEH,{x,w,h}=fit($('cvVTrac'),230),r=V.rw/1000,N=R.N,G=R.G;
+  const vTop=Math.max(R.vmax*1.1,60),curves=[];let Fmax=0;
+  for(let j=0;j<N;j++){
+    const c=[];
+    for(let k=0;k<=40;k++){const rp=R.idle+(R.lim-R.idle)*k/40,vv=rp*Math.PI/30*r/(G[j]*V.fd),F=R.Tfn(rp)*G[j]*V.fd*R.etaT/r;c.push([vv*3.6,F]);if(F>Fmax)Fmax=F;}
+    curves.push(c);
+  }
+  const vx=niceTicks(vTop,4),fy=niceTicks(Fmax*1.05,4);
+  const L=40,Rr=8,T=10,B=26,pw=w-L-Rr,ph=h-T-B,X=q=>L+q/vx.top*pw,Y=q=>T+ph-q/fy.top*ph;
+  x.font=MONO;x.lineWidth=1;
+  fy.arr.forEach(q=>{x.strokeStyle=K['line'];x.beginPath();x.moveTo(L,Y(q));x.lineTo(L+pw,Y(q));x.stroke();x.fillStyle=K['muted'];x.textAlign='right';x.textBaseline='middle';x.fillText(fmt(q),L-5,Y(q));});
+  vx.arr.forEach(q=>{x.fillStyle=K['muted'];x.textAlign='center';x.textBaseline='top';x.fillText(fmt(q),X(q),T+ph+6);});
+  x.textAlign='right';x.fillText('km/h',L+pw,T+ph+16-6);x.textAlign='left';x.fillText('N',2,0);
+  const Ft0=V.mu*R.m*GRAV*(V.lay==='AV'?0.58:V.lay==='AR'?0.42:1);
+  if(Ft0<fy.top){x.setLineDash([4,4]);x.strokeStyle=K['muted'];x.beginPath();x.moveTo(L,Y(Ft0));x.lineTo(L+pw,Y(Ft0));x.stroke();x.setLineDash([]);x.fillStyle=K['muted'];x.textAlign='right';x.textBaseline='bottom';x.fillText('adhérence',L+pw,Y(Ft0)-2);}
+  x.lineJoin='round';
+  curves.forEach((c,j)=>{
+    x.strokeStyle=K['accent'];x.lineWidth=1.7;x.beginPath();c.forEach((p,i)=>{i?x.lineTo(X(p[0]),Y(p[1])):x.moveTo(X(p[0]),Y(p[1]));});x.stroke();
+    if(N>1){const e=c[c.length-1];x.fillStyle=K['accent'];x.textAlign='center';x.textBaseline='bottom';x.fillText(String(j+1),X(e[0]),Y(e[1])-3);}
+  });
+  x.strokeStyle=K['heat'];x.lineWidth=2.2;x.beginPath();
+  for(let k=0;k<=60;k++){const q=vTop*k/60,F=R.Fa(q/3.6)+R.Fr;k?x.lineTo(X(q),Y(F)):x.moveTo(X(q),Y(F));}x.stroke();
+  const vm=R.vmax,Fv=R.Fa(vm/3.6)+R.Fr;x.beginPath();x.arc(X(vm),Y(Fv),5,0,6.2832);x.fillStyle=K['heat'];x.fill();x.strokeStyle=K['panel'];x.lineWidth=2;x.stroke();
+  x.fillStyle=K['ink'];x.textAlign='right';x.textBaseline='bottom';x.fillText('Vmax '+fmt(vm),X(vm)-7,Y(Fv)-5);
+}
+
+/* ---------- calculs lourds, regroupés après une courte pause ---------- */
+function scheduleHeavy(){clearTimeout(heavyT);heavyT=setTimeout(heavy,140);}
+function heavy(){
+  const onMode=S.acMode==='off'?'max':S.acMode;
+  EK_OFF=evalCfg(modeP('off'),V,{cycle:true,nedc:true});EK_ON=evalCfg(modeP(onMode),V,{cycle:true,nedc:true});
+  renderCons();updateAC();renderCmp();renderExport();
+}
+/* ---------- consommation et CO2 ---------- */
+function renderCons(){
+  const E=S.acMode==='off'?EK_OFF:EK_ON,O=EK_OFF,k=E.k,res=k[S.cyc],ro=O.k[S.cyc],ev=V.pt==='ev',cn=ev?'kWh/100 km':'L/100 km';
+  const nm=S.cyc==='wltp'?'WLTP approché':'NEDC';
+  const tile=(lab,val,unit,sub,dl)=>'<div class="tile"><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="unit">'+unit+'</div><div class="sub">'+(sub||'&nbsp;')+'</div><div class="dlt">'+(dl||'')+'</div></div>';
+  const dcl=(a,b,d,u)=>{if(S.acMode==='off'||a==null||b==null)return'';const x2=a-b;return Math.abs(x2)<Math.pow(10,-d)/2?'clim : inchangé':'clim '+(x2>0?'+':'−')+fmt(Math.abs(x2),d)+' '+u;};
+  const main=consOf(res),mainO=consOf(ro);
+  $('consTiles').innerHTML=
+    tile('Conso '+nm,fmt(main,main<10?2:1),cn,ev?'≈ '+fmt(res.eq,1)+' L/100 équiv.':(V.pt==='mhev'?'bilan batterie inclus':'cycle complet'),dcl(main,mainO,2,cn))
+    +tile('CO₂',fmt(res.co2),'g/km',ev?'à l\'échappement':'essence, '+fmt(CO2_L,2)+' kg/L',dcl(res.co2,ro.co2,0,'g/km'))
+    +tile('Vitesse moyenne',fmt(res.avg,1),'km/h',fmt(res.dist/1000,1)+' km en '+fmt(res.t/60,0)+' min','')
+    +tile('Conso à 90 km/h',fmt(consOf(k.c90),2),cn,'vitesse stabilisée',dcl(consOf(k.c90),consOf(O.k.c90),2,cn))
+    +tile('Conso à 120 km/h',fmt(consOf(k.c120),2),cn,'vitesse stabilisée',dcl(consOf(k.c120),consOf(O.k.c120),2,cn));
+  const ch=[];
+  if(V.pt==='mhev'){ch.push('<span class="chip ok">Stop-start : moteur coupé '+fmt(res.stopSec)+' s</span>');ch.push('<span class="chip ok">Récupéré au freinage : '+fmt(res.regenKWh*1000)+' Wh</span>');
+    ch.push('<span class="chip">Bilan batterie ramené en carburant : '+(res.penL>=0?'+':'−')+fmt(Math.abs(res.penL),2)+' L</span>');}
+  if(ev){ch.push('<span class="chip ok">Autonomie estimée : '+fmt(V.mE/Math.max(res.kwh100,0.1)*100)+' km ('+fmt(V.mE)+' kWh)</span>');ch.push('<span class="chip ok">Récupéré au freinage : '+fmt(res.regenKWh,2)+' kWh</span>');}
+  if(res.sat>0)ch.push('<span class="chip warn">Le cycle demande plus que la puissance disponible pendant '+fmt(res.sat)+' s</span>');
+  const env=envText();if(env)ch.push('<span class="chip warn">Conditions : '+env+'</span>');
+  if(S.acMode!=='off')ch.push('<span class="chip warn">Clim '+(S.acMode==='max'?'à fond':'normale')+' pendant tout le cycle</span>');
+  $('consChips').innerHTML=ch.join('');
+  $('phaseTable').innerHTML='<thead><tr><th>Phase</th><th>Durée</th><th>Distance</th><th>Vitesse moy.</th><th>Conso <small>'+cn+'</small></th><th>CO₂ <small>g/km</small></th></tr></thead><tbody>'
+    +res.phases.map(p=>'<tr><th scope="row">'+p.name+'</th><td>'+fmt(p.t)+' s</td><td>'+fmt(p.dist/1000,2)+' km</td><td>'+fmt(p.avg,1)+' km/h</td><td>'+fmt(consOf(p),2)+'</td><td>'+fmt(p.co2)+'</td></tr>').join('')
+    +'<tr><th scope="row">Total</th><td>'+fmt(res.t)+' s</td><td>'+fmt(res.dist/1000,2)+' km</td><td>'+fmt(res.avg,1)+' km/h</td><td><b>'+fmt(consOf(res),2)+'</b></td><td><b>'+fmt(res.co2)+'</b></td></tr></tbody>';
+  $('consChartTitle').textContent='Vitesse et '+(ev?'puissance batterie':'régime moteur')+' sur le cycle '+nm;
+  $('consNote').textContent=(S.cyc==='wltp'?'Profil WLTP reconstitué à partir des durées, distances et vitesses maximales de chaque phase : il n\'est pas le profil officiel, les chiffres sont des ordres de grandeur. ':'Profil NEDC construit à partir des paliers officiels (urbain ×4 puis extra-urbain). ')+'Moteur chaud, rapport choisi seconde par seconde, carburant lu dans la carte de consommation du moteur (régime × couple). CO₂ : '+fmt(CO2_L,2)+' kg par litre d\'essence'+(ev?' ; électrique : zéro à l\'échappement, l\'impact dépend de l\'électricité produite':'')+'.';
+  const ev2=V.pt==='ev',t100=k.t100==null?'—':fmt(k.t100,1);
+  const lvl=ev2?(res.kwh100<16?'sobre':res.kwh100<20?'raisonnable':'gourmande'):(res.L100<5.5?'sobre':res.L100<7.5?'raisonnable':res.L100<9.5?'assez gourmande':'gourmande');
+  $('verdict').innerHTML='Une voiture de <b>'+fmt(k.mass)+' kg</b> avec <b>'+fmt(k.sysCh)+' ch</b> : <b>0 à 100 km/h en '+t100+' s</b>, <b>'+fmt(k.vmax)+' km/h</b> en pointe. Elle consomme <b>'+fmt(consOf(res),1)+' '+cn+'</b> en usage mixte ('+lvl+')'+(ev2?'.':', soit <b>'+fmt(res.co2)+' g de CO₂ par km</b>.')+(S.acMode!=='off'?' Clim comprise.':'')+(envText()?' Conditions : '+envText()+'.':'');
+  renderHero(k,res,cn,ev2);
+  readColors();drawConsChart();
+}
+function renderHero(k,res,cn,ev2){
+  const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+  set('hk-ch',fmt(k.sysCh));set('hk-ch-sub',fmt(k.sysCh/1.35962)+' kW');
+  set('hk-T',fmt(k.sysT));set('hk-T-sub',V.pt==='ice'?'moteur thermique':'groupe complet');
+  set('hk-100',k.t100==null?'—':fmt(k.t100,1));set('hk-100-sub','0 à Vmax : '+(k.t0v==null?'—':fmt(k.t0v,0)+' s'));
+  set('hk-vmax',fmt(k.vmax));set('hk-vmax-sub','à 2 s : '+fmt(k.t2)+' km/h');
+  set('hk-cons',fmt(consOf(res),consOf(res)<10?2:1));set('hk-cons-u',cn);set('hk-cons-sub',S.cyc==='wltp'?'WLTP approché':'NEDC');
+  set('hk-co2',fmt(res.co2));set('hk-co2-sub',ev2?'à l\'échappement':'essence');
+  const mt=$('massTiles');
+  if(mt){
+    const mp=modeP(S.acMode),mk=(dm)=>evalCfg(mp,Object.assign({},V,{m:Math.max(300,V.m+dm)}),{cycle:true,nedc:true}).k,up=mk(100),dn=mk(-100);
+    const d=(x,y,dd,u,inv)=>{if(x==null||y==null)return'—';const z=x-y;return(z>=0?'+':'−')+fmt(Math.abs(z),dd)+' '+u;};
+    const cc=o=>consOf(o[S.cyc]);
+    const t=(lab,a1,a2)=>'<div class="tile"><div class="lab">'+lab+'</div><div class="val" style="font-size:26px">'+a1+'</div><div class="unit">pour +100 kg</div><div class="sub">'+a2+' pour −100 kg</div></div>';
+    mt.innerHTML=t('0 à 100 km/h',d(up.t100,k.t100,1,'s'),d(dn.t100,k.t100,1,'s'))
+      +t('Vitesse max',d(up.vmax,k.vmax,0,'km/h'),d(dn.vmax,k.vmax,0,'km/h'))
+      +t('Consommation '+(ev2?'kWh/100':'L/100'),d(cc(up),consOf(res),2,ev2?'kWh':'L'),d(cc(dn),consOf(res),2,ev2?'kWh':'L'))
+      +t('CO₂',d(up[S.cyc].co2,res.co2,0,'g/km'),d(dn[S.cyc].co2,res.co2,0,'g/km'));
+  }
+  const bar=$('cfgbar');
+  if(bar){
+    const pt={ice:'Thermique',mhev:'Hybride 48 V',ev:'Électrique'}[V.pt]||'';
+    const c=[];
+    if(V.pt!=='ev'){c.push(S.n+' cyl. · '+fmt(S.disp)+' cm³');if(S.boost>0)c.push('Turbo');if(S.vvt>0)c.push('VVT');}
+    c.push(pt);c.push(fmt(V.m)+' kg');if(S.acMode!=='off')c.push('Clim '+(S.acMode==='max'?'à fond':'normale'));
+    bar.innerHTML=c.map(x=>'<span class="chip">'+x+'</span>').join('');
+  }
+}
+function drawConsChart(){
+  if(!EK_OFF)return;
+  const E=S.acMode==='off'?EK_OFF:EK_ON,res=E.k[S.cyc],v=res.v,ev=V.pt==='ev',n=v.length-1,step=Math.max(1,Math.round(n/300)),sp=[],s2=[];
+  for(let i=0;i<=n;i+=step){sp.push([i,v[i]]);if(i<res.s2.length)s2.push([i,res.s2[i]]);}
+  const maxS2=Math.max(...Array.from(res.s2),1),minS2=ev?Math.min(...Array.from(res.s2),0):0;
+  plotXY('cvCons',{h:240,xmax:n,xlab:'min',xfmt:q=>fmt(q/60,0),xticks:Array.from({length:Math.floor(n/300)+1},(_,i)=>i*300),axes:[{lab:'km/h',col:'accent',max:Math.max(...v)},{lab:ev?'kW':'tr/min',col:'heat',max:maxS2}],
+    series:[{pts:s2.map(p=>[p[0],Math.max(p[1],0)]),col:'heat',axis:1,alpha:0.55,lw:1.1},{pts:sp,col:'accent',axis:0,lw:2}],
+    vlines:res.phases.slice(1).map(p=>({x:p.t0})).concat([]),});
+}
+
+/* ---------- impact de la climatisation ---------- */
+function updateAC(){
+  if(!EK_ON||!SIM_ON)return;
+  const onMode=S.acMode==='off'?'max':S.acMode,offP=modeP('off'),onP=modeP(onMode);
+  const gross=acPower(Object.assign({},onP,{acCut:false}),S.rpm,0),pOp=SIM_OFF.kW;
+  const share=pOp>0.5?gross.t/pOp*100:null,modeTxt=onMode==='max'?'à fond':'en mode normal';
+  $('h-ac').textContent='Impact de la climatisation'+(S.acMode==='off'?' (simulation : à fond)':'');
+  const ev=V.pt==='ev';
+  $('aclead').innerHTML=(ev?'<p>Dans une voiture électrique, la clim est un compresseur électrique (et un chauffage de l\'habitacle) alimenté par la batterie : il ne retire pas de couple au moteur mais augmente la consommation et réduit l\'autonomie.</p>':'<p>Le compresseur de clim est entraîné par une courroie sur le vilebrequin. Quand son embrayage s\'enclenche, il freine le moteur : cette puissance n\'arrive plus aux roues. Les ventilateurs et le pulseur d\'air tirent en plus sur l\'alternateur, donc sur le moteur.</p>')
+    +'<p>À <b>'+S.tAir+' °C</b>, clim <b>'+modeTxt+'</b>'+(ev?'':', à '+fmt(S.rpm)+' tr/min')+' : le compresseur prélève <b>'+fmt(gross.c,1)+' kW</b>, les ventilateurs <b>'+fmt(gross.f,1)+' kW</b>, soit <b>'+fmt(gross.t,1)+' kW</b> ('+fmt(gross.t*1.35962,1)+' ch'+(ev?'':', '+fmt(gross.t*1000/(S.rpm*Math.PI/30),1)+' N·m')+')'+(share==null||ev?'':', '+fmt(share,1)+' % de la puissance du moteur à ce point')+'.</p>'
+    +(S.tAir<26?'<p>Il fait doux : l\'impact est modeste. Monte la température extérieure (onglet Clim ou Milieu) pour voir un cas de forte chaleur.</p>':'')
+    +(S.acCut&&!ev?'<p>Le compresseur est supposé coupé à pleine charge : les accélérations ne changent pas, mais la puissance et la conso à charge partielle si.</p>':'');
+  const lim=CURVE_OFF.lim,sOff=EK_OFF.k,sOn=EK_ON.k,cn=ev?'kWh/100 km':'L/100 km',cv=(r)=>ev?r.kwh100:r.L100;
+  const rows=[
+    ['Puissance max',sOff.sysCh,sOn.sysCh,'ch',0],['Couple max',sOff.sysT,sOn.sysT,'N·m',0],
+    ['Puissance à '+fmt(S.rpm)+' tr/min, papillon '+S.thr+' %',SIM_OFF.ch,SIM_ON.ch,'ch',1],['Couple au même point',SIM_OFF.T,SIM_ON.T,'N·m',1],
+    ['Rendement frein au même point',Math.max(SIM_OFF.etaB*100,0),Math.max(SIM_ON.etaB*100,0),'%',1],
+    ['Vitesse max',sOff.vmax,sOn.vmax,'km/h',0],['Vitesse à 2 s',sOff.t2,sOn.t2,'km/h',0],['Vitesse à 10 s',sOff.t10,sOn.t10,'km/h',0],
+    ['0 à 100 km/h',sOff.t100,sOn.t100,'s',1],['0 à Vmax (99 %)',sOff.t0v,sOn.t0v,'s',1],['400 m D.A.',sOff.d400,sOn.d400,'s',1],['80-120 km/h, dernier rapport',sOff.el,sOn.el,'s',1],
+    ['Conso stabilisée à 90 km/h',cv(sOff.c90),cv(sOn.c90),cn,2],['Conso stabilisée à 120 km/h',cv(sOff.c120),cv(sOn.c120),cn,2],
+    ['Conso '+(S.cyc==='wltp'?'WLTP approché':'NEDC'),cv(sOff[S.cyc]),cv(sOn[S.cyc]),cn,2]];
+  if(!ev)rows.push(['CO₂ '+(S.cyc==='wltp'?'WLTP approché':'NEDC'),sOff[S.cyc].co2,sOn[S.cyc].co2,'g/km',0]);
+  const cell=(a,d)=>a==null||isNaN(a)?'—':fmt(a,d);
+  $('actable').innerHTML='<thead><tr><th>Indicateur</th><th>Sans clim</th><th>Avec clim</th><th>Écart</th></tr></thead><tbody>'+rows.map(rw=>{
+    const a=rw[1],b=rw[2],d=rw[4];let diff='—';
+    if(a!=null&&b!=null&&!isNaN(a)&&!isNaN(b)){const dd=b-a,pc=a?dd/a*100:0;diff=Math.abs(dd)<Math.pow(10,-d)/2?'0':(dd>0?'+':'−')+fmt(Math.abs(dd),d)+' <small>('+(pc>0?'+':'−')+fmt(Math.abs(pc),1)+' %)</small>';}
+    return'<tr><th scope="row">'+rw[0]+' <small>'+rw[3]+'</small></th><td>'+cell(a,d)+'</td><td>'+cell(b,d)+'</td><td class="delta">'+diff+'</td></tr>';
+  }).join('')+'</tbody>';
+  $('acnote').textContent='Mesuré à pleine charge pour les accélérations, au point de fonctionnement réglé pour la puissance et le couple instantanés. Les conso sont celles d\'une vitesse stabilisée ou du cycle choisi, dans les conditions du réglage Milieu.';
+  $('acderived').innerHTML=[['Compresseur',fmt(gross.c,1)+' kW'],['Ventilateurs et pulseur',fmt(gross.f,1)+' kW'],['Total au vilebrequin',fmt(gross.t,1)+' kW'],
+    ['Couple prélevé',fmt(gross.t*1000/(S.rpm*Math.PI/30),1)+' N·m'],['Part de la puissance',share==null?'—':fmt(share,1)+' %']].map(r2=>'<dt>'+r2[0]+'</dt><dd>'+r2[1]+'</dd>').join('');
+  drawAC();
+}
+function drawAC(){
+  if(!CURVE_OFF)return;
+  const{x,w,h}=fit($('cvAC'),220),lim=CURVE_OFF.lim,onMode=S.acMode==='off'?'max':S.acMode,onP=Object.assign({},S,{acMode:onMode,acCut:false});
+  const pts=CURVE_OFF.pts.filter(p=>p.rpm<=lim).map(p=>{const t=acPower(onP,p.rpm,0).t,loss=t*1.35962;return{rpm:p.rpm,loss,pct:p.ch>1?loss/p.ch*100:0};});
+  if(pts.length<2)return;
+  const rmax=pts[pts.length-1].rpm,Lm=niceTicks(Math.max(...pts.map(p=>p.loss),1)*1.1,4),Pm=niceTicks(Math.max(...pts.map(p=>p.pct),1)*1.1,4);
+  const L=34,R=34,T=14,B=28,pw=w-L-R,ph=h-T-B,X=q=>L+(q-800)/(rmax-800)*pw,YL=q=>T+ph-q/Lm.top*ph,YP=q=>T+ph-q/Pm.top*ph;
+  x.font=MONO;x.lineWidth=1;
+  Lm.arr.forEach(q=>{x.strokeStyle=K['line'];x.beginPath();x.moveTo(L,YL(q));x.lineTo(L+pw,YL(q));x.stroke();x.fillStyle=K['heat'];x.textAlign='right';x.textBaseline='middle';x.fillText(fmt(q,q%1?1:0),L-5,YL(q));});
+  Pm.arr.forEach(q=>{x.fillStyle=K['accent'];x.textAlign='left';x.textBaseline='middle';x.fillText(fmt(q),L+pw+5,YP(q));});
+  const xt=niceTicks(rmax,5);x.fillStyle=K['muted'];x.textBaseline='top';
+  xt.arr.forEach(q=>{if(q>=800&&q<=rmax){x.textAlign='center';x.fillText(fmt(q/1000)+'k',X(q),T+ph+6);}});
+  x.textAlign='left';x.fillStyle=K['heat'];x.fillText('ch prélevés',2,2);x.textAlign='right';x.fillStyle=K['accent'];x.fillText('% de la puissance',w-2,2);
+  x.textAlign='right';x.fillStyle=K['muted'];x.fillText('tr/min',L+pw,T+ph+16);
+  const line=(key,Y,col)=>{x.strokeStyle=K[col];x.lineWidth=2.2;x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>{i?x.lineTo(X(p.rpm),Y(p[key])):x.moveTo(X(p.rpm),Y(p[key]));});x.stroke();};
+  line('loss',YL,'heat');line('pct',YP,'accent');
+  if(S.rpm>=800&&S.rpm<=rmax){x.strokeStyle=K['ink'];x.globalAlpha=0.5;x.beginPath();x.moveTo(X(S.rpm),T);x.lineTo(X(S.rpm),T+ph);x.stroke();x.globalAlpha=1;}
+}
+
+/* ---------- comparaison A / B ---------- */
+let REF=null;
+const snap=(label)=>({label,S:Object.assign({},S),V:Object.assign({},V)});
+function buildCfg(key){
+  const c=COMBOS[key],p=PRESETS[c.e],s=Object.assign({},S,ENG_DEF,p);delete s.label;
+  s.disp=Math.round(Math.PI/4*p.bore*p.bore*p.stroke*p.n/1000);s.ratio=+(p.bore/p.stroke).toFixed(2);derive(s);
+  const v=Object.assign({},V,VDEF,VPRESETS[c.v]);delete v.label;
+  return{label:c.label,S:s,V:v};
+}
+const CMP_ROWS=[
+  ['Puissance moteur thermique max','ch','ch',0,1,'ice'],['Couple moteur thermique max','T','N·m',0,1,'ice'],
+  ['Puissance du groupe motopropulseur','sysCh','ch',0,1],['Couple du groupe motopropulseur','sysT','N·m',0,1],
+  ['Rendement frein max (thermique)','eta','%',1,1,'ice'],['Masse totale','mass','kg',0,-1],['Poids/puissance','wkg','kg/ch',1,-1],
+  ['Vitesse max','vmax','km/h',0,1],['Vitesse à 2 s','t2','km/h',0,1],['Vitesse à 10 s','t10','km/h',0,1],
+  ['0 à 100 km/h','t100','s',1,-1],['0 à Vmax (99 %)','t0v','s',1,-1],['400 m D.A.','d400','s',1,-1],['1000 m D.A.','d1000','s',1,-1],['80-120 km/h, dernier rapport','el','s',1,-1],
+  ['Conso WLTP approché, carburant',k=>k.wltp.L100,'L/100 km',2,-1,'fuel'],['Conso WLTP approché, électricité',k=>k.wltp.kwh100,'kWh/100 km',1,-1,'elec'],
+  ['Énergie équivalente WLTP',k=>k.wltp.eq,'L/100 km éq.',2,-1,'elec'],['CO₂ WLTP approché',k=>k.wltp.co2,'g/km',0,-1],
+  ['Conso à 90 km/h (équiv.)',k=>k.c90.eq,'L/100 km',2,-1],['Conso à 120 km/h (équiv.)',k=>k.c120.eq,'L/100 km',2,-1]];
+function renderCmp(){
+  if(!REF)return;
+  const A=evalCfg(REF.S,REF.V,{cycle:true}),B=evalCfg(S,V,{cycle:true}),ka=A.k,kb=B.k;
+  const anyEv=REF.V.pt==='ev'||V.pt==='ev',anyHyb=REF.V.pt!=='ice'||V.pt!=='ice',allEv=REF.V.pt==='ev'&&V.pt==='ev';
+  $('refInfo').textContent='A : '+REF.label+'. B : réglages actuels. Les deux sont évalués avec leurs propres conditions et leur propre clim.';
+  const val=(r,k)=>typeof r[1]==='function'?r[1](k):k[r[1]];
+  const rows=CMP_ROWS.filter(r=>{
+    if(r[5]==='ice'&&allEv)return false;
+    if(r[1]==='sysCh'||r[1]==='sysT')return anyHyb;
+    if(r[5]==='elec')return anyEv;
+    if(r[5]==='fuel')return !allEv;
+    return true;
+  });
+  const cell=(a,d)=>a==null||isNaN(a)?'—':fmt(a,d);
+  $('cmpTable').innerHTML='<thead><tr><th>Indicateur</th><th>A</th><th>B</th><th>Écart B − A</th></tr></thead><tbody>'+rows.map(r=>{
+    const a=val(r,ka),b=val(r,kb),d=r[3];let dif='—',cls='';
+    if(a!=null&&b!=null&&!isNaN(a)&&!isNaN(b)){
+      const dd=b-a,pc=a?dd/a*100:0;
+      if(Math.abs(dd)<Math.pow(10,-d)/2)dif='=';
+      else{dif=(dd>0?'+':'−')+fmt(Math.abs(dd),d)+' <small>('+(pc>0?'+':'−')+fmt(Math.abs(pc),1)+' %)</small>';cls=r[4]*dd>0?'good':'bad';}
+    }
+    return'<tr><th scope="row">'+r[0]+' <small>'+r[2]+'</small></th><td>'+cell(a,d)+'</td><td>'+cell(b,d)+'</td><td class="dd '+cls+'">'+dif+'</td></tr>';
+  }).join('')+'</tbody>';
+  $('cmpNote').textContent='Vert : B fait mieux que A. Orange : B fait moins bien. Pour isoler l\'effet d\'un réglage (altitude, clim, VVT, rapport de pont…), fige la configuration actuelle en A puis change ce réglage.';
+  readColors();drawCmp(A,B);
+}
+function drawCmp(A,B){
+  const da=A.D,db=B.D,xmax=Math.max(da.xmax,db.xmax);
+  const mx=(d,k)=>Math.max(...d.pts.map(p=>p[k]),1);
+  plotXY('cvCmpE',{h:230,xmax:xmax,xlab:'tr/min',xfmt:q=>fmt(q/1000,0)+'k',axes:[{lab:'N·m',col:'accent',max:Math.max(mx(da,'T'),mx(db,'T'))},{lab:'ch',col:'heat',max:Math.max(mx(da,'ch'),mx(db,'ch'))}],
+    series:[{pts:da.pts.map(p=>[p.rpm,p.T]),col:'accent',axis:0,dash:[5,4],alpha:0.6,lw:1.6},{pts:da.pts.map(p=>[p.rpm,p.ch]),col:'heat',axis:1,dash:[5,4],alpha:0.6,lw:1.6},
+      {pts:db.pts.map(p=>[p.rpm,p.T]),col:'accent',axis:0},{pts:db.pts.map(p=>[p.rpm,p.ch]),col:'heat',axis:1}]});
+  const sp=(R,tmax)=>{const a=[],st=Math.max(1,Math.round(tmax/200/R.dt));for(let i=0;i<R.vs.length&&i*R.dt<=tmax;i+=st)a.push([i*R.dt,R.vs[i]*3.6]);return a;};
+  const tmax=Math.min(40,Math.max(6,Math.max(A.R.t99||10,B.R.t99||10)*1.05));
+  plotXY('cvCmpV',{h:230,xmax:tmax,xlab:'s',axes:[{lab:'km/h',col:'accent',max:Math.max(A.R.vAtT(tmax),B.R.vAtT(tmax),20)}],
+    series:[{pts:sp(A.R,tmax),col:'muted',axis:0,dash:[5,4],lw:1.8},{pts:sp(B.R,tmax),col:'accent',axis:0}]});
+}
+function refOptions(){
+  const sel=$('refSel');sel.innerHTML='';
+  const o0=document.createElement('option');o0.value='snap';o0.textContent=REF?'Configuration figée : '+REF.label:'Configuration figée';sel.appendChild(o0);
+  Object.keys(COMBOS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=COMBOS[k].label;sel.appendChild(o);});
+  sel.value=REF&&REF.key?REF.key:'snap';
+}
+function freezeRef(label){REF=snap(label||'configuration figée');refOptions();renderCmp();}
+
+/* ---------- export ---------- */
+const CFG_S=['n','disp','ratio','cr','ron','rT','vpm','rpm','thr','boost','spool','vvt','ivc','acMode','acCut','tAir','alt'];
+function reportRows(){
+  const E=S.acMode==='off'?EK_OFF:EK_ON,k=E.k,R=E.R,w=k[S.cyc],ev=V.pt==='ev',rows=[];
+  const add=(sec,lab,v,u)=>rows.push([sec,lab,v,u||'']);
+  const ptName={ice:'Thermique',mhev:'Hybride léger 48 V',ev:'Électrique'}[V.pt];
+  add('Moteur','Cylindres',S.n);add('Moteur','Cylindrée totale',Math.round(S.disp),'cm³');add('Moteur','Alésage × course',fmt(S.bore,1)+' × '+fmt(S.stroke,1),'mm');
+  add('Moteur','Rapport volumétrique',+S.cr.toFixed(1),': 1');add('Moteur','Carburant',S.ron,'RON');add('Moteur','Régime d\'accord',Math.round(S.rT),'tr/min');
+  add('Moteur','Suralimentation',S.boost>0?+S.boost.toFixed(2):0,'bar');add('Moteur','VVT',Math.round(S.vvt*100),'%');add('Moteur','Fermeture admission',S.ivc,'° après PMB');
+  add('Véhicule','Motorisation',ptName);add('Véhicule','Masse (avec conducteur)',V.m,'kg');add('Véhicule','SCx',+V.scx.toFixed(2),'m²');add('Véhicule','Transmission',V.lay);
+  add('Véhicule','Rapports',V.ng);add('Véhicule','Rapport de pont',+V.fd.toFixed(2));
+  if(V.pt!=='ice'){add('Véhicule','Moteur électrique',V.mP,'kW');add('Véhicule','Couple moteur électrique',V.mT,'N·m');add('Véhicule','Batterie',V.mE,'kWh');}
+  add('Conditions','Altitude',S.alt,'m');add('Conditions','Température',S.tAir,'°C');add('Conditions','Pente',V.slope,'%');add('Conditions','Vent de face',V.wind,'km/h');add('Conditions','Charge',V.load,'kg');add('Conditions','Remorque',V.trailer?'oui':'non');
+  add('Conditions','Climatisation',{off:'éteinte',norm:'normale',max:'à fond'}[S.acMode]);
+  if(!ev){add('Moteur','Puissance max',Math.round(k.ch),'ch');add('Moteur','Couple max',Math.round(k.T),'N·m');add('Moteur','Rendement frein max',+k.eta.toFixed(1),'%');}
+  if(V.pt!=='ice'){add('Groupe motopropulseur','Puissance max',Math.round(k.sysCh),'ch');add('Groupe motopropulseur','Couple max',Math.round(k.sysT),'N·m');}
+  add('Performances','Vitesse max',Math.round(k.vmax),'km/h');add('Performances','Vitesse à 2 s',Math.round(k.t2),'km/h');add('Performances','Vitesse à 10 s',Math.round(k.t10),'km/h');
+  const r1=q=>q==null?'—':+q.toFixed(1);
+  add('Performances','0 à 100 km/h',r1(k.t100),'s');add('Performances','0 à Vmax',r1(k.t0v),'s');add('Performances','400 m D.A.',r1(k.d400),'s');add('Performances','1000 m D.A.',r1(k.d1000),'s');
+  add('Consommation',(S.cyc==='wltp'?'WLTP approché':'NEDC')+(ev?' (électricité)':''),+consOf(w).toFixed(2),ev?'kWh/100 km':'L/100 km');
+  if(!ev)add('Consommation','CO₂',Math.round(w.co2),'g/km');
+  add('Consommation','À 90 km/h',+consOf(k.c90).toFixed(2),ev?'kWh/100 km':'L/100 km');add('Consommation','À 120 km/h',+consOf(k.c120).toFixed(2),ev?'kWh/100 km':'L/100 km');
+  return rows;
+}
+function cfgCode(){
+  const o={S:{},V:{}};CFG_S.forEach(k=>o.S[k]=S[k]);VEH_KEYS.forEach(k=>o.V[k]=V[k]);
+  return 'SM1.'+btoa(JSON.stringify(o));
+}
+let expMode='fiche';
+function renderExport(){
+  const ta=$('expText');if(!ta||document.activeElement===ta&&expMode==='cfg')return;
+  $('expApply').hidden=expMode!=='cfg';
+  if(!EK_OFF)return;
+  if(expMode==='cfg'){ta.value=cfgCode();return;}
+  const rows=reportRows();
+  if(expMode==='tsv'){ta.value='Section\tIndicateur\tValeur\tUnité\n'+rows.map(r=>[r[0],r[1],typeof r[2]==='number'?String(r[2]).replace('.',','):r[2],r[3]].join('\t')).join('\n');return;}
+  let out='SIMULATEUR MOTEUR — fiche de configuration\n',cur='';
+  rows.forEach(r=>{if(r[0]!==cur){cur=r[0];out+='\n'+cur.toUpperCase()+'\n';}out+='  '+r[1]+' : '+(typeof r[2]==='number'?fmt(r[2],r[2]%1?2:0):r[2])+(r[3]?' '+r[3]:'')+'\n';});
+  out+='\nModèle indicatif : valeurs à recaler sur des mesures réelles. Cycle WLTP reconstitué, non officiel.\n';
+  ta.value=out;
+}
+function applyCfg(text){
+  let t=text.trim();if(t.startsWith('SM1.'))t=atob(t.slice(4));
+  const o=JSON.parse(t);if(!o||!o.S||!o.V)throw new Error('format');
+  const rng=(id,v)=>{const el=$(id);return el&&el.min!=null&&el.min!==''?clamp(v,+el.min,+el.max):v;};
+  CFG_S.forEach(k=>{if(o.S[k]!==undefined){const v=o.S[k];S[k]=typeof v==='number'?(k==='vvt'?clamp(v,0,1):rng(k,v)):v;}});
+  VEH_KEYS.forEach(k=>{if(o.V[k]!==undefined)V[k]=o.V[k];});
+  derive(S);
+  presetSel.value='custom';vpresetSel.value='custom';comboSel.value='custom';
+  setPtRanges();syncInputs();syncVeh();recompute();
+}
+
+/* ---------- commandes moteur ---------- */
+const PRESETS={
+  clio16:{label:'Type Clio 1,6 16V, 4 cylindres (≈110 ch)',n:4,bore:79.5,stroke:80.5,cr:9.8,ron:95,rT:5000,vpm:20,rpm:6000,thr:100},
+  clio12:{label:'Type Clio 1,2 16V, 4 cylindres (≈75 ch)',n:4,bore:69,stroke:76.8,cr:9.8,ron:95,rT:4500,vpm:20,rpm:5250,thr:100},
+  clioSCe:{label:'Type Clio 1,0 atmo, 3 cylindres (≈75 ch)',n:3,bore:72.2,stroke:81.3,cr:11,ron:95,rT:5300,vpm:20,rpm:6300,thr:100},
+  clioRS:{label:'Type Clio RS 2,0 atmo, 4 cylindres (≈175 ch)',n:4,bore:82.7,stroke:93,cr:11.2,ron:98,rT:6800,vpm:23,rpm:7200,thr:100},
+  tce100:{label:'Type Clio TCe 100, 3 cylindres turbo (≈100 ch)',n:3,bore:72.2,stroke:81.3,cr:9.5,ron:95,rT:4200,vpm:20,boost:0.72,spool:1500,vvt:0.6,rpm:5000,thr:100},
+  tce140:{label:'Type 1,3 TCe 140, 4 cylindres turbo (≈140 ch)',n:4,bore:72.2,stroke:81.3,cr:10.5,ron:95,rT:4000,vpm:20,boost:0.82,spool:1100,vvt:0.8,rpm:4800,thr:100},
+  turbo18:{label:'Type 1,8 turbo sportive, 4 cylindres (≈280 ch)',n:4,bore:79.7,stroke:90,cr:9.5,ron:98,rT:5200,vpm:21,boost:1.25,spool:1600,vvt:0.7,rpm:5800,thr:100},
+  twin:{label:'Bicylindre 650 cm³ (roadster)',n:2,bore:83,stroke:60,cr:11.5,ron:95,rT:6500,vpm:20,rpm:6500,thr:100},
+  triple:{label:'Tricylindre 765 cm³ (sportive)',n:3,bore:78,stroke:53.4,cr:13.2,ron:98,rT:9500,vpm:21,rpm:9000,thr:100},
+  four:{label:'4 cylindres 600 cm³ (supersport)',n:4,bore:67,stroke:42.5,cr:13.4,ron:98,rT:11500,vpm:21,rpm:11000,thr:100},
+  city:{label:'Tricylindre 1,0 L (citadine)',n:3,bore:74,stroke:77.1,cr:10.5,ron:95,rT:4500,vpm:20,rpm:3500,thr:100}
+};
+const ENG_DEF={boost:0,spool:1800,vvt:0,ivc:40};
+const FIRING={2:'1-2, allumage tous les 360°',3:'1-2-3, allumage tous les 240°',4:'1-3-4-2, allumage tous les 180°'};
+const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S={n:2,disp:650,ratio:1.38,bore:83,stroke:60,cr:11.5,ron:95,rT:6500,vpm:20,rpm:6500,thr:100,boost:0,spool:1800,vvt:0,ivc:40,acMode:'off',acCut:false,tAir:20,alt:0,theta:30,playing:!reduce,speed:0.4,gkind:'none',gval:100,gvar:'disp',cyc:'wltp'};
+function derive(P){const vd=P.disp*1000/P.n,s=Math.cbrt(4*vd/(Math.PI*P.ratio*P.ratio));P.stroke=s;P.bore=P.ratio*s;return P;}
+derive(S);
+
+
+const presetSel=$('preset'),vpresetSel=$('vpreset'),comboSel=$('combo');
+Object.keys(PRESETS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=PRESETS[k].label;presetSel.appendChild(o);});
+const oc=document.createElement('option');oc.value='custom';oc.textContent='Réglage personnalisé';presetSel.appendChild(oc);
+Object.keys(VPRESETS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=VPRESETS[k].label;vpresetSel.appendChild(o);});
+const voc=document.createElement('option');voc.value='custom';voc.textContent='Réglage personnalisé';vpresetSel.appendChild(voc);
+
+const EIDS=['disp','ratio','cr','rT','vpm','rpm','thr','boost','spool','ivc','alt','tAir'];
+const VIDS={vm:'m',vscx:'scx',vcrr:'crr',vmu:'mu',vrw:'rw',vg1:'g1',vgn:'gn',vfd:'fd',vts:'ts',mP:'mP',mT:'mT',mE:'mE',slope:'slope',wind:'wind',load:'load'};
+function setPtRanges(){
+  const ev=V.pt==='ev',set=(id,min,max,step)=>{const e=$(id);e.min=min;e.max=max;e.step=step;};
+  if(ev){set('mP',30,300,5);set('mT',100,700,5);set('mE',10,120,1);}else{set('mP',4,25,1);set('mT',20,80,1);set('mE',0.2,2,0.05);}
+  $('motorBox').hidden=V.pt==='ice';$('motorBox').style.display=V.pt==='ice'?'none':'flex';
+  $('evnote').hidden=!ev;
+  document.querySelectorAll('#seg-pt button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.pt===V.pt)));
+}
+function syncInputs(){
+  EIDS.forEach(id=>{$(id).value=S[id];});
+  $('vvt').value=Math.round(S.vvt*100);$('act').value=S.tAir;
+  $('ron').value=S.ron;$('gkind').value=S.gkind;$('gval').value=S.gval;$('gvar').value=S.gvar;
+  $('gval').disabled=$('gsolve').disabled=S.gkind==='none';
+  $('accut').checked=S.acCut;$('trailer').checked=!!V.trailer;
+  document.querySelectorAll('.acseg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ac===S.acMode)));
+  document.querySelectorAll('#seg-n button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.n===S.n)));
+  document.querySelectorAll('#seg-cyc button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cyc===S.cyc)));
+  syncSimple();
+}
+function syncSimple(){
+  $('s-n').value=String(S.n);$('s-disp').value=S.disp;$('o-s-disp').textContent=fmt(S.disp)+' cm³';
+  $('s-turbo').value=S.boost<=0.05?'none':S.boost<0.95?'light':'strong';
+  $('s-pt').value=V.pt;$('s-m').value=V.m;$('o-s-m').textContent=fmt(V.m)+' kg';$('s-ac').value=S.acMode;
+  const k=Object.keys(SCN).find(q=>{const e=SCN[q];return e.alt===S.alt&&e.tAir===S.tAir&&e.slope===V.slope&&e.wind===V.wind&&e.load===V.load&&!!e.trailer===!!V.trailer;});
+  $('s-env').value=k||'custom';
+}
+function syncVeh(){
+  Object.keys(VIDS).forEach(id=>{$(id).value=V[VIDS[id]];});
+  $('mR').value=Math.round(V.mR*100);$('vng').value=V.ng;$('trailer').checked=!!V.trailer;
+  document.querySelectorAll('#seg-lay button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lay===V.lay)));
+  setPtRanges();
+  Object.keys(VIDS).forEach(id=>{$(id).value=V[VIDS[id]];});
+  syncSimple();
+}
+function applyPreset(k){
+  const p=PRESETS[k];Object.assign(S,ENG_DEF,p);delete S.label;
+  S.disp=Math.round(Math.PI/4*p.bore*p.bore*p.stroke*p.n/1000);S.ratio=+(p.bore/p.stroke).toFixed(2);derive(S);
+  syncInputs();recompute();
+}
+function applyVPreset(k){const p=Object.assign({},VDEF,VPRESETS[k]);delete p.label;Object.assign(V,p);syncVeh();recompute();}
+presetSel.addEventListener('change',()=>{if(presetSel.value!=='custom')applyPreset(presetSel.value);});
+vpresetSel.addEventListener('change',()=>{if(vpresetSel.value!=='custom')applyVPreset(vpresetSel.value);});
+const scnSel=$('scn');
+const SCN={std:{alt:0,tAir:20,slope:0,wind:0,load:0,trailer:false},mont:{alt:2000,tAir:12,slope:6,wind:0,load:0,trailer:false},hot:{alt:0,tAir:35,slope:0,wind:20,load:200,trailer:false},
+  cold:{alt:0,tAir:-5,slope:0,wind:0,load:0,trailer:false},tow:{alt:0,tAir:20,slope:5,wind:0,load:0,trailer:true}};
+function applyScn(k){const c=SCN[k];if(!c)return;scnSel.value=k;S.alt=c.alt;S.tAir=c.tAir;Object.assign(V,{slope:c.slope,wind:c.wind,load:c.load,trailer:c.trailer});syncInputs();syncVeh();recompute();}
+scnSel.addEventListener('change',()=>applyScn(scnSel.value));
+const ENV_IDS=new Set(['alt','tAir','act','slope','wind','load','trailer']);
+EIDS.forEach(id=>{
+  $(id).addEventListener('input',e=>{S[id]=parseFloat(e.target.value);if(id==='disp'||id==='ratio')derive(S);if(id==='tAir')$('act').value=S.tAir;if(id!=='rpm'&&id!=='thr'&&!ENV_IDS.has(id))presetSel.value='custom';if(ENV_IDS.has(id))scnSel.value='custom';recompute();});
+});
+$('vvt').addEventListener('input',e=>{S.vvt=parseFloat(e.target.value)/100;presetSel.value='custom';recompute();});
+$('act').addEventListener('input',e=>{S.tAir=parseFloat(e.target.value);$('tAir').value=S.tAir;scnSel.value='custom';recompute();});
+$('ron').addEventListener('change',e=>{S.ron=+e.target.value;presetSel.value='custom';recompute();});
+document.querySelectorAll('#seg-n button').forEach(b=>b.addEventListener('click',()=>{S.n=+b.dataset.n;derive(S);presetSel.value='custom';syncInputs();recompute();}));
+$('gkind').addEventListener('change',e=>{
+  S.gkind=e.target.value;$('gmsg').textContent='';
+  if(S.gkind!=='none'){
+    const v=KINDS[S.gkind].get(S,V);
+    S.gval=S.gkind==='eta'?Math.round(v*2)/2:KINDS[S.gkind].step<1?Math.round(v*10)/10:Math.round(v);
+    $('gval').step=String(KINDS[S.gkind].step);
+  }
+  syncInputs();recompute();
+});
+$('gval').addEventListener('input',e=>{const v=parseFloat(e.target.value);S.gval=v>0?v:0;recompute();});
+$('gvar').addEventListener('change',e=>{S.gvar=e.target.value;$('gmsg').textContent='';});
+$('gsolve').addEventListener('click',runGoal);
+
+/* ---------- commandes véhicule ---------- */
+Object.keys(VIDS).forEach(id=>$(id).addEventListener('input',e=>{
+  V[VIDS[id]]=parseFloat(e.target.value);
+  if(['slope','wind','load'].includes(id))scnSel.value='custom';else vpresetSel.value='custom';
+  recompute();
+}));
+$('mR').addEventListener('input',e=>{V.mR=parseFloat(e.target.value)/100;vpresetSel.value='custom';recompute();});
+$('vng').addEventListener('change',e=>{V.ng=+e.target.value;vpresetSel.value='custom';recompute();});
+$('trailer').addEventListener('change',e=>{V.trailer=e.target.checked;scnSel.value='custom';recompute();});
+document.querySelectorAll('#seg-lay button').forEach(b=>b.addEventListener('click',()=>{V.lay=b.dataset.lay;vpresetSel.value='custom';syncVeh();recompute();}));
+const GEAR_ICE={ng:5,g1:3.73,gn:0.76,fd:4.2,ts:0.35},GEAR_EV={ng:1,g1:1,gn:1,fd:9.3,ts:0.2};
+function setPowertrain(pt){
+  const prev=V.pt;if(pt===prev)return;
+  V.pt=pt;
+  if(pt==='ev')Object.assign(V,GEAR_EV,{mP:100,mT:245,mE:52,mR:0.7,mW:11500});
+  else{if(prev==='ev')Object.assign(V,GEAR_ICE);if(pt==='mhev')Object.assign(V,{mP:10,mT:50,mE:0.5,mR:0.6,mW:14000});}
+  vpresetSel.value='custom';comboSel.value='custom';syncVeh();recompute();
+}
+document.querySelectorAll('#seg-pt button').forEach(b=>b.addEventListener('click',()=>setPowertrain(b.dataset.pt)));
+function showView(v){
+  document.querySelectorAll('#views button').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.view===v)));
+  document.querySelectorAll('.view').forEach(x=>{x.hidden=x.id!=='v-'+v;});
+  setTimeout(redrawAll,0);
+}
+document.querySelectorAll('#views button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+if(window.matchMedia&&window.matchMedia('(max-width:959px)').matches)document.querySelectorAll('.side details.sec.adv').forEach(d=>{d.open=false;});
+document.querySelectorAll('.acseg button').forEach(b=>b.addEventListener('click',()=>{S.acMode=b.dataset.ac;syncInputs();recompute();}));
+$('accut').addEventListener('change',e=>{S.acCut=e.target.checked;recompute();});
+document.querySelectorAll('#seg-cyc button').forEach(b=>b.addEventListener('click',()=>{S.cyc=b.dataset.cyc;syncInputs();if(EK_OFF){renderCons();updateAC();}}));
+
+/* ---------- exemples complets ---------- */
+const COMBOS={
+  clio16:{label:'Clio 1,6 16V, 4 cylindres (≈110 ch)',e:'clio16',v:'clio'},
+  clio12:{label:'Clio 1,2 16V, 4 cylindres (≈75 ch)',e:'clio12',v:'clio'},
+  clioSCe:{label:'Clio 1,0 atmo, 3 cylindres (≈75 ch)',e:'clioSCe',v:'clio'},
+  tce100:{label:'Clio TCe 100, 3 cylindres turbo (≈100 ch)',e:'tce100',v:'clio'},
+  clioRS:{label:'Clio RS 2,0 atmo, 4 cylindres (≈175 ch)',e:'clioRS',v:'clioRS'},
+  tce140:{label:'Compacte 1,3 TCe 140, turbo (≈140 ch)',e:'tce140',v:'compact'},
+  tce140mh:{label:'Compacte 1,3 TCe 140 + hybride léger 48 V',e:'tce140',v:'compactMH'},
+  hot280:{label:'Compacte sportive 1,8 turbo (≈280 ch)',e:'turbo18',v:'hot'},
+  evCity:{label:'Citadine électrique (100 kW)',e:'city',v:'evCity'},
+  evSport:{label:'Berline électrique sportive (220 kW)',e:'city',v:'evSport'},
+  city:{label:'Citadine 1,0 L, 3 cylindres',e:'city',v:'city'},
+  roadster:{label:'Roadster léger, 1,6 L 4 cylindres',e:'clio16',v:'roadster'},
+  sport:{label:'Berline sportive, 2,0 L 4 cylindres',e:'clioRS',v:'sport'}
+};
+Object.keys(COMBOS).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=COMBOS[k].label;comboSel.appendChild(o);});
+const coc=document.createElement('option');coc.value='custom';coc.textContent='Réglage personnalisé';comboSel.appendChild(coc);
+function applyCombo(k){const c=COMBOS[k];presetSel.value=c.e;applyPreset(c.e);vpresetSel.value=c.v;applyVPreset(c.v);comboSel.value=k;}
+comboSel.addEventListener('change',()=>{if(comboSel.value!=='custom')applyCombo(comboSel.value);});
+const CUSTOM_IDS=new Set(['preset','vpreset','disp','ratio','cr','rT','vpm','ron','boost','spool','vvt','ivc','vm','vscx','vcrr','vmu','vrw','vg1','vgn','vfd','vts','vng','mP','mT','mE','mR']);
+const markCustom=e=>{if(CUSTOM_IDS.has(e.target.id))comboSel.value='custom';};
+const formEl=document.querySelector('.side form');
+formEl.addEventListener('input',markCustom);formEl.addEventListener('change',markCustom);
+formEl.addEventListener('click',e=>{if(e.target.closest('#seg-n,#seg-lay')||e.target.id==='gsolve')comboSel.value='custom';});
+
+/* ---------- comparaison et export ---------- */
+$('refSel').addEventListener('change',e=>{
+  const k=e.target.value;if(k==='snap')return;
+  const c=buildCfg(k);REF={label:c.label,S:c.S,V:c.V,key:k};renderCmp();
+});
+$('refFreeze').addEventListener('click',()=>{REF=snap('configuration figée');refOptions();renderCmp();});
+$('seg-exp').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  expMode=b.dataset.exp;document.querySelectorAll('#seg-exp button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('expMsg').textContent='';renderExport();
+}));
+$('expCopy').addEventListener('click',()=>{
+  const ta=$('expText'),m=$('expMsg');
+  const fallback=()=>{try{ta.focus();ta.select();const ok=document.execCommand&&document.execCommand('copy');m.textContent=ok?'Copié.':'Texte sélectionné : copie-le avec Ctrl+C.';}catch(err){m.textContent='Texte sélectionné : copie-le avec Ctrl+C.';}};
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>{m.textContent='Copié.';},fallback);}else fallback();}catch(err){fallback();}
+});
+$('expApply').addEventListener('click',()=>{
+  try{applyCfg($('expText').value);$('expMsg').textContent='Configuration appliquée.';}catch(err){$('expMsg').textContent='Code illisible : colle un code de config complet (commençant par SM1.).';}
+});
+
+/* ---------- mode simplifié ---------- */
+const custom=()=>{presetSel.value='custom';comboSel.value='custom';};
+$('s-n').addEventListener('change',e=>{S.n=+e.target.value;derive(S);custom();syncInputs();recompute();});
+$('s-disp').addEventListener('input',e=>{S.disp=parseFloat(e.target.value);derive(S);custom();$('disp').value=S.disp;recompute();});
+$('s-turbo').addEventListener('change',e=>{
+  const v=e.target.value;
+  if(v==='none')Object.assign(S,{boost:0,vvt:0});
+  else{Object.assign(S,v==='light'?{boost:0.6,spool:1500,vvt:0.5}:{boost:1.2,spool:1700,vvt:0.7});S.cr=Math.min(S.cr,10);}
+  custom();syncInputs();recompute();
+});
+$('s-pt').addEventListener('change',e=>setPowertrain(e.target.value));
+$('s-m').addEventListener('input',e=>{V.m=parseFloat(e.target.value);vpresetSel.value='custom';comboSel.value='custom';$('vm').value=V.m;recompute();});
+$('s-ac').addEventListener('change',e=>{S.acMode=e.target.value;syncInputs();recompute();});
+$('s-env').addEventListener('change',e=>{if(e.target.value!=='custom')applyScn(e.target.value);});
+document.querySelectorAll('#seg-mode button').forEach(b=>b.addEventListener('click',()=>{
+  const simple=b.dataset.mode==='simple',w=$('wrap');
+  if(simple)w.classList.add('simple');else w.classList.remove('simple');
+  document.querySelectorAll('#seg-mode button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  if(simple)showView('synth');else setTimeout(redrawAll,0);
+}));
+
+/* ---------- lecture et animation ---------- */
+$('play').addEventListener('click',()=>{S.playing=!S.playing;$('play').textContent=S.playing?'Pause':'Lecture';});
+$('speed').addEventListener('input',e=>{S.speed=parseFloat(e.target.value);$('o-speed').textContent=fmt(S.speed,2).replace(/,?0$/,'')+' tr/s';});
+$('ang').addEventListener('input',e=>{S.theta=parseFloat(e.target.value);S.playing=false;$('play').textContent='Lecture';dirty=true;});
+if(reduce)$('play').textContent='Lecture';
+let last=0;
+function frame(t){
+  const dt=Math.min(0.05,(t-last)/1000||0);last=t;
+  if(S.playing){S.theta=(S.theta+S.speed*360*dt)%720;dirty=true;}
+  if(dirty&&SIM){
+    readColors();
+    $('ang').value=Math.floor(S.theta);$('o-ang').textContent=Math.floor(S.theta)+'°';
+    drawEngine();if($('cvCycle').clientWidth>0){drawCycle();drawPV();}dirty=false;
+  }
+  requestAnimationFrame(frame);
+}
+function redrawAll(){if(!SIM)return;readColors();drawCurves();drawVSpeed();drawVTrac();drawAC();if(EK_OFF){drawConsChart();renderCmp();}dirty=true;}
+window.addEventListener('resize',redrawAll);
+if('ResizeObserver' in window)new ResizeObserver(redrawAll).observe(document.querySelector('.wrap'));
+new MutationObserver(redrawAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redrawAll);
+
+applyCombo('clio16');
+clearTimeout(heavyT);heavy();
+REF=snap('Clio 1,6 de départ');refOptions();renderCmp();
+$('speed').dispatchEvent(new Event('input'));S.playing=!reduce;$('play').textContent=S.playing?'Pause':'Lecture';
+requestAnimationFrame(frame);
+
+})();
+</script>
+
+</body></html>

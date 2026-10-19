@@ -1,0 +1,775 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Contrôle des exigences</title>
+<style>
+/* Layout : panneau de saisie à gauche (collant), fiches de résultat à droite ; une seule colonne sur téléphone.
+   Palette reprise du guide : vert-bleu profond (marque), ambre (focus), rouge brique / ambre / bleu acier pour la gravité. */
+:root{
+  --bg:#F4F8F7; --surface:#FFFFFF; --surface-2:#E8F1F0; --ink:#14262A; --ink-2:#4B6166; --line:#CFDFDD;
+  --brand:#1F7A74; --brand-strong:#0F3D3E; --on-brand:#FFFFFF; --focus:#C98512;
+  --err:#A93826; --err-bg:#F9E6E2; --warn:#8A5B00; --warn-bg:#FBEFD2; --info:#255F82; --info-bg:#E3EEF5; --ok:#17704A; --ok-bg:#DFF1E7;
+  --shadow:0 1px 2px rgba(15,61,62,.08), 0 8px 24px rgba(15,61,62,.06);
+  --serif:Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Calibri,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1B1D; --surface:#152528; --surface-2:#1B3033; --ink:#E6F0EF; --ink-2:#9DB4B1; --line:#2A4346;
+    --brand:#4DB6AC; --brand-strong:#BFE6E1; --on-brand:#08201F; --focus:#F0B84F;
+    --err:#F2927F; --err-bg:#3A1F1A; --warn:#F0C265; --warn-bg:#3A2D12; --info:#86BEE0; --info-bg:#14303F; --ok:#6FCF98; --ok-bg:#123222;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1B1D; --surface:#152528; --surface-2:#1B3033; --ink:#E6F0EF; --ink-2:#9DB4B1; --line:#2A4346;
+  --brand:#4DB6AC; --brand-strong:#BFE6E1; --on-brand:#08201F; --focus:#F0B84F;
+  --err:#F2927F; --err-bg:#3A1F1A; --warn:#F0C265; --warn-bg:#3A2D12; --info:#86BEE0; --info-bg:#14303F; --ok:#6FCF98; --ok-bg:#123222;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+.wrap{max-width:1180px;margin:0 auto;padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;margin:0}
+h1{font-size:clamp(1.55rem,4.2vw,2.1rem);line-height:1.15;color:var(--brand-strong)}
+h2{font-size:1.1rem;color:var(--brand-strong)}
+p{margin:0}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;margin-bottom:20px}
+.top p{color:var(--ink-2);max-width:62ch}
+.badge-local{font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;font-weight:600;color:var(--brand);border:1px solid var(--line);background:var(--surface);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
+@media (min-width:920px){.layout{grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:28px}.panel-in{position:sticky;top:16px}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.panel-in{display:flex;flex-direction:column;gap:12px;min-width:0}
+label,.lbl{font-weight:600;font-size:.9rem;color:var(--brand-strong)}
+textarea,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-height:40px}
+textarea{min-height:270px;resize:vertical;line-height:1.5}
+textarea:focus-visible,input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
+.hint{font-size:.85rem;color:var(--ink-2)}
+.opts{display:flex;flex-direction:column;gap:8px}
+.chk{display:flex;gap:10px;align-items:center;font-weight:400;font-size:.92rem;color:var(--ink);min-height:28px}
+.chk input{width:18px;height:18px;accent-color:var(--brand);flex:none}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:600;font-size:.9rem;min-height:40px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--brand-strong);cursor:pointer}
+button:hover{border-color:var(--brand)}
+button.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.status{min-height:1.3em;font-size:.85rem;color:var(--ink-2)}
+.sample-note{font-size:.85rem;color:var(--info);background:var(--info-bg);border-radius:8px;padding:8px 10px}
+.copybox{display:none}
+.copybox.on{display:block}
+.copybox textarea{min-height:110px;font-family:var(--mono);font-size:.8rem}
+
+.out{display:flex;flex-direction:column;gap:16px;min-width:0}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tile b{display:block;font-family:var(--serif);font-size:1.7rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile span{font-size:.8rem;color:var(--ink-2)}
+.tile.t-err b{color:var(--err)} .tile.t-warn b{color:var(--warn)} .tile.t-info b{color:var(--info)}
+.note{font-size:.88rem;color:var(--ink-2);background:var(--surface-2);border-radius:8px;padding:8px 12px}
+.filters{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+
+.req{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.req-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.req-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.req-id{font-family:var(--mono);font-weight:700;font-size:.9rem;color:var(--brand-strong)}
+.chip{font-size:.78rem;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--ink-2);background:var(--bg);white-space:nowrap}
+.score{display:flex;align-items:baseline;gap:8px;border-radius:999px;padding:4px 12px;font-weight:700;white-space:nowrap}
+.score .n{font-family:var(--serif);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.score .l{font-size:.82rem}
+.s-ok{background:var(--ok-bg);color:var(--ok)} .s-mid{background:var(--warn-bg);color:var(--warn)} .s-bad{background:var(--err-bg);color:var(--err)}
+.req-text{font-family:var(--serif);font-size:1.08rem;line-height:1.55;overflow-wrap:anywhere}
+mark{background:transparent;color:inherit;text-decoration-line:underline;text-decoration-style:wavy;text-decoration-thickness:2px;text-underline-offset:4px;border-radius:3px;padding:0 1px;cursor:help}
+mark.m-error{text-decoration-color:var(--err);background:var(--err-bg)}
+mark.m-warn{text-decoration-color:var(--warn);background:var(--warn-bg)}
+mark.m-info{text-decoration-color:var(--info);background:var(--info-bg)}
+.finds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.f{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
+.sev{font-size:.74rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:3px 8px;white-space:nowrap;min-width:74px;text-align:center}
+.sev.error{background:var(--err-bg);color:var(--err)} .sev.warn{background:var(--warn-bg);color:var(--warn)} .sev.info{background:var(--info-bg);color:var(--info)}
+.f-msg{font-weight:600;overflow-wrap:anywhere}
+.f-tip{color:var(--ink-2);font-size:.9rem}
+.f-ref{font-size:.76rem;color:var(--ink-2);opacity:.9}
+.clean{color:var(--ok);background:var(--ok-bg);border-radius:8px;padding:8px 12px;font-size:.92rem}
+.crit{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.cr{font-size:.76rem;font-weight:600;border-radius:6px;padding:2px 8px;border:1px solid var(--line);color:var(--ink-2);background:var(--bg)}
+.cr.ok{color:var(--ok)} .cr.warn{color:var(--warn);background:var(--warn-bg);border-color:transparent} .cr.ko{color:var(--err);background:var(--err-bg);border-color:transparent} .cr.human{border-style:dashed}
+.tpl{font-size:.88rem;color:var(--ink-2);border-top:1px dashed var(--line);padding-top:10px}
+.tpl code{font-family:var(--mono);font-size:.84rem;color:var(--brand-strong);background:var(--surface-2);padding:2px 6px;border-radius:5px;overflow-wrap:anywhere}
+.empty h2{margin-bottom:8px}
+.empty ul{margin:8px 0 0;padding-left:1.1rem;color:var(--ink-2)}
+.empty li{margin:4px 0}
+.legend{font-size:.82rem;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Contrôle des exigences</h1>
+      <p>Colle une ou plusieurs exigences, en français ou en anglais. L'outil vérifie leur forme d'après l'ISO/IEC/IEEE 29148, le guide INCOSE et les gabarits EARS.</p>
+    </div>
+    <span class="badge-local">Analyse locale · rien n'est envoyé</span>
+  </header>
+
+  <div class="layout">
+    <section class="panel panel-in" aria-label="Saisie">
+      <div>
+        <label for="txt">Exigence(s) à analyser</label>
+        <p class="hint" id="hint">Une exigence par ligne, ou séparées par une ligne vide. Un identifiant en début de ligne est reconnu (EXG-001 : … ou REQ-001: …).</p>
+      </div>
+      <textarea id="txt" spellcheck="false" aria-describedby="hint"></textarea>
+      <p class="sample-note" id="samplenote">Exemples chargés : remplace-les par tes exigences ou clique sur « Effacer ».</p>
+      <div class="opts">
+        <label class="chk"><input type="checkbox" id="single"> Tout le texte forme une seule exigence</label>
+        <div>
+          <label for="lang" class="lbl">Langue des exigences</label>
+          <select id="lang">
+            <option value="auto">Détection automatique, ligne par ligne</option>
+            <option value="fr">Français (doit / devrait / peut)</option>
+            <option value="en">English (shall / should / may)</option>
+          </select>
+        </div>
+        <div>
+          <label for="known" class="lbl">Acronymes connus</label>
+          <input type="text" id="known" placeholder="ex. : BMS, ECU, CAN" autocomplete="off">
+        </div>
+      </div>
+      <div class="btns">
+        <button type="button" class="primary" id="b-sample">Exemples FR</button>
+        <button type="button" class="primary" id="b-sample-en">Examples EN</button>
+        <button type="button" id="b-clear">Effacer</button>
+        <button type="button" id="b-copy">Copier pour Excel</button>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <div class="copybox" id="copybox">
+        <label for="copytxt" class="lbl">Rapport (sélectionne et copie)</label>
+        <textarea id="copytxt" readonly></textarea>
+      </div>
+    </section>
+
+    <section class="out" aria-label="Résultats">
+      <div id="out"></div>
+    </section>
+  </div>
+</div>
+
+<script id="engine">
+(function (root) {
+  'use strict';
+  var NW = '(?<![\\p{L}\\p{N}_])', NA = '(?![\\p{L}\\p{N}_])';
+  function rx(src, pre) { return new RegExp((pre || '') + NW + '(?:' + src + ')' + NA, 'giu'); }
+  function J(a) { return a.join('|'); }
+  function uniq(a) { return Array.from(new Set(a)); }
+  function quote(terms) { return terms.map(function (t) { return '« ' + t + ' »'; }).join(', '); }
+
+  // ---------- métadonnées des règles à listes de termes (communes aux deux langues)
+  var META = {
+    vague:    { sev: 'warn',  label: 'Terme vague ou subjectif', tip: 'Remplacer par une valeur mesurable : valeur, unité, tolérance, condition de mesure.', crit: ['nonambigue', 'verifiable'], ref: '29148 · INCOSE' },
+    quant:    { sev: 'warn',  label: 'Quantité non précisée', tip: 'Donner un nombre, une borne ou une liste exhaustive.', crit: ['nonambigue', 'verifiable'], ref: 'INCOSE' },
+    escape:   { sev: 'warn',  label: 'Échappatoire', tip: 'Supprimer la réserve ou la transformer en condition explicite (« Si X, … » / « If X, … »).', crit: ['verifiable', 'nonambigue'], ref: 'INCOSE' },
+    open:     { sev: 'error', label: 'Exigence ouverte ou incomplète', tip: 'Compléter par une liste exhaustive ou une valeur définitive.', crit: ['complete'], ref: '29148 · INCOSE' },
+    example:  { sev: 'warn',  label: 'Énumération non exhaustive', tip: 'Lister tous les cas, ou déplacer les exemples dans une note.', crit: ['complete', 'nonambigue'], ref: 'INCOSE' },
+    absolute: { sev: 'warn',  label: 'Terme absolu', tip: 'Borner : durée, périmètre, probabilité ou taux (ex. « 99,9 % sur 12 mois »).', crit: ['verifiable', 'realisable'], ref: 'INCOSE' },
+    approx:   { sev: 'warn',  label: 'Valeur approximative', tip: 'Donner la valeur et sa tolérance (ex. « 50 ± 2 % »).', crit: ['verifiable'], ref: 'INCOSE' },
+    intent:   { sev: 'warn',  label: 'Formulation d’intention', tip: 'Reformuler avec le verbe normatif ou retirer : un souhait n’est pas vérifiable.', crit: ['conforme', 'verifiable'], ref: '29148' },
+    weak:     { sev: 'warn',  label: 'Verbe faible ou formulation de capacité', tip: 'Utiliser un verbe d’action observable (afficher / display, calculer / calculate, couper / cut…).', crit: ['verifiable', 'nonambigue'], ref: 'INCOSE' },
+    renvoi:   { sev: 'warn',  label: 'Renvoi à un autre passage', tip: 'Rendre l’exigence autonome : citer l’identifiant de l’exigence ou reformuler.', crit: ['complete'], ref: '29148' },
+    solution: { sev: 'info',  label: 'Solution technique peut-être imposée', tip: 'Décrire le besoin (le quoi). Garder la technologie pour une contrainte justifiée.', crit: ['appropriee'], ref: '29148' },
+    andor:    { sev: 'error', label: 'Alternative ambiguë (et/ou)', tip: 'Séparer en cas distincts, ou choisir « et » ou « ou » (and / or).', crit: ['nonambigue', 'singuliere'], ref: 'INCOSE' }
+  };
+  var META_ORDER = ['vague', 'quant', 'escape', 'open', 'example', 'absolute', 'approx', 'intent', 'weak', 'renvoi', 'solution', 'andor'];
+  function buildTerms(src) {
+    return META_ORDER.map(function (id) { var m = META[id]; return { id: id, sev: m.sev, label: m.label, tip: m.tip, crit: m.crit, ref: m.ref, re: rx(J(src[id])) }; });
+  }
+
+  var TECH = ['sql', 'mysql', 'postgres(?:ql)?', 'oracle', 'mongodb', 'java', 'javascript', 'python', 'react', 'angular', 'excel', 'word', 'powerpoint', 'api rest', 'soap', 'json', 'xml', 'cloud', 'aws', 'azure', 'gcp', 'framework', 'docker', 'kubernetes', 'linux', 'windows', 'android', 'ios', 'micro-?services?', 'redis', 'kafka'];
+
+  // ---------- sources FR
+  var SRC_FR = {
+    vague: ['rapide(?:s|ment)?', 'lent(?:e|s|es|ement)?', 'convivial(?:e|s|es)?', 'ergonomi(?:que|ques)', 'intuiti(?:f|fs|ve|ves)', 'simple(?:s|ment)?', 'facile(?:s|ment)?', 'souple(?:s)?', 'flexible(?:s)?', 'robuste(?:s)?', 'fiable(?:s)?', 'performant(?:e|s|es)?', 'efficace(?:s|ment)?', 'optimal(?:e|es|aux)?', 'optimis(?:é|ée|és|ées)', 'adéquat(?:e|s|es|ement)?', 'approprié(?:e|s|es|ement)?', 'suffisant(?:e|s|es|ment)?', 'suffisamment', 'raisonnable(?:s)?', 'raisonnablement', 'acceptable(?:s)?', 'pertinent(?:e|s|es)?', 'significati(?:f|fs|ve|ves|vement)', 'important(?:e|s|es)?', 'élevé(?:e|s|es)?', 'faible(?:s)?', 'bon(?:ne|nes|s)?', 'bien(?!\\s+que)', 'meilleur(?:e|s|es)?', 'mieux', 'moderne(?:s)?', 'usuel(?:le|s|les)?', 'sécuris(?:é|ée|és|ées)', 'maintenable(?:s)?', 'évolutif(?:s|ve|ves)?', 'user[- ]friendly', 'temps réel', 'instantané(?:e|s|es|ment)?', 'immédiat(?:e|s|es|ement)?', 'régulièrement', 'fréquemment', 'rarement', 'souvent', 'parfois'],
+    quant: ['plusieurs', 'quelques', 'beaucoup', 'peu', 'nombreu(?:x|se|ses)', 'la plupart', 'la majorité', 'divers(?:e|es)?'],
+    escape: ['si possible', 'autant que possible', 'dans la mesure du possible', 'dans la mesure où', 'le cas échéant', 'éventuellement', 'éventuel(?:le|s|les)?', 'au besoin', 'si nécessaire', 'si besoin', 'selon le cas', 'selon les cas', 'en général', 'généralement', 'habituellement', 'typiquement', 'de préférence', 'idéalement', 'à terme', 'peut-être', 'si approprié', 'si pertinent', 'normalement', 'autant que faire se peut', 'sauf exception', 'en principe', 'dans la plupart des cas'],
+    open: ['etc\\.?', 'et autres', 'et cetera', 'à définir', 'à déterminer', 'à préciser', 'à confirmer', 'à compléter', 'à voir', 'tbd', 'tbc', 'tbs', 'todo', 'xxx', 'n/a', 'ultérieurement'],
+    example: ['par exemple', 'notamment', 'entre autres', 'à titre d[\'’]exemple', 'tel(?:le|s|les)? que', 'ex\\.', 'y compris'],
+    absolute: ['toujours', 'jamais', 'en permanence', 'à tout moment', 'sans exception', 'dans tous les cas', 'zéro défaut', 'sans erreur', 'sans défaillance', '100\\s?%', 'totalement', 'complètement', 'absolument', 'entièrement', 'parfaitement', 'illimité(?:e|s|es)?', 'infini(?:e|s|es)?', 'sans limite', 'tout le temps', 'en toutes circonstances'],
+    approx: ['environ', 'approximativement', 'à peu près', 'de l[\'’]ordre de', 'aux alentours de', 'autour de', 'quasi(?:ment)?', 'presque', 'près de', 'grosso modo', 'à peu de choses près'],
+    intent: ['souhait(?:e|ons|er|able|ables)?', 'aimerait', 'aimerions', 'voudrait', 'voudraient', 'espér(?:e|ons|er)', 'désir(?:e|ons|er|able)?', 'tenter', 'essay(?:er|e|ons)', 's[\'’]efforc(?:e|er|ent)', 'vise à', 'a pour objectif', 'a pour but', 'l[\'’]objectif est'],
+    weak: ['gérer', 'gère', 'gèrent', 'supporter', 'supporte', 'supportent', 'traiter', 'traite', 'traitent', 'prendre en charge', 'prend en charge', 'prennent en charge', 'permettre(?: de| à| d[\'’])?', 'permet(?: de| à| d[\'’])?', 'permettent', 'faciliter', 'facilite', 'assurer', 'assure', 'assurent', 'optimiser', 'minimiser', 'maximiser', 'améliorer', 'fonctionner', 'être capable de', 'être en mesure de', 'capable de', 'en mesure de', '(?:doit|doivent|devra|devrait|devraient) pouvoir'],
+    renvoi: ['voir (?:le|la|les|l[\'’]|§|chapitre|section|annexe|article|exigence|paragraphe|point)', 'cf\\.?', 'ci-dessus', 'ci-dessous', 'ci-après', 'ci-avant', 'précédemment', 'comme indiqué', 'comme mentionné', 'comme décrit', 'comme précisé', 'susmentionné(?:e|s|es)?', 'plus haut', 'plus bas', 'le précédent', 'la précédente', 'idem'],
+    solution: TECH.concat(['base de données', 'bouton', 'onglet', 'case à cocher', 'liste déroulante', 'pop-?up', 'serveur', 'algorithme']),
+    andor: ['et\\s*/\\s*ou', 'ou\\s*/\\s*et']
+  };
+
+  // ---------- sources EN
+  var SRC_EN = {
+    vague: ['fast(?:er|est)?', 'quick(?:ly|er)?', 'slow(?:ly|er)?', 'user[- ]friendly', 'friendly', 'easy|easily|easier', 'simple|simply', 'flexible', 'robust', 'reliabl[ey]', 'efficient(?:ly)?', 'optimal(?:ly)?', 'optimi[sz]ed', 'adequate(?:ly)?', 'appropriate(?:ly)?', 'sufficient(?:ly)?', 'reasonabl[ey]', 'acceptabl[ey]', 'relevant', 'significant(?:ly)?', 'important', 'high', 'low', 'good', 'well', 'better', 'best', 'modern', 'usual(?:ly)?', 'secure(?:d)?', 'safe(?!\\s+state)', 'maintainable', 'scalable', 'intuitive', 'seamless(?:ly)?', 'real[- ]time', 'instantaneous(?:ly)?', 'instantly', 'immediate(?:ly)?', 'regularly', 'frequently', 'rarely', 'often', 'sometimes', 'state[- ]of[- ]the[- ]art'],
+    quant: ['several', 'some', 'many', 'few', 'numerous', 'most', 'various', 'multiple', 'a lot of', 'lots of', 'a number of'],
+    escape: ['if possible', 'where possible', 'as far as possible', 'as much as possible', 'to the extent possible', 'if necessary', 'where necessary', 'if needed', 'as needed', 'as appropriate', 'if appropriate', 'when appropriate', 'if applicable', 'where applicable', 'as applicable', 'optionally', 'ideally', 'preferably', 'normally', 'generally', 'usually', 'typically', 'in general', 'in principle', 'eventually', 'possibly', 'probably', 'perhaps', 'maybe', 'at some point', 'in most cases', 'as required', 'where feasible', 'if feasible', 'if practical', 'unless otherwise'],
+    open: ['etc\\.?', 'and so on', 'and others', 'and so forth', 'tbd', 'tbc', 'tbs', 'todo', 'xxx', 'to be (?:defined|determined|confirmed|specified|completed|decided)', 'n/a', 'at a later stage', 'later'],
+    example: ['for example', 'for instance', 'e\\.g\\.', 'such as', 'including', 'among others', 'including but not limited to'],
+    absolute: ['always', 'never', 'at all times', 'at any time', 'in all cases', 'in every case', 'without exception', 'zero defects?', 'error[- ]free', 'fault[- ]free', 'failure[- ]free', '100\\s?%', 'totally', 'completely', 'absolutely', 'entirely', 'perfectly', 'unlimited', 'infinite', 'without limit', 'under all circumstances', 'all the time'],
+    approx: ['approximately', 'approx\\.?', 'roughly', 'nearly', 'almost', 'circa', 'ca\\.', 'on the order of', 'of the order of', 'more or less', 'in the region of', 'about(?=\\s*[\\d~≈])', 'around(?=\\s*[\\d~≈])', 'close to(?=\\s*[\\d~≈])'],
+    intent: ['wish(?:es)?', 'would like', 'want(?:s)?', 'hope(?:s)?', 'desire(?:s)?', 'try to', 'tries to', 'attempt(?:s)? to', 'endeavou?rs? to', 'aims? to', 'goal is', 'objective is', 'intends? to', 'is intended to'],
+    weak: ['support(?:s)?', 'handle(?:s)?', 'process(?:es)?', 'manage(?:s)?', 'facilitate(?:s)?', 'enable(?:s)?', 'allow(?:s)?', 'ensure(?:s)?', 'optimi[sz]e(?:s)?', 'minimi[sz]e(?:s)?', 'maximi[sz]e(?:s)?', 'improve(?:s)?', 'be able to', 'be capable of', 'capable of', 'able to', 'take into account', 'deal with', 'can(?!not)'],
+    renvoi: ['see (?:section|chapter|annex|appendix|requirement|paragraph|clause|item|figure|table|above|below)', 'cf\\.?', 'above(?=\\s*(?:[.,;:)]|$))', 'below(?=\\s*(?:[.,;:)]|$))', 'aforementioned', 'as (?:described|stated|mentioned|indicated|specified) (?:above|below|earlier|previously)', 'previously', 'the former', 'the latter', 'ditto', 'same as before'],
+    solution: TECH.concat(['database', 'button', 'tab', 'checkbox', 'drop-?down(?: list)?', 'pop-?up', 'menu', 'server', 'algorithm']),
+    andor: ['and\\s*/\\s*or', 'or\\s*/\\s*and']
+  };
+
+  var UNIT = /\d(?:[.,]\d+)?\s*(?:ms|µs|us|ns|s|sec|secondes?|seconds?|min|minutes?|h|heures?|hours?|jours?|days?|j|semaines?|weeks?|mois|months?|ans?|years?|%|‰|pour cent|percent|hz|khz|mhz|ghz|ko|mo|go|to|octets?|bytes?|bits?|kb|mb|gb|tb|kbit\/s|mbit\/s|gbit\/s|mv|kv|v|volts?|ma|a|amps?|amperes?|w|kw|mw|watts?|wh|kwh|j|kj|n|pa|kpa|bar|mm|cm|dm|m|km|meters?|metres?|kg|g|t|ml|l|°c|°f|k|db|lux|lm|rpm|tr\/min|km\/h|kph|mph|m\/s|req\/s|requêtes?|requests?|utilisateurs?|users?|connexions?|connections?|transactions?|fois|times|cycles?|caractères?|characters?|pixels?|px|éléments?|items?|enregistrements?|records?|lignes?|rows?|lines?|pages?|écrans?|screens?|niveaux?|levels?|degrés?|degrees?|tours?|unités?|units?|pièces?|pieces?|euros?|dollars?|€|\$)(?![\p{L}])/iu;
+  var ACRO = /(?<![\p{L}\p{N}_])\p{Lu}[\p{Lu}\p{N}]{1,7}(?![\p{L}\p{N}_])/gu;
+  var KNOWN = ['ID', 'ISO', 'IEC', 'IEEE', 'EARS', 'INCOSE', 'PDF', 'CSV', 'XML', 'JSON', 'HTML', 'URL', 'USB', 'GPS', 'LED', 'SI', 'UE', 'EU', 'CE', 'CDC', 'CDCF', 'STRS', 'SYRS', 'SRS', 'TBD', 'TBC', 'TBS', 'TODO', 'XXX', 'SQL', 'API', 'REST', 'AWS', 'GCP', 'IOS', 'IT', 'OS', 'UI', 'UX', 'CPU', 'RAM', 'ROM', 'HTTP', 'HTTPS', 'TCP', 'UDP', 'IP', 'DNS', 'USA', 'UK'];
+  var ID_RE = /^\[?([A-Za-zÀ-ÿ]{1,8}[A-Za-z0-9]*(?:[-_.][A-Za-z0-9]+)*\d[A-Za-z0-9]*)\]?\s*(?::|\)|–|—|-|\.)\s+/;
+  var NUM_RE = /^(\d+(?:\.\d+)*)\s*[.):]\s+(?=\S)/;
+  var NUM2_RE = /^(\d+(?:\.\d+)+)\s+(?=\p{Lu})/u;
+  var ELLIPSIS = /\.{3}|…/g;
+  var APPROX_SYM = /[~≈]/g;
+
+  // ---------- pack français
+  var FR = {
+    lang: 'fr',
+    verbs: { must: 'doit', should: 'devrait', may: 'peut' },
+    terms: buildTerms(SRC_FR),
+    MUST: rx('doit|doivent|devra|devront'),
+    SHOULD: rx('devrait|devraient'),
+    MAY: rx('peut(?!-être)|peuvent|pourra|pourront'),
+    INTENTV: rx('sera|seront|fera|feront|serait'),
+    IMPERS: rx('il faut|il faudra|il est (?:nécessaire|obligatoire|requis|impératif|indispensable)(?: de| que)?|il convient de'),
+    VERB_ANY: rx('doit|doivent|devra|devront|devrait|devraient|peut(?!-être)|peuvent|pourra|pourront|sera|seront|fera|feront|serait|il faut|il faudra|il est (?:nécessaire|obligatoire|requis|impératif|indispensable)(?: de| que)?|il convient de'),
+    ACTS: rx('afficher|calculer|transmettre|envoyer|enregistrer|journaliser|stocker|archiver|notifier|alerter|générer|produire|fournir|authentifier|vérifier|valider|contrôler|mesurer|détecter|limiter|couper|arrêter|démarrer|lancer|exporter|importer|supprimer|créer|modifier|mettre à jour|consulter|sauvegarder|restaurer|chiffrer|déchiffrer|signer|convertir|filtrer|trier|rechercher|imprimer|télécharger|charger|communiquer|synchroniser|surveiller|signaler|refuser|accepter|autoriser|interdire|bloquer|réinitialiser|activer|désactiver|ouvrir|fermer|commander|piloter|régler|ajuster|maintenir|conserver|retourner|renvoyer|répondre|identifier|exécuter|appliquer|protéger|indiquer|renseigner|saisir|sélectionner|comparer|compter|cumuler|déclencher|libérer|verrouiller|déverrouiller|informer|avertir'),
+    COND_ALL: rx('quand|lorsque|lorsqu(?=[\'’])|si|tant que|tant qu(?=[\'’])|dès que|dès qu(?=[\'’])|après que|avant que|sauf si|à moins que|à condition que|dans le cas où|pendant que'),
+    COND_AFTER: rx('quand|lorsque|lorsqu(?=[\'’])|si|tant que|dès que'),
+    PRON: rx('il|elle|ils|elles|celui-ci|celle-ci|ceux-ci|celles-ci|ce dernier|cette dernière|ceci|cela|ça|lui|eux|on'),
+    PRON_SKIP: /^\s+(?:faut|faudra|est\s+(?:nécessaire|obligatoire|requis|interdit|possible|préférable|recommandé|impératif)|y\s+a|convient|s['’]agit|suffit)/iu,
+    NEG: /(?<![\p{L}\p{N}_])n(?:e\s+|['’])(?:[\p{L}'’-]+\s+){0,3}?(?:pas|jamais|plus|aucun(?:e|s|es)?|rien|guère|nullement)(?![\p{L}])/giu,
+    SANS_NON: rx('sans|non'),
+    PASSIVE: /(?<![\p{L}\p{N}_])(?:doit|doivent|devra|devront|devrait|devraient)\s+être\s+\p{L}+(?:é|ée|és|ées|i|ie|is|ies|u|ue|us|ues|it|ite|its|ites)(?![\p{L}\p{N}_])/giu,
+    OR: rx('ou'),
+    PERF: rx('temps de (?:réponse|traitement|réaction|démarrage|chargement|latence|cycle)|délai|latence|débit|durée|disponibilité|taux|capacité|précision|résolution|fréquence|vitesse|température|poids|masse|consommation|autonomie|taille|volume|charge|bande passante|mtbf|mttr|tolérance|rendement|puissance|couple|force|pression|tension|courant|intensité|distance|portée|longueur|largeur|hauteur'),
+    afterCond: /^\s*(?:alors\s*,?\s*)?/i,
+    thenWord: /(?<![\p{L}])alors(?![\p{L}])/iu,
+    ifLabel: 'Si', thenLabel: 'alors',
+    EARS_PREFIX: [
+      ['Option', /^(?:là où|lorsque (?:l['’]|le |la )option)(?![\p{L}])/iu],
+      ['État', /^(?:tant que|pendant que|aussi longtemps que|tant qu(?=['’]))(?![\p{L}])/iu],
+      ['Événement', /^(?:quand|lorsque|lorsqu(?=['’])|dès que|dès qu(?=['’])|chaque fois que|à chaque fois que|après que|avant que)(?![\p{L}])/iu],
+      ['Indésirable', /^(?:si(?! possible| nécessaire| besoin| approprié| pertinent)|en cas de|dans le cas où|s(?=['’]il))(?![\p{L}])/iu]
+    ],
+    TEMPLATES: {
+      'Universelle': 'Le [système] doit [action] [critère mesurable].',
+      'Événement': 'Quand [événement], le [système] doit [action] [critère mesurable].',
+      'État': 'Tant que [état], le [système] doit [action] [critère mesurable].',
+      'Indésirable': 'Si [cause], alors le [système] doit [action] [critère mesurable].',
+      'Option': 'Là où [option], le [système] doit [action] [critère mesurable].',
+      'Complexe': 'Tant que [état], quand [événement], le [système] doit [action] [critère mesurable].'
+    },
+    subjectEx: '« Le système doit… », « Le module X doit… »',
+    articleOnly: /^(?:le|la|l['’]|les|un|une)$/i
+  };
+
+  // ---------- pack anglais
+  var EN = {
+    lang: 'en',
+    verbs: { must: 'shall', should: 'should', may: 'may' },
+    terms: buildTerms(SRC_EN),
+    MUST: rx('shall|must'),
+    SHOULD: rx('should'),
+    MAY: rx('may'),
+    INTENTV: rx('will|would|is going to'),
+    IMPERS: rx('needs? to|has to|have to|is required to|are required to|is supposed to|are supposed to|ought to|it is (?:necessary|required|essential|mandatory)(?: to| that)?'),
+    VERB_ANY: rx('shall|must|should|may|will|would|is going to|needs? to|has to|have to|is required to|are required to|is supposed to|are supposed to|ought to|it is (?:necessary|required|essential|mandatory)(?: to| that)?'),
+    ACTS: rx('display|calculate|transmit|send|record|log|store|archive|notify|alert|generate|produce|provide|authenticate|verify|validate|check|measure|detect|limit|cut|stop|start|launch|export|import|delete|remove|create|modify|update|read|write|save|restore|encrypt|decrypt|sign|convert|filter|sort|search|print|download|upload|load|communicate|synchroni[sz]e|monitor|signal|reject|accept|authori[sz]e|prohibit|block|reset|activate|deactivate|enable|disable|open|close|command|drive|adjust|maintain|retain|return|respond|identify|execute|apply|protect|indicate|enter|select|compare|count|trigger|release|lock|unlock|inform|warn|show|transfer|compute|route|forward|shut down|switch off|switch on|turn off|turn on',
+      '(?<!(?:^|[^\\p{L}])(?:a|an|the|of|its|their|each|every|any|this|that|per|no)\\s+)'),
+    COND_ALL: rx('when|whenever|if|while|as long as|once|after|before|unless|except when|provided that|in case of|in the event that|where|during'),
+    COND_AFTER: rx('when|whenever|if|while|as long as|once|upon'),
+    PRON: rx('it|its|they|them|their|he|she|his|her|him'),
+    PRON_SKIP: /^\s+(?:is\s+(?:necessary|required|essential|mandatory|possible|forbidden|recommended)|shall\s+be\s+noted)/iu,
+    NEG: rx('not|never|neither|nor|nothing|nobody|none|cannot|can\'t|won\'t|don\'t|doesn\'t|isn\'t|aren\'t|no(?! (?:more|less|fewer|later|earlier|greater|longer|shorter|lower|higher|other) than)'),
+    SANS_NON: rx('without|fail(?:s|ed)? to|failure to|unable to|lack of|absence of'),
+    PASSIVE: /(?<![\p{L}\p{N}_])(?:shall|must|should|will)\s+be\s+(?:\p{L}+ly\s+)?\p{L}+(?:ed|en)(?![\p{L}\p{N}_])/giu,
+    OR: rx('or'),
+    PERF: rx('response time|processing time|reaction time|start-?up time|loading time|latency|delay|throughput|duration|availability|rate|capacity|accuracy|precision|resolution|frequency|speed|temperature|weight|mass|consumption|autonomy|size|volume|bandwidth|mtbf|mttr|tolerance|efficiency|power|torque|force|pressure|voltage|intensity|distance|range|length|width|height'),
+    afterCond: /^\s*(?:then\s*,?\s*)?/i,
+    thenWord: /(?<![\p{L}])then(?![\p{L}])/iu,
+    ifLabel: 'If', thenLabel: 'then',
+    EARS_PREFIX: [
+      ['Option', /^where(?![\p{L}])/iu],
+      ['État', /^(?:while|as long as|during)(?![\p{L}])/iu],
+      ['Événement', /^(?:when|whenever|once|after|before|upon)(?![\p{L}])/iu],
+      ['Indésirable', /^(?:if(?! possible| necessary| needed| appropriate| applicable| feasible| practical)|in case of|in the event (?:of|that))(?![\p{L}])/iu]
+    ],
+    TEMPLATES: {
+      'Universelle': 'The [system] shall [action] [measurable criterion].',
+      'Événement': 'When [event], the [system] shall [action] [measurable criterion].',
+      'État': 'While [state], the [system] shall [action] [measurable criterion].',
+      'Indésirable': 'If [trigger], then the [system] shall [action] [measurable criterion].',
+      'Option': 'Where [feature], the [system] shall [action] [measurable criterion].',
+      'Complexe': 'While [state], when [event], the [system] shall [action] [measurable criterion].'
+    },
+    subjectEx: '« The system shall… », « The X module shall… »',
+    articleOnly: /^(?:the|a|an)$/i
+  };
+  var PACKS = { fr: FR, en: EN };
+
+  var FR_M = rx('le|la|les|un|une|des|du|de|et|ou|que|qui|pour|dans|avec|sans|sur|est|sont|doit|doivent|devra|devrait|peut|peuvent|par|au|aux|en|ne|pas|si|lorsque|quand|tant|ce|cette|ses|son|sa|leur|leurs|à|où');
+  var EN_M = rx('the|an|and|of|to|in|for|with|without|within|shall|must|should|may|will|is|are|be|been|when|while|if|then|from|by|at|not|that|which|each|every|all|any|its|their|upon|than|after|before');
+  function detectLang(text) {
+    var f = (text.match(FR_M) || []).length, e = (text.match(EN_M) || []).length;
+    if (e > f) return 'en';
+    if (f > e) return 'fr';
+    return /(?<![\p{L}])(?:shall|must|the)(?![\p{L}])/iu.test(text) ? 'en' : 'fr';
+  }
+
+  var TERMS_CRITERIA = [
+    ['necessaire', 'Nécessaire', true], ['appropriee', 'Appropriée', false], ['nonambigue', 'Non ambiguë', false],
+    ['complete', 'Complète', false], ['singuliere', 'Singulière', false], ['realisable', 'Réalisable', true],
+    ['verifiable', 'Vérifiable', false], ['correcte', 'Correcte', true], ['conforme', 'Conforme', false]
+  ];
+  var RANK = { info: 1, warn: 2, error: 3 };
+  var WEIGHT = { error: 22, warn: 8, info: 2 };
+
+  function firstVerb(str, P) {
+    var all = Array.from(str.matchAll(P.VERB_ANY));
+    return all.length ? all[0].index : -1;
+  }
+
+  function parseEars(text, P) {
+    var types = [], rest = text, offset = 0, missingComma = false;
+    for (var i = 0; i < 3; i++) {
+      var t = null;
+      for (var k = 0; k < P.EARS_PREFIX.length; k++) { if (P.EARS_PREFIX[k][1].test(rest)) { t = P.EARS_PREFIX[k][0]; break; } }
+      if (!t) break;
+      var c = rest.indexOf(',');
+      var v = firstVerb(rest, P);
+      if (c === -1 || (v !== -1 && v < c)) { missingComma = true; types.push(t); break; }
+      types.push(t);
+      var cut = c + 1;
+      var m = P.afterCond.exec(rest.slice(cut));
+      cut += m[0].length;
+      offset += cut;
+      rest = rest.slice(cut);
+    }
+    return { types: types, restStart: offset, missingComma: missingComma };
+  }
+
+  function analyzeOne(raw, opts) {
+    opts = opts || {};
+    var known = new Set(KNOWN.concat((opts.known || []).map(function (s) { return String(s).toUpperCase(); })));
+    var s = String(raw).replace(/\s+/g, ' ').trim().replace(/^(?:[-*•–]\s+)/, '');
+    var id = null, m = ID_RE.exec(s) || NUM_RE.exec(s) || NUM2_RE.exec(s);
+    if (m) { id = m[1]; s = s.slice(m[0].length).trim(); }
+    var text = s;
+    var lang = opts.lang === 'fr' || opts.lang === 'en' ? opts.lang : detectLang(text);
+    var P = PACKS[lang], V = P.verbs;
+    var words = text ? text.split(/\s+/).length : 0;
+    var findings = [], spans = [];
+
+    function add(f) { findings.push(f); }
+    function span(i, len, sev, tip) { spans.push({ s: i, e: i + len, sev: sev, tip: tip }); }
+
+    // --- règles à listes de termes
+    P.terms.forEach(function (def) {
+      var hits = Array.from(text.matchAll(def.re));
+      if (!hits.length) return;
+      var terms = uniq(hits.map(function (h) { return h[0].toLowerCase(); }));
+      hits.forEach(function (h) { span(h.index, h[0].length, def.sev, def.label); });
+      add({ id: def.id, sev: def.sev, msg: def.label + ' : ' + quote(terms), tip: def.tip, crit: def.crit, ref: def.ref });
+    });
+    var ell = Array.from(text.matchAll(ELLIPSIS));
+    if (ell.length) {
+      ell.forEach(function (h) { span(h.index, h[0].length, 'error', 'Exigence ouverte'); });
+      add({ id: 'ellipsis', sev: 'error', msg: 'Exigence ouverte : points de suspension', tip: 'Compléter par une liste exhaustive.', crit: ['complete'], ref: '29148 · INCOSE' });
+    }
+    var sym = Array.from(text.matchAll(APPROX_SYM));
+    if (sym.length) {
+      sym.forEach(function (h) { span(h.index, 1, 'warn', 'Valeur approximative'); });
+      add({ id: 'approxsym', sev: 'warn', msg: 'Valeur approximative : symbole « ' + sym[0][0] + ' »', tip: 'Donner la valeur et sa tolérance (ex. « 50 ± 2 % »).', crit: ['verifiable'], ref: 'INCOSE' });
+    }
+
+    // --- verbe normatif
+    var must = Array.from(text.matchAll(P.MUST)), should = Array.from(text.matchAll(P.SHOULD)), may = Array.from(text.matchAll(P.MAY));
+    var intentv = Array.from(text.matchAll(P.INTENTV)), imp = Array.from(text.matchAll(P.IMPERS));
+    var level = must.length ? 'Obligatoire' : should.length ? 'Souhaitable' : may.length ? 'Optionnel' : null;
+    if (!level) {
+      if (imp.length) {
+        imp.forEach(function (h) { span(h.index, h[0].length, 'error', 'Formulation impersonnelle'); });
+        add({ id: 'norm', sev: 'error', msg: 'Formulation informelle ou impersonnelle : ' + quote(uniq(imp.map(function (h) { return h[0].toLowerCase(); }))), tip: 'Utiliser « ' + V.must + ' » avec un acteur nommé : ' + P.subjectEx + '.', crit: ['conforme', 'complete'], ref: '29148' });
+      } else if (intentv.length) {
+        intentv.forEach(function (h) { span(h.index, h[0].length, 'warn', 'Déclaration de fait'); });
+        add({ id: 'norm', sev: 'error', msg: 'Pas de verbe normatif : ' + quote(uniq(intentv.map(function (h) { return h[0].toLowerCase(); }))) + ' exprime un fait ou une intention', tip: 'Utiliser « ' + V.must + ' » (obligatoire), « ' + V.should + ' » (souhaitable) ou « ' + V.may + ' » (optionnel).', crit: ['conforme'], ref: '29148' });
+      } else if (words >= 2) {
+        add({ id: 'norm', sev: 'error', msg: 'Aucun verbe normatif (' + V.must + ', ' + V.should + ', ' + V.may + ')', tip: 'Écrire : ' + P.TEMPLATES['Universelle'], crit: ['conforme'], ref: '29148' });
+      }
+    } else if (level === 'Souhaitable') {
+      add({ id: 'level', sev: 'info', msg: 'Niveau souhaitable (« ' + V.should + ' ») : non contractuel', tip: 'À réserver aux objectifs. Une exigence ferme utilise « ' + V.must + ' ».', crit: ['conforme'], ref: '29148' });
+    } else if (level === 'Optionnel') {
+      add({ id: 'level', sev: 'info', msg: 'Niveau optionnel (« ' + V.may + ' »)', tip: 'Vérifier qu’une option est bien voulue ici et définir la condition qui l’active.', crit: ['conforme'], ref: '29148' });
+    }
+    var nNorm = must.length + should.length;
+    if (nNorm >= 2) {
+      add({ id: 'multiverb', sev: 'error', msg: 'Plusieurs verbes normatifs (' + nNorm + ')', tip: 'Une exigence, un « ' + V.must + ' » : scinder en exigences distinctes.', crit: ['singuliere'], ref: '29148 · INCOSE' });
+      must.concat(should).forEach(function (h) { span(h.index, h[0].length, 'error', 'Verbe normatif multiple'); });
+    }
+
+    // --- gabarit EARS et sujet
+    var ears = parseEars(text, P);
+    var normHits = must.concat(should, may, intentv).sort(function (a, b) { return a.index - b.index; }).filter(function (h) { return h.index >= ears.restStart; });
+    var normIdx = normHits.length ? normHits[0].index : -1;
+    if (ears.missingComma) {
+      add({ id: 'comma', sev: 'warn', msg: 'Virgule manquante après la condition', tip: 'Séparer la condition de la phrase principale (EARS).', crit: ['conforme'], ref: 'EARS' });
+    }
+    if ((level || intentv.length) && normIdx > -1) {
+      var subj = text.slice(ears.restStart, normIdx).replace(/^[\s,]+/, '').trim();
+      if (!subj || P.articleOnly.test(subj)) {
+        add({ id: 'subject', sev: 'error', msg: 'Sujet absent avant le verbe normatif', tip: 'Nommer l’acteur : ' + P.subjectEx + '.', crit: ['complete', 'nonambigue'], ref: '29148 · EARS' });
+      }
+    }
+    var pas = Array.from(text.matchAll(P.PASSIVE));
+    if (pas.length) {
+      pas.forEach(function (h) { span(h.index, h[0].length, 'info', 'Voix passive'); });
+      add({ id: 'passive', sev: 'info', msg: 'Voix passive : l’acteur n’est pas nommé', tip: 'Préférer la voix active avec un sujet explicite.', crit: ['complete'], ref: 'INCOSE' });
+    }
+    var earsLabel = null;
+    if (ears.types.length > 1) earsLabel = ears.types.join(' + ');
+    else if (ears.types.length === 1) earsLabel = ears.types[0];
+    else if (level || intentv.length) earsLabel = 'Universelle';
+    if (!ears.types.length && normIdx > -1) {
+      if (Array.from(text.slice(normIdx).matchAll(P.COND_AFTER)).length) {
+        add({ id: 'condafter', sev: 'info', msg: 'Condition placée après le verbe', tip: 'EARS recommande de placer la condition en tête de phrase.', crit: ['conforme'], ref: 'EARS' });
+      }
+    }
+    if (ears.types.indexOf('Indésirable') > -1 && !P.thenWord.test(text)) {
+      add({ id: 'alors', sev: 'info', msg: 'Gabarit « ' + P.ifLabel + ' … » sans « ' + P.thenLabel + ' »', tip: 'EARS : ' + P.TEMPLATES['Indésirable'], crit: ['conforme'], ref: 'EARS' });
+    }
+
+    // --- pronoms
+    var pr = Array.from(text.matchAll(P.PRON)).filter(function (h) { return !P.PRON_SKIP.test(text.slice(h.index + h[0].length)); });
+    if (pr.length) {
+      pr.forEach(function (h) { span(h.index, h[0].length, 'warn', 'Pronom ambigu'); });
+      add({ id: 'pron', sev: 'warn', msg: 'Pronom ou renvoi implicite : ' + quote(uniq(pr.map(function (h) { return h[0].toLowerCase(); }))), tip: 'Répéter le nom de l’acteur ou de l’objet plutôt qu’un pronom.', crit: ['nonambigue'], ref: 'INCOSE' });
+    }
+
+    // --- négation
+    var ne = Array.from(text.matchAll(P.NEG)), sn = Array.from(text.matchAll(P.SANS_NON));
+    var negCount = ne.length;
+    if (ne.length >= 2 || (ne.length >= 1 && sn.length >= 1)) {
+      ne.concat(sn).forEach(function (h) { span(h.index, h[0].length, 'warn', 'Double négation'); });
+      add({ id: 'dneg', sev: 'warn', msg: 'Double négation', tip: 'Reformuler à la forme affirmative.', crit: ['nonambigue'], ref: 'INCOSE' });
+    } else if (ne.length === 1) {
+      ne.forEach(function (h) { span(h.index, h[0].length, 'info', 'Forme négative'); });
+      add({ id: 'neg', sev: 'info', msg: 'Forme négative', tip: 'Préférer l’affirmative, sauf pour une interdiction (sécurité, conformité).', crit: ['nonambigue'], ref: 'INCOSE' });
+    }
+
+    // --- « ou » simple
+    var hasAndOr = P.terms.filter(function (d) { return d.id === 'andor'; })[0].re;
+    if (!Array.from(text.matchAll(hasAndOr)).length) {
+      var ors = Array.from(text.matchAll(P.OR));
+      if (ors.length) {
+        ors.forEach(function (h) { span(h.index, h[0].length, 'info', 'Exclusif ou inclusif ?'); });
+        add({ id: 'or', sev: 'info', msg: '« ' + ors[0][0].toLowerCase() + ' » : exclusif ou inclusif ?', tip: 'Préciser le cas, ou écrire deux exigences si les deux lectures sont possibles.', crit: ['nonambigue'], ref: 'INCOSE' });
+      }
+    }
+
+    // --- singularité
+    if (normIdx > -1) {
+      var seg = text.slice(normIdx);
+      var actHits = Array.from(seg.matchAll(P.ACTS));
+      var acts = uniq(actHits.map(function (h) { return h[0].toLowerCase(); }));
+      if (acts.length >= 2) {
+        actHits.forEach(function (h) { span(normIdx + h.index, h[0].length, 'warn', 'Plusieurs actions'); });
+        add({ id: 'multi', sev: 'warn', msg: 'Plusieurs actions dans une exigence : ' + quote(acts), tip: 'Scinder : une exigence par action, chacune avec son critère.', crit: ['singuliere'], ref: '29148 · INCOSE' });
+      }
+    }
+    var sentences = text.split(/[.!?]\s+(?=\p{Lu})/u).filter(Boolean).length;
+    if (sentences >= 2) add({ id: 'sentences', sev: 'warn', msg: 'Plusieurs phrases (' + sentences + ')', tip: 'Une exigence tient en une seule phrase.', crit: ['singuliere'], ref: '29148' });
+    if ((text.match(/;/g) || []).length) add({ id: 'semi', sev: 'warn', msg: 'Énumération avec point-virgule', tip: 'Scinder en exigences distinctes.', crit: ['singuliere'], ref: 'INCOSE' });
+    var conds = Array.from(text.matchAll(P.COND_ALL)).length;
+    if (conds >= 3) add({ id: 'conds', sev: 'warn', msg: 'Conditions multiples (' + conds + ')', tip: 'Découper en plusieurs exigences ou réduire à un déclencheur par exigence.', crit: ['singuliere', 'nonambigue'], ref: 'EARS' });
+    if (words > 70) add({ id: 'len', sev: 'error', msg: 'Phrase très longue (' + words + ' mots)', tip: 'Viser moins de 40 mots, en scindant si besoin.', crit: ['singuliere'], ref: 'INCOSE' });
+    else if (words > 40) add({ id: 'len', sev: 'warn', msg: 'Phrase longue (' + words + ' mots)', tip: 'Viser moins de 40 mots.', crit: ['singuliere'], ref: 'INCOSE' });
+    else if (words > 0 && words < 5) add({ id: 'short', sev: 'warn', msg: 'Énoncé très court (' + words + ' mots)', tip: 'Vérifier qu’il contient sujet, verbe normatif, action et critère.', crit: ['complete'], ref: '29148' });
+
+    // --- mesurabilité
+    var hasNum = /(?<![\p{L}\p{N}_-])\d/u.test(text), hasUnit = UNIT.test(text);
+    var perf = Array.from(text.matchAll(P.PERF));
+    if (perf.length && !hasUnit) {
+      perf.forEach(function (h) { span(h.index, h[0].length, 'warn', 'Grandeur sans valeur'); });
+      add({ id: 'measure', sev: 'warn', msg: 'Grandeur citée sans valeur chiffrée : ' + quote(uniq(perf.map(function (h) { return h[0].toLowerCase(); }))), tip: 'Ajouter valeur, unité, tolérance et condition de mesure.', crit: ['verifiable', 'complete'], ref: '29148 · INCOSE' });
+    } else if (hasNum && !hasUnit && !/(?<![\p{L}])(?:article|annexe|annex|section|chapitre|chapter|exigence|requirement|version|clause|appendix)(?![\p{L}])/iu.test(text)) {
+      add({ id: 'unit', sev: 'info', msg: 'Valeur chiffrée sans unité reconnue', tip: 'Vérifier que l’unité est précisée.', crit: ['verifiable'], ref: 'INCOSE' });
+    }
+
+    // --- acronymes
+    var letters = text.replace(/[^\p{L}]/gu, '');
+    var upperRatio = letters ? (text.replace(/[^\p{Lu}]/gu, '').length / letters.length) : 0;
+    if (upperRatio < 0.6) {
+      var acr = uniq(Array.from(text.matchAll(ACRO)).map(function (h) { return h[0]; })).filter(function (a) {
+        return !known.has(a.toUpperCase()) && text.indexOf('(' + a + ')') === -1;
+      });
+      if (acr.length) add({ id: 'acro', sev: 'info', msg: (lang === 'en' ? 'Acronym to check in the glossary : ' : 'Acronyme à vérifier au glossaire : ') + acr.join(', '), tip: 'Définir l’acronyme dans le glossaire du document, ou l’ajouter aux acronymes connus.', crit: ['nonambigue'], ref: '29148' });
+    }
+
+    return { id: id, text: text, lang: lang, words: words, level: level, ears: earsLabel, earsTypes: ears.types, negCount: negCount, findings: findings, spans: spans };
+  }
+
+  function finalize(it) {
+    it.findings.sort(function (a, b) { return RANK[b.sev] - RANK[a.sev]; });
+    var c = { error: 0, warn: 0, info: 0 };
+    it.findings.forEach(function (f) { c[f.sev]++; });
+    it.counts = c;
+    var score = 100 - c.error * WEIGHT.error - c.warn * WEIGHT.warn - c.info * WEIGHT.info;
+    score = Math.max(0, score);
+    if (c.error > 0 || c.warn > 0) score = Math.min(score, 84);
+    var verdict = score < 60 ? 'À réécrire' : (c.error > 0 || c.warn > 0 || score < 85) ? 'À améliorer' : 'Solide';
+    it.score = score; it.verdict = verdict; it.empty = !it.text;
+    it.crit = TERMS_CRITERIA.map(function (cr) {
+      var worst = 0;
+      it.findings.forEach(function (f) { if (f.crit.indexOf(cr[0]) > -1 && f.sev !== 'info') worst = Math.max(worst, RANK[f.sev]); });
+      var state = worst === 3 ? 'ko' : worst === 2 ? 'warn' : (cr[2] ? 'human' : 'ok');
+      return { key: cr[0], label: cr[1], state: state };
+    });
+    var P = PACKS[it.lang] || FR;
+    var tplKey = it.earsTypes && it.earsTypes.length > 1 ? 'Complexe' : (it.earsTypes && it.earsTypes[0]) || 'Universelle';
+    it.template = P.TEMPLATES[tplKey];
+    return it;
+  }
+
+  function stem(s) { return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase(); }
+  var STOP = new Set('le la les l un une des du de d et ou en au aux a qui que qu ce se sa son ses pour par sur dans est etre doit doivent devra devrait peut systeme the an and or of to in for with shall must should may will be is are by on at from that which it its system'.split(' '));
+  var NEGW = new Set('ne pas jamais aucun sans plus not never no none without cannot nor neither'.split(' '));
+  function tokens(t) {
+    return new Set(stem(t).split(/[^a-z0-9]+/).filter(function (w) { return w && !STOP.has(w) && !NEGW.has(w); }));
+  }
+  function jacc(a, b) {
+    if (!a.size || !b.size) return 0;
+    var inter = 0; a.forEach(function (x) { if (b.has(x)) inter++; });
+    return inter / (a.size + b.size - inter);
+  }
+
+  function split(text, single) {
+    var t = String(text).replace(/\r/g, '');
+    if (single) return t.trim() ? [t.trim()] : [];
+    var parts = /\n\s*\n/.test(t.trim()) ? t.split(/\n\s*\n/).map(function (p) { return p.replace(/\n+/g, ' '); }) : t.split('\n');
+    return parts.map(function (p) { return p.trim(); }).filter(Boolean);
+  }
+
+  function analyzeAll(text, opts) {
+    opts = opts || {};
+    var parts = split(text, opts.single);
+    var items = parts.map(function (p, i) { var it = analyzeOne(p, opts); it.n = i + 1; return it; });
+    var notes = [];
+    var byId = {};
+    items.forEach(function (it) { if (it.id) (byId[it.id] = byId[it.id] || []).push(it); });
+    Object.keys(byId).forEach(function (k) {
+      if (byId[k].length > 1) {
+        var lines = byId[k].map(function (x) { return '#' + x.n; }).join(', ');
+        byId[k].forEach(function (it) { it.findings.push({ id: 'dupid', sev: 'error', msg: 'Identifiant en doublon : ' + k + ' (lignes ' + lines + ')', tip: 'Un identifiant doit être unique et stable.', crit: ['conforme', 'correcte'], ref: '29148' }); });
+      }
+    });
+    var withId = items.filter(function (it) { return it.id; }).length;
+    if (items.length > 1 && withId === 0) notes.push('Aucun identifiant détecté. Ajoute « EXG-001 : » (ou « REQ-001: ») devant chaque exigence pour la traçabilité.');
+    else if (withId > 0 && withId < items.length) items.forEach(function (it) { if (!it.id) it.findings.push({ id: 'noid', sev: 'info', msg: 'Pas d’identifiant', tip: 'Chaque exigence reçoit un identifiant unique (ex. EXG-007).', crit: ['conforme'], ref: '29148' }); });
+    if (items.length > 1 && items.length <= 300) {
+      var toks = items.map(function (it) { return tokens(it.text); });
+      for (var i = 0; i < items.length; i++) {
+        for (var j = i + 1; j < items.length; j++) {
+          var a = items[i], b = items[j];
+          if (!a.text || !b.text) continue;
+          var sim = jacc(toks[i], toks[j]);
+          var na = a.negCount > 0, nb = b.negCount > 0;
+          var la = a.id || '#' + a.n, lb = b.id || '#' + b.n;
+          if (stem(a.text) === stem(b.text)) {
+            a.findings.push({ id: 'dup', sev: 'error', msg: 'Doublon exact avec ' + lb, tip: 'Supprimer l’une des deux exigences.', crit: ['necessaire', 'correcte'], ref: '29148' });
+            b.findings.push({ id: 'dup', sev: 'error', msg: 'Doublon exact avec ' + la, tip: 'Supprimer l’une des deux exigences.', crit: ['necessaire', 'correcte'], ref: '29148' });
+          } else if (sim >= 0.8 && na === nb) {
+            a.findings.push({ id: 'dup', sev: 'warn', msg: 'Doublon probable avec ' + lb, tip: 'Fusionner ou différencier clairement les deux exigences.', crit: ['necessaire', 'correcte'], ref: '29148' });
+            b.findings.push({ id: 'dup', sev: 'warn', msg: 'Doublon probable avec ' + la, tip: 'Fusionner ou différencier clairement les deux exigences.', crit: ['necessaire', 'correcte'], ref: '29148' });
+          } else if (sim >= 0.65 && na !== nb) {
+            a.findings.push({ id: 'conflict', sev: 'warn', msg: 'Contradiction possible avec ' + lb, tip: 'Vérifier que les deux exigences ne s’excluent pas.', crit: ['correcte'], ref: '29148' });
+            b.findings.push({ id: 'conflict', sev: 'warn', msg: 'Contradiction possible avec ' + la, tip: 'Vérifier que les deux exigences ne s’excluent pas.', crit: ['correcte'], ref: '29148' });
+          }
+        }
+      }
+    } else if (items.length > 300) notes.push('Plus de 300 exigences : la détection de doublons est désactivée.');
+    items.forEach(finalize);
+    var sum = { count: items.length, avg: 0, error: 0, warn: 0, info: 0, solid: 0, mid: 0, bad: 0, fr: 0, en: 0 };
+    items.forEach(function (it) {
+      sum.avg += it.score; sum.error += it.counts.error; sum.warn += it.counts.warn; sum.info += it.counts.info; sum[it.lang]++;
+      if (it.verdict === 'Solide') sum.solid++; else if (it.verdict === 'À améliorer') sum.mid++; else sum.bad++;
+    });
+    sum.avg = items.length ? Math.round(sum.avg / items.length) : 0;
+    return { items: items, summary: sum, notes: notes };
+  }
+
+  root.ReqCheck = { analyzeOne: analyzeOne, analyzeAll: analyzeAll, split: split, detectLang: detectLang, CRITERIA: TERMS_CRITERIA };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script id="ui">
+(function () {
+  'use strict';
+  var RC = window.ReqCheck;
+  var SAMPLE = [
+    'EXG-001 : Le système doit être rapide et convivial.',
+    'EXG-002 : Quand la batterie passe sous 20 % de charge, le système doit limiter la puissance moteur à 50 % du nominal en moins de 1 s.',
+    'EXG-003 : Le système devrait gérer les erreurs, etc.',
+    'EXG-004 : Lorsque l’utilisateur appuie sur le bouton d’arrêt, il doit couper le moteur et afficher un message et envoyer une alerte.',
+    'EXG-005 : Le système ne doit pas ne pas enregistrer les accès.',
+    'EXG-005 : Tant que le véhicule roule, le système doit afficher la vitesse avec une précision de ±2 km/h.',
+    'EXG-006 : Si possible, l’export PDF et/ou Excel sera disponible.'
+  ].join('\n');
+  var SAMPLE_EN = [
+    'REQ-001: The system shall be fast and user-friendly.',
+    'REQ-002: When the battery level falls below 20 %, the system shall limit motor power to 50 % of nominal within 1 s.',
+    'REQ-003: The system should handle errors, etc.',
+    'REQ-004: When the user presses the stop button, it shall cut the motor and display a message and send an alert.',
+    'REQ-005: The system shall not fail to record access events.',
+    'REQ-006: While the vehicle is moving, the system shall display the speed with an accuracy of ±2 km/h.',
+    'REQ-007: If possible, the export will be available in PDF and/or Excel.'
+  ].join('\n');
+  var KEY = 'controle-exigences-v1';
+
+  function $(id) { return document.getElementById(id); }
+  var el = { txt: $('txt'), single: $('single'), lang: $('lang'), known: $('known'), out: $('out'), status: $('status'), note: $('samplenote'), copybox: $('copybox'), copytxt: $('copytxt') };
+  var filt = { onlyfix: false, hideInfo: false };
+  var last = null, timer = null;
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify({ t: el.txt.value, s: el.single.checked, l: el.lang.value, k: el.known.value, f: filt, sample: !el.note.hidden })); } catch (e) {} }
+  function load() {
+    try { var r = localStorage.getItem(KEY); if (r) return JSON.parse(r); } catch (e) {}
+    return null;
+  }
+
+  var RANK = { info: 1, warn: 2, error: 3 };
+  function highlight(body, spans) {
+    var n = body.length, marks = new Array(n).fill(null);
+    spans.slice().sort(function (a, b) { return RANK[a.sev] - RANK[b.sev]; }).forEach(function (sp) {
+      for (var i = sp.s; i < sp.e && i < n; i++) { if (!marks[i] || RANK[sp.sev] >= RANK[marks[i].sev]) marks[i] = sp; }
+    });
+    var html = '', i = 0;
+    while (i < n) {
+      var m = marks[i], j = i;
+      while (j < n && marks[j] === m) j++;
+      var chunk = esc(body.slice(i, j));
+      html += m ? '<mark class="m-' + m.sev + '" title="' + esc(m.tip) + '">' + chunk + '</mark>' : chunk;
+      i = j;
+    }
+    return html;
+  }
+
+  var SEVLBL = { error: '✕ Erreur', warn: '▲ Alerte', info: 'i Info' };
+  var CRGLYPH = { ok: '✓', warn: '▲', ko: '✕', human: '○' };
+  var CRTITLE = { ok: 'Aucun défaut détecté automatiquement', warn: 'À corriger', ko: 'Défaut majeur', human: 'À juger par une personne : non contrôlable automatiquement' };
+
+  function renderItem(it) {
+    var cls = it.verdict === 'Solide' ? 's-ok' : it.verdict === 'À améliorer' ? 's-mid' : 's-bad';
+    var glyph = it.verdict === 'Solide' ? '✓' : it.verdict === 'À améliorer' ? '▲' : '✕';
+    var fs = it.findings.filter(function (f) { return !(filt.hideInfo && f.sev === 'info'); });
+    var h = '<article class="req"><div class="req-head"><div class="req-meta">';
+    h += '<span class="req-id">' + esc(it.id || '#' + it.n) + '</span>';
+    if (it.level) h += '<span class="chip">' + esc(it.level) + '</span>';
+    if (it.ears) h += '<span class="chip">EARS · ' + esc(it.ears) + '</span>';
+    h += '<span class="chip" title="Langue détectée">' + (it.lang === 'en' ? 'EN' : 'FR') + '</span>';
+    h += '<span class="chip">' + it.words + ' mots</span></div>';
+    h += '<div class="score ' + cls + '"><span class="n">' + it.score + '</span><span class="l">' + glyph + ' ' + esc(it.verdict) + '</span></div></div>';
+    h += '<p class="req-text">' + highlight(it.text, it.spans) + '</p>';
+    if (fs.length) {
+      h += '<ul class="finds">' + fs.map(function (f) {
+        return '<li class="f"><span class="sev ' + f.sev + '">' + SEVLBL[f.sev] + '</span><div><div class="f-msg">' + esc(f.msg) + '</div><div class="f-tip">' + esc(f.tip) + '</div><div class="f-ref">' + esc(f.ref) + '</div></div></li>';
+      }).join('') + '</ul>';
+    } else {
+      h += '<p class="clean">Aucun défaut de forme détecté. Reste à valider le besoin, la faisabilité et l’exactitude.</p>';
+    }
+    h += '<ul class="crit" aria-label="Critères de l’ISO/IEC/IEEE 29148">' + it.crit.map(function (c) {
+      return '<li class="cr ' + c.state + '" title="' + esc(CRTITLE[c.state]) + '">' + CRGLYPH[c.state] + ' ' + esc(c.label) + '</li>';
+    }).join('') + '</ul>';
+    if (it.score < 85) h += '<p class="tpl">Trame conseillée : <code>' + esc(it.template) + '</code></p>';
+    return h + '</article>';
+  }
+
+  function emptyState() {
+    return '<div class="panel empty"><h2>Prêt à analyser</h2><p class="hint">Colle une exigence ou une liste d’exigences, en français ou en anglais. Contrôles effectués :</p><ul>' +
+      '<li>verbe normatif (doit / shall, devrait / should, peut / may) et sujet nommé</li>' +
+      '<li>termes vagues, échappatoires, absolus, valeurs approximatives</li>' +
+      '<li>singularité : un seul verbe normatif, une seule action, une seule phrase</li>' +
+      '<li>mesurabilité : valeur, unité, tolérance</li>' +
+      '<li>gabarit EARS, pronoms ambigus, négations, « et/ou »</li>' +
+      '<li>doublons, contradictions possibles et identifiants en double</li></ul></div>';
+  }
+
+  function render() {
+    var res = RC.analyzeAll(el.txt.value, { single: el.single.checked, lang: el.lang.value, known: el.known.value.split(/[,;\s]+/).filter(Boolean) });
+    last = res;
+    var s = res.summary;
+    if (!res.items.length) { el.out.innerHTML = emptyState(); return; }
+    var h = '<div class="sum" role="group" aria-label="Synthèse">' +
+      '<div class="tile"><b>' + s.count + '</b><span>exigence' + (s.count > 1 ? 's' : '') + '</span></div>' +
+      '<div class="tile"><b>' + s.avg + '</b><span>score moyen /100</span></div>' +
+      '<div class="tile t-err"><b>' + s.error + '</b><span>erreur' + (s.error > 1 ? 's' : '') + '</span></div>' +
+      '<div class="tile t-warn"><b>' + s.warn + '</b><span>alerte' + (s.warn > 1 ? 's' : '') + '</span></div>' +
+      '<div class="tile t-info"><b>' + s.info + '</b><span>info' + (s.info > 1 ? 's' : '') + '</span></div></div>';
+    h += '<p class="note">' + s.solid + ' solide' + (s.solid > 1 ? 's' : '') + ' · ' + s.mid + ' à améliorer · ' + s.bad + ' à réécrire</p>';
+    res.notes.forEach(function (n) { h += '<p class="note">' + esc(n) + '</p>'; });
+    h += '<div class="filters"><label class="chk"><input type="checkbox" id="f-fix"' + (filt.onlyfix ? ' checked' : '') + '> Voir seulement ce qui est à corriger</label>' +
+      '<label class="chk"><input type="checkbox" id="f-info"' + (filt.hideInfo ? ' checked' : '') + '> Masquer les infos</label></div>';
+    var list = res.items.filter(function (it) { return !filt.onlyfix || it.verdict !== 'Solide'; });
+    h += '<div class="out">' + (list.length ? list.map(renderItem).join('') : '<p class="clean">Toutes les exigences sont solides.</p>') + '</div>';
+    h += '<p class="legend">Les critères « Nécessaire », « Réalisable » et « Correcte » (○) se jugent avec le besoin d’origine : l’outil ne contrôle que la forme.</p>';
+    el.out.innerHTML = h;
+  }
+
+  function schedule() { clearTimeout(timer); timer = setTimeout(function () { render(); save(); }, 120); }
+  function say(msg) { el.status.textContent = msg; clearTimeout(say.t); say.t = setTimeout(function () { el.status.textContent = ''; }, 4000); }
+
+  function report() {
+    var c = function (s) { return String(s == null ? '' : s).replace(/[\t\r\n]+/g, ' '); };
+    var rows = [['ID', 'Exigence', 'Score', 'Verdict', 'Niveau', 'Gabarit EARS', 'Langue', 'Erreurs', 'Alertes', 'Infos', 'Détails']];
+    (last ? last.items : []).forEach(function (it) {
+      rows.push([it.id || '#' + it.n, it.text, it.score, it.verdict, it.level || '', it.ears || '', it.lang.toUpperCase(), it.counts.error, it.counts.warn, it.counts.info, it.findings.map(function (f) { return f.msg; }).join(' | ')]);
+    });
+    return rows.map(function (r) { return r.map(c).join('\t'); }).join('\n');
+  }
+
+  function fallbackCopy(txt) {
+    el.copytxt.value = txt; el.copybox.classList.add('on'); el.copytxt.focus(); el.copytxt.select();
+    try { if (document.execCommand('copy')) { say('Rapport copié : colle-le dans Excel.'); return; } } catch (e) {}
+    say('Copie automatique impossible ici : copie le texte sélectionné (Ctrl+C).');
+  }
+
+  $('b-copy').addEventListener('click', function () {
+    if (!last || !last.items.length) { say('Rien à copier : saisis d’abord une exigence.'); return; }
+    var txt = report();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { el.copybox.classList.remove('on'); say('Rapport copié : colle-le dans Excel.'); }, function () { fallbackCopy(txt); });
+    } else fallbackCopy(txt);
+  });
+  function loadSample(txt) { el.txt.value = txt; el.note.hidden = false; render(); save(); }
+  $('b-sample').addEventListener('click', function () { loadSample(SAMPLE); });
+  $('b-sample-en').addEventListener('click', function () { loadSample(SAMPLE_EN); });
+  $('b-clear').addEventListener('click', function () { el.txt.value = ''; el.note.hidden = true; render(); save(); el.txt.focus(); });
+  el.txt.addEventListener('input', function () { el.note.hidden = true; schedule(); });
+  el.single.addEventListener('change', schedule);
+  el.lang.addEventListener('change', schedule);
+  el.known.addEventListener('input', schedule);
+  el.out.addEventListener('change', function (e) {
+    if (e.target.id === 'f-fix') { filt.onlyfix = e.target.checked; render(); save(); }
+    if (e.target.id === 'f-info') { filt.hideInfo = e.target.checked; render(); save(); }
+  });
+
+  var st = load();
+  if (st && typeof st.t === 'string') {
+    el.txt.value = st.t; el.single.checked = !!st.s; el.known.value = st.k || '';
+    el.lang.value = st.l === 'fr' || st.l === 'en' ? st.l : 'auto';
+    if (st.f) { filt.onlyfix = !!st.f.onlyfix; filt.hideInfo = !!st.f.hideInfo; }
+    el.note.hidden = !st.sample;
+  } else { el.txt.value = SAMPLE; }
+  render();
+})();
+</script>
+
+</body></html>

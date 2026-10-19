@@ -5,7 +5,8 @@
     "title": "LUMÉA",
     "desc": "Site vitrine de compléments alimentaires : produits, quiz et bilan bien-être",
     "icon": "🌿",
-    "cat": "Sites vitrines"
+    "cat": "Sites vitrines",
+    "order": 5
   },
   {
     "slug": "maison-lambert",
@@ -13,7 +14,8 @@
     "title": "Maison Lambert",
     "desc": "Site vitrine d'une boucherie-charcuterie-traiteur",
     "icon": "🥩",
-    "cat": "Sites vitrines"
+    "cat": "Sites vitrines",
+    "order": 6
   },
   {
     "slug": "nutriglow",
@@ -21,7 +23,8 @@
     "title": "NutriGlow — Perte de poids",
     "desc": "Assistant de perte de poids",
     "icon": "🥗",
-    "cat": "Applications"
+    "cat": "Applications",
+    "order": 7
   },
   {
     "slug": "nutriglow-adaptive",
@@ -29,7 +32,8 @@
     "title": "NutriGlow Adaptive",
     "desc": "Planificateur de repas pour mobile, tiré du classeur Excel",
     "icon": "📱",
-    "cat": "Applications"
+    "cat": "Applications",
+    "order": 8
   },
   {
     "slug": "ebook",
@@ -37,7 +41,8 @@
     "title": "Éditeur d'ebook",
     "desc": "Écrire un ebook et l'exporter en PDF",
     "icon": "📖",
-    "cat": "Outils"
+    "cat": "Outils",
+    "order": 9
   },
   {
     "slug": "carte-pays",
@@ -45,6 +50,88 @@
     "title": "Carte des pays",
     "desc": "Colorier une carte du monde depuis un fichier Excel (codes pays ISO 3)",
     "icon": "🗺️",
-    "cat": "Outils"
+    "cat": "Outils",
+    "order": 10
+  },
+  {
+    "slug": "ferme-haut-champ",
+    "dir": "ferme-haut-champ",
+    "title": "Ferme du Haut-Champ",
+    "desc": "Jeu de gestion de ferme",
+    "icon": "🚜",
+    "cat": "Jeux",
+    "order": 1
+  },
+  {
+    "slug": "demiurge",
+    "dir": "demiurge",
+    "title": "Démiurge",
+    "desc": "Jeu bac à sable : créer et façonner un monde",
+    "icon": "🌌",
+    "cat": "Jeux",
+    "order": 2
+  },
+  {
+    "slug": "atlas-des-mondes",
+    "dir": "atlas-des-mondes",
+    "title": "Atlas des Mondes",
+    "desc": "Jeu de stratégie (l'IA conseillère n'est pas disponible ici)",
+    "icon": "🌍",
+    "cat": "Jeux",
+    "order": 3
+  },
+  {
+    "slug": "controle-exigences",
+    "dir": "controle-exigences",
+    "title": "Contrôle des exigences",
+    "desc": "Contrôle d'exigences, directement dans le navigateur",
+    "icon": "✅",
+    "cat": "Ingénierie",
+    "order": 11
+  },
+  {
+    "slug": "perf-vehicule",
+    "dir": "perf-vehicule",
+    "title": "Simulateur de performances véhicule",
+    "desc": "Simulation des performances d'un véhicule",
+    "icon": "🏎️",
+    "cat": "Ingénierie",
+    "order": 12
+  },
+  {
+    "slug": "atelier-sysml",
+    "dir": "atelier-sysml",
+    "title": "Atelier SysML",
+    "desc": "Atelier de modélisation SysML",
+    "icon": "🧩",
+    "cat": "Ingénierie",
+    "order": 13
+  },
+  {
+    "slug": "simulateur-moteur",
+    "dir": "simulateur-moteur",
+    "title": "Simulateur moteur",
+    "desc": "Simulation moteur : vitesse, traction",
+    "icon": "⚙️",
+    "cat": "Ingénierie",
+    "order": 14
+  },
+  {
+    "slug": "atlas-horaire",
+    "dir": "atlas-horaire",
+    "title": "Atlas horaire",
+    "desc": "Atlas horaire",
+    "icon": "🕐",
+    "cat": "Outils",
+    "order": 15
+  },
+  {
+    "slug": "souffleur-cx",
+    "dir": "souffleur-cx",
+    "title": "Souffleur Cx",
+    "desc": "Souffleur Cx",
+    "icon": "🎭",
+    "cat": "Outils",
+    "order": 16
   }
 ]

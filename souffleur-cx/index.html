@@ -1,0 +1,1044 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Souffleur Cx</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#f3f5f8;
+  --surface:#ffffff;
+  --surface-2:#eaeef4;
+  --text:#171a21;
+  --text-muted:#5c6474;
+  --border:#dde1e8;
+  --accent:#2f6fed;
+  --accent-soft:#e3ebff;
+  --accent-ink:#ffffff;
+  --warn:#ff6a39;
+  --warn-soft:#ffe4d8;
+  --good:#1a9c63;
+  --good-soft:#dcf5e8;
+  --shadow:rgba(23,26,33,0.10);
+  --ground:#b9c0cc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10131a;
+    --surface:#171b24;
+    --surface-2:#1e232e;
+    --text:#eef1f6;
+    --text-muted:#99a0b0;
+    --border:#2a2f3b;
+    --accent:#6f97ff;
+    --accent-soft:#233158;
+    --accent-ink:#0b1020;
+    --warn:#ff8a5c;
+    --warn-soft:#402419;
+    --good:#3ddb92;
+    --good-soft:#123726;
+    --shadow:rgba(0,0,0,0.45);
+    --ground:#3a4152;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10131a;
+  --surface:#171b24;
+  --surface-2:#1e232e;
+  --text:#eef1f6;
+  --text-muted:#99a0b0;
+  --border:#2a2f3b;
+  --accent:#6f97ff;
+  --accent-soft:#233158;
+  --accent-ink:#0b1020;
+  --warn:#ff8a5c;
+  --warn-soft:#402419;
+  --good:#3ddb92;
+  --good-soft:#123726;
+  --shadow:rgba(0,0,0,0.45);
+  --ground:#3a4152;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:"IBM Plex Sans",system-ui,sans-serif;
+  padding-inline:20px;
+  padding-block:24px;
+  max-width:1180px;
+  margin:0 auto;
+}
+h1,h2,h3{
+  font-family:"Archivo",system-ui,sans-serif;
+  margin:0;
+  text-wrap:balance;
+}
+.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;}
+
+header{margin-bottom:22px;}
+header h1{font-size:clamp(1.5rem,3vw,2rem); font-weight:800; letter-spacing:-0.01em;}
+header p{margin:6px 0 0; color:var(--text-muted); font-size:0.95rem; max-width:62ch;}
+.eyebrow{
+  font-size:0.72rem; font-weight:600; letter-spacing:0.09em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 6px;
+}
+
+.layout{display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start;}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 1px 2px var(--shadow);
+}
+.card + .card{margin-top:16px;}
+.card h2{font-size:0.95rem; font-weight:700;}
+.card h3{font-size:0.78rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;}
+
+.presets{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.preset-btn{
+  flex:1 1 auto;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  border-radius:9px;
+  padding:8px 10px;
+  font-family:inherit;
+  font-size:0.78rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.preset-btn:hover{border-color:var(--accent);}
+.preset-btn:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+.group{margin-bottom:18px;}
+.group:last-child{margin-bottom:0;}
+
+.field{margin-bottom:14px;}
+.field:last-child{margin-bottom:0;}
+.field-label{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:0.82rem; margin-bottom:6px; gap:8px;
+}
+.field-label span:first-child{color:var(--text);}
+.field-label .val{color:var(--accent); font-weight:600; white-space:nowrap;}
+input[type="range"]{
+  width:100%; accent-color:var(--accent); height:22px; cursor:pointer;
+}
+.check-row{
+  display:flex; align-items:center; gap:9px; font-size:0.85rem;
+  padding-block:6px;
+}
+.check-row input{accent-color:var(--accent); width:16px; height:16px; cursor:pointer;}
+.check-row label{cursor:pointer;}
+.hint{font-size:0.72rem; color:var(--text-muted); margin-top:4px; line-height:1.4;}
+.calc-note{
+  font-size:0.78rem; margin-top:10px; padding:9px 11px; border-radius:9px;
+  background:var(--accent-soft); color:var(--text);
+}
+.calc-note strong{color:var(--accent); font-family:"IBM Plex Mono",monospace;}
+
+.viz-card{padding:16px;}
+.viz-frame{
+  position:relative;
+  width:100%;
+  aspect-ratio:16/9.5;
+  border-radius:10px;
+  overflow:hidden;
+  background:linear-gradient(to bottom, var(--surface-2), var(--surface));
+  border:1px solid var(--border);
+}
+canvas{display:block; width:100%; height:100%;}
+.viz-hint{
+  position:absolute; right:10px; bottom:10px;
+  font-size:0.68rem; color:var(--text-muted);
+  background:var(--surface); border:1px solid var(--border);
+  padding:4px 9px; border-radius:999px; opacity:0.85;
+  pointer-events:none;
+}
+.legend{
+  display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; font-size:0.74rem; color:var(--text-muted);
+}
+.legend span{display:inline-flex; align-items:center; gap:6px;}
+.dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+
+.stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px;}
+@media (max-width:640px){ .stat-row{grid-template-columns:1fr;} }
+.stat-tile{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;
+  box-shadow:0 1px 2px var(--shadow);
+}
+.stat-tile .stat-label{font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:600;}
+.stat-tile .stat-value{font-size:1.6rem; font-weight:600; margin-top:4px; line-height:1;}
+.stat-tile .stat-sub{font-size:0.76rem; color:var(--text-muted); margin-top:4px;}
+.stat-tile.accent{border-color:var(--accent);}
+
+.breakdown{margin-top:16px;}
+.bd-row{display:grid; grid-template-columns:112px 1fr 52px; align-items:center; gap:10px; font-size:0.76rem; margin-bottom:7px;}
+.bd-row:last-child{margin-bottom:0;}
+.bd-track{position:relative; height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden;}
+.bd-fill{position:absolute; top:0; bottom:0; border-radius:4px;}
+.bd-val{text-align:right; font-family:"IBM Plex Mono",monospace;}
+
+.compare-row{display:grid; grid-template-columns:132px 1fr 58px; align-items:center; gap:10px; margin-bottom:8px; font-size:0.8rem;}
+.compare-row:last-child{margin-bottom:0;}
+.compare-track{position:relative; height:14px; background:var(--surface-2); border-radius:7px; overflow:hidden;}
+.compare-fill{position:absolute; top:0; bottom:0; left:0; border-radius:7px; background:var(--text-muted); opacity:0.55;}
+.compare-fill.me{background:var(--accent); opacity:1;}
+.compare-row.me .compare-name{font-weight:700; color:var(--accent);}
+.compare-val{text-align:right; font-family:"IBM Plex Mono",monospace;}
+
+footer{margin-top:22px; font-size:0.74rem; color:var(--text-muted); line-height:1.5; max-width:72ch;}
+
+.lbm-frame{
+  position:relative;
+  width:100%;
+  aspect-ratio:190/62;
+  border-radius:10px;
+  overflow:hidden;
+  background:#12141b;
+  border:1px solid var(--border);
+}
+.lbm-frame canvas{
+  width:100%; height:100%;
+  image-rendering:auto;
+}
+.lbm-badge{
+  position:absolute; left:10px; top:10px;
+  font-size:0.68rem; color:#c7ccd6;
+  background:rgba(255,255,255,0.08);
+  padding:4px 9px; border-radius:999px;
+  letter-spacing:0.03em;
+}
+</style>
+
+<header>
+  <p class="eyebrow">Atelier aérodynamique &middot; POC</p>
+  <h1>Souffleur Cx</h1>
+  <p>Une vraie carrosserie 3D, façonnée par vos réglages : le Cx, la traînée et l'écoulement réagissent en direct. Modèle empirique simplifié — pas un calcul CFD.</p>
+</header>
+
+<div class="layout">
+  <div class="controls">
+    <div class="card">
+      <h3>Configurations types</h3>
+      <div class="presets">
+        <button class="preset-btn" data-preset="citadine">Citadine</button>
+        <button class="preset-btn" data-preset="berline">Berline aéro</button>
+        <button class="preset-btn" data-preset="suv">SUV</button>
+      </div>
+
+      <div class="group">
+        <h3>Géométrie de carrosserie</h3>
+        <div class="field">
+          <div class="field-label"><span>Inclinaison du pare-brise</span><span class="val"><span id="val-rake">40</span>&deg;</span></div>
+          <input type="range" id="rake" min="15" max="65" value="40" step="1">
+          <div class="hint">Angle par rapport à la verticale. Plus couché (van &rarr; sportive) réduit le Cx.</div>
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Pente de la lunette arrière</span><span class="val"><span id="val-rear">15</span>&deg;</span></div>
+          <input type="range" id="rearAngle" min="0" max="45" value="15" step="1">
+          <div class="hint">Optimum classique (effet Kamm-back) vers 12&ndash;15&deg; ; au-delà, le flux décroche.</div>
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Garde au sol</span><span class="val"><span id="val-clear">140</span> mm</span></div>
+          <input type="range" id="clearance" min="80" max="220" value="140" step="5">
+          <div class="hint">Un passage plus bas accélère et stabilise le flux sous caisse.</div>
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Carénage du soubassement</span><span class="val"><span id="val-under">40</span>%</span></div>
+          <input type="range" id="underbody" min="0" max="100" value="40" step="5">
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Gabarit du véhicule</h3>
+        <div class="field">
+          <div class="field-label"><span>Longueur</span><span class="val"><span id="val-length">4.60</span> m</span></div>
+          <input type="range" id="length" min="3.6" max="5.4" value="4.6" step="0.05">
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Largeur</span><span class="val"><span id="val-width">1.82</span> m</span></div>
+          <input type="range" id="width" min="1.65" max="2.05" value="1.82" step="0.01">
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Hauteur</span><span class="val"><span id="val-height">1.45</span> m</span></div>
+          <input type="range" id="height" min="1.30" max="1.80" value="1.45" step="0.01">
+        </div>
+        <div class="calc-note">Surface frontale calculée à partir de la carrosserie 3D : <strong id="val-frontal">1.98</strong> m&sup2;</div>
+      </div>
+
+      <div class="group">
+        <h3>Équipements</h3>
+        <div class="check-row">
+          <input type="checkbox" id="flushMirrors">
+          <label for="flushMirrors">Rétroviseurs profilés / caméras</label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="aeroWheels">
+          <label for="aeroWheels">Jantes carénées</label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="spoiler">
+          <label for="spoiler">Becquet / diffuseur actif</label>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Conditions d'essai</h3>
+        <div class="field">
+          <div class="field-label"><span>Vitesse</span><span class="val"><span id="val-speed">130</span> km/h</span></div>
+          <input type="range" id="speed" min="30" max="220" value="130" step="5">
+          <div class="hint">130 km/h : vitesse maximale sur autoroute en France.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="results">
+    <div class="card viz-card">
+      <h3>Écoulement autour de la carrosserie 3D</h3>
+      <div class="viz-frame">
+        <canvas id="flow3d" aria-label="Visualisation 3D de l'écoulement d'air autour du véhicule"></canvas>
+        <div class="viz-hint">glisser pour orbiter &middot; molette pour zoomer</div>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--warn)"></span> point d'arrêt (haute pression)</span>
+        <span><span class="dot" style="background:var(--accent)"></span> flux d'air</span>
+        <span><span class="dot" style="background:var(--text-muted)"></span> sillage turbulent</span>
+      </div>
+    </div>
+
+    <div class="card viz-card">
+      <h3>Coupe longitudinale &mdash; écoulement simulé (lattice-Boltzmann)</h3>
+      <div class="lbm-frame">
+        <canvas id="lbmCanvas" width="190" height="62" aria-label="Simulation numérique 2D de l'écoulement dans le plan longitudinal du véhicule"></canvas>
+        <span class="lbm-badge">~11 800 cellules &middot; D2Q9</span>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:#4a8cff"></span> tourbillon (sens négatif)</span>
+        <span><span class="dot" style="background:#ff7a45"></span> tourbillon (sens positif)</span>
+        <span><span class="dot" style="background:#828a99"></span> carrosserie</span>
+      </div>
+      <div class="hint">Cette coupe résout un vrai champ de vitesse (méthode de Boltzmann sur réseau, avec rebond sur l'obstacle) dans l'axe du véhicule &mdash; ce n'est plus une esthétique de lignes de courant. L'échelle de vitesse est calée pour rester stable numériquement : elle illustre le régime d'écoulement (laminaire &rarr; tourbillons de sillage) plutôt qu'une vitesse réelle en km/h.</div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-tile accent">
+        <div class="stat-label">Cx estimé</div>
+        <div class="stat-value num" id="out-cx">0.310</div>
+        <div class="stat-sub" id="out-cx-sub">&nbsp;</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Traînée aérodynamique</div>
+        <div class="stat-value num" id="out-force">— N</div>
+        <div class="stat-sub" id="out-force-sub">&nbsp;</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">Puissance absorbée</div>
+        <div class="stat-value num" id="out-power">— kW</div>
+        <div class="stat-sub" id="out-power-sub">&nbsp;</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Décomposition du Cx</h3>
+      <div class="breakdown" id="breakdown"></div>
+    </div>
+
+    <div class="card">
+      <h3>Comparaison avec des Cx publiés</h3>
+      <div id="compare"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  La carrosserie est un vrai maillage 3D : elle est construite en assemblant des sections transversales le long de la longueur du véhicule (un « loft »), dont la forme est pilotée par vos réglages. La surface frontale est mesurée par projection de ce maillage, pas saisie à la main. Le Cx reste un modèle empirique (coefficients calibrés pour des ordres de grandeur plausibles) et l'écoulement affiché est une heuristique de visualisation — le flux contourne la forme par le haut ou par les côtés selon le chemin le plus court — pas la résolution des équations de Navier-Stokes. Traînée F = ½&middot;&rho;&middot;v&sup2;&middot;S&middot;Cx avec &rho; = 1,225 kg/m&sup3;. Puissance P = F&middot;v. Les Cx de référence sont des valeurs communément citées et peuvent varier selon la finition et la source.
+</footer>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var els = {
+    rake: document.getElementById('rake'),
+    rearAngle: document.getElementById('rearAngle'),
+    clearance: document.getElementById('clearance'),
+    underbody: document.getElementById('underbody'),
+    flushMirrors: document.getElementById('flushMirrors'),
+    aeroWheels: document.getElementById('aeroWheels'),
+    spoiler: document.getElementById('spoiler'),
+    length: document.getElementById('length'),
+    width: document.getElementById('width'),
+    height: document.getElementById('height'),
+    speed: document.getElementById('speed')
+  };
+  var valEls = {
+    rake: document.getElementById('val-rake'),
+    rear: document.getElementById('val-rear'),
+    clear: document.getElementById('val-clear'),
+    under: document.getElementById('val-under'),
+    length: document.getElementById('val-length'),
+    width: document.getElementById('val-width'),
+    height: document.getElementById('val-height'),
+    frontal: document.getElementById('val-frontal'),
+    speed: document.getElementById('val-speed')
+  };
+
+  var REF_CARS = [
+    {name:"Mercedes EQS", cx:0.20},
+    {name:"Tesla Model 3", cx:0.23},
+    {name:"Toyota Prius", cx:0.24},
+    {name:"BMW i8", cx:0.26},
+    {name:"VW Golf", cx:0.275},
+    {name:"Renault Clio", cx:0.29},
+    {name:"SUV compact", cx:0.33},
+    {name:"Jeep Wrangler", cx:0.45}
+  ];
+
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function cosLerp(a,b,t){
+    t = clamp(t,0,1);
+    var tt = (1 - Math.cos(t*Math.PI)) / 2;
+    return a + (b-a)*tt;
+  }
+
+  // --- Cx model (empirical, unchanged by the 3D upgrade) --------------
+  function rearBenefit(angle){
+    var optimum = 15, sigma = 13.5;
+    var d = angle - optimum;
+    return -0.042 * Math.exp(-(d*d)/(2*sigma*sigma));
+  }
+
+  function computeCx(state){
+    var base = 0.352;
+    var c = {};
+    c.rake = (40 - state.rake) * 0.0016;
+    c.rear = rearBenefit(state.rearAngle);
+    c.clearance = (state.clearance - 140) * 0.00035;
+    c.underbody = -(state.underbody - 40) * 0.00045;
+    c.equip = (state.flushMirrors ? -0.015 : 0) + (state.aeroWheels ? -0.008 : 0) + (state.spoiler ? -0.010 : 0);
+    var total = base + c.rake + c.rear + c.clearance + c.underbody + c.equip;
+    total = clamp(total, 0.17, 0.55);
+    return {cx: total, base: base, contributions: c};
+  }
+
+  function getState(){
+    return {
+      rake: parseFloat(els.rake.value),
+      rearAngle: parseFloat(els.rearAngle.value),
+      clearance: parseFloat(els.clearance.value),
+      underbody: parseFloat(els.underbody.value),
+      flushMirrors: els.flushMirrors.checked,
+      aeroWheels: els.aeroWheels.checked,
+      spoiler: els.spoiler.checked,
+      length: parseFloat(els.length.value),
+      width: parseFloat(els.width.value),
+      height: parseFloat(els.height.value),
+      speed: parseFloat(els.speed.value)
+    };
+  }
+
+  var RHO = 1.225;
+  function forcePower(cx, area, speedKmh){
+    var v = speedKmh / 3.6;
+    var F = 0.5 * RHO * v * v * area * cx;
+    var P = F * v / 1000; // kW
+    return {F:F, P:P, v:v};
+  }
+
+  // --- Body geometry: stations lofted along the vehicle length ---------
+  // Cross-section ring, normalized: [lateral -1..1, height 0..1]
+  var RING = [
+    [0.00,0.02],[0.55,0.05],[0.85,0.10],[1.00,0.42],[0.78,0.72],[0.42,0.94],
+    [0.00,1.00],[-0.42,0.94],[-0.78,0.72],[-1.00,0.42],[-0.85,0.10],[-0.55,0.05]
+  ];
+  var RING_N = RING.length;
+  function polygonArea(pts){
+    var a = 0;
+    for (var i=0;i<pts.length;i++){
+      var p1 = pts[i], p2 = pts[(i+1)%pts.length];
+      a += p1[0]*p2[1] - p2[0]*p1[1];
+    }
+    return Math.abs(a)/2;
+  }
+  var RING_AREA = polygonArea(RING);
+
+  function computeShapeParams(state){
+    var windshieldRun = 0.10 + (state.rake/65)*0.20;
+    var rearRun = clamp(0.12 + ((45-state.rearAngle)/45)*0.28, 0.12, 0.42);
+    var bumperFrontEnd = 0.05;
+    var hoodEnd = 0.16;
+    var roofStart = hoodEnd + windshieldRun;
+    var roofEnd = Math.min(0.60, roofStart + 0.12);
+    if (roofEnd < roofStart) roofEnd = roofStart;
+    var rearEnd = clamp(roofEnd + rearRun, roofEnd+0.05, 1);
+    return {bumperFrontEnd:bumperFrontEnd, hoodEnd:hoodEnd, roofStart:roofStart, roofEnd:roofEnd, rearEnd:rearEnd};
+  }
+
+  function heightScaleAt(u, p){
+    if (u <= 0 || u >= 1) return 0;
+    if (u < p.bumperFrontEnd) return cosLerp(0, 0.23, u/p.bumperFrontEnd);
+    if (u < p.hoodEnd) return cosLerp(0.23, 0.38, (u-p.bumperFrontEnd)/(p.hoodEnd-p.bumperFrontEnd));
+    if (u < p.roofStart) return cosLerp(0.38, 1.0, (u-p.hoodEnd)/(p.roofStart-p.hoodEnd));
+    if (u < p.roofEnd) return 1.0 + 0.02*Math.sin(Math.PI*(u-p.roofStart)/Math.max(p.roofEnd-p.roofStart,0.0001));
+    if (u < p.rearEnd) return cosLerp(1.0, 0.28, (u-p.roofEnd)/(p.rearEnd-p.roofEnd));
+    return cosLerp(0.28, 0.24, (u-p.rearEnd)/Math.max(1-p.rearEnd,0.001));
+  }
+
+  function widthScaleAt(u){
+    var noseEnd = 0.09, tailStart = 0.92;
+    if (u < noseEnd) return cosLerp(0.08, 1.0, u/noseEnd);
+    if (u > tailStart) return cosLerp(1.0, 0.14, (u-tailStart)/(1-tailStart));
+    return 1.0;
+  }
+
+  function computeFrontalArea(state){
+    return RING_AREA * (state.width/2) * state.height;
+  }
+
+  var NX = 44, STATION_EPS = 0.006;
+
+  function buildCarGeometry(state){
+    var p = computeShapeParams(state);
+    var coreLength = state.length, coreWidth = state.width, coreHeight = state.height;
+    var groundGapM = state.clearance/1000;
+    var positions = [];
+    for (var i=0;i<NX;i++){
+      var u = lerp(STATION_EPS, 1-STATION_EPS, i/(NX-1));
+      var hS = heightScaleAt(u, p);
+      var wS = widthScaleAt(u);
+      var x = (u-0.5)*coreLength;
+      for (var j=0;j<RING_N;j++){
+        var ry = RING[j][0]*wS*(coreWidth/2);
+        var rz = groundGapM + RING[j][1]*hS*coreHeight;
+        positions.push(x, rz, ry);
+      }
+    }
+    var indices = [];
+    for (var i2=0;i2<NX-1;i2++){
+      for (var j2=0;j2<RING_N;j2++){
+        var a = i2*RING_N+j2;
+        var b = i2*RING_N+((j2+1)%RING_N);
+        var c = (i2+1)*RING_N+j2;
+        var d = (i2+1)*RING_N+((j2+1)%RING_N);
+        indices.push(a,b,c);
+        indices.push(b,d,c);
+      }
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return {geometry:geo, coreLength:coreLength, coreWidth:coreWidth, coreHeight:coreHeight, groundGapM:groundGapM, shapeParams:p};
+  }
+
+  // smooth max, used to push streamlines around the body
+  function smoothMax(a,b,s){
+    return s*Math.log(Math.exp(a/s)+Math.exp(b/s));
+  }
+
+  // Each streamline commits to one regime along its whole length: lanes
+  // close to the centerline pass over the roof, lanes further out pass
+  // around the sides. Deciding this once per lane (rather than racing the
+  // two displacements at every x-step) keeps left/right symmetry stable.
+  function computeStreamlinePath(yb0, zb0, goOver, dims){
+    var halfL = dims.coreLength/2;
+    var xStart = -halfL*2.0, xEnd = halfL*2.7;
+    var N = 46;
+    var margin = 0.05, s = 0.06;
+    var pts = [];
+    for (var i=0;i<N;i++){
+      var t = i/(N-1);
+      var x = lerp(xStart, xEnd, t);
+      var uCar = (x+halfL)/dims.coreLength;
+      var curY = yb0, curZ = zb0;
+      if (uCar > 0 && uCar < 1){
+        if (goOver){
+          var hLocal = dims.groundGapM + heightScaleAt(uCar, dims.shapeParams) * dims.coreHeight;
+          curZ = smoothMax(zb0, hLocal+margin, s);
+        } else {
+          var wHalf = widthScaleAt(uCar) * dims.coreWidth/2;
+          var sideMag = smoothMax(Math.abs(yb0), wHalf+margin, s);
+          curY = sideMag * (yb0<0?-1:1);
+        }
+      }
+      pts.push({x:x, y:curZ, z:curY});
+    }
+    return pts;
+  }
+
+  var LAT_FRACS = [-1.6,-1.0,-0.35,0.35,1.0,1.6];
+  var HEI_FRACS = [0.15,0.5,0.85,1.25];
+  var streamPaths = [];
+
+  function buildStreamlines(state, dims){
+    streamPaths = [];
+    LAT_FRACS.forEach(function(lf){
+      var goOver = Math.abs(lf) < 0.6;
+      HEI_FRACS.forEach(function(hf){
+        var yb0 = lf * dims.coreWidth/2;
+        var zb0 = dims.groundGapM + hf*dims.coreHeight;
+        streamPaths.push(computeStreamlinePath(yb0, zb0, goOver, dims));
+      });
+    });
+  }
+
+  // --- Readouts / UI (unchanged logic, new data source for area) -------
+  function fmt(n, d){ return n.toFixed(d==null?2:d); }
+
+  function updateReadouts(state, cxInfo, frontalArea){
+    valEls.rake.textContent = state.rake;
+    valEls.rear.textContent = state.rearAngle;
+    valEls.clear.textContent = state.clearance;
+    valEls.under.textContent = state.underbody;
+    valEls.length.textContent = fmt(state.length,2);
+    valEls.width.textContent = fmt(state.width,2);
+    valEls.height.textContent = fmt(state.height,2);
+    valEls.frontal.textContent = fmt(frontalArea,2);
+    valEls.speed.textContent = state.speed;
+
+    document.getElementById('out-cx').textContent = fmt(cxInfo.cx,3);
+    var refBase = 0.30;
+    var deltaPct = ((cxInfo.cx-refBase)/refBase*100);
+    var cxSub = document.getElementById('out-cx-sub');
+    cxSub.textContent = (deltaPct>=0?'+':'') + deltaPct.toFixed(0) + '% vs berline de référence (0,30)';
+    cxSub.style.color = deltaPct<=0 ? 'var(--good)' : 'var(--warn)';
+
+    var fp = forcePower(cxInfo.cx, frontalArea, state.speed);
+    document.getElementById('out-force').textContent = fmt(fp.F,0)+' N';
+    document.getElementById('out-force-sub').textContent = 'à '+state.speed+' km/h ('+fmt(fp.v,1)+' m/s)';
+    document.getElementById('out-power').textContent = fmt(fp.P,1)+' kW';
+    document.getElementById('out-power-sub').textContent = fmt(fp.P*1.341,1)+' ch';
+
+    renderBreakdown(cxInfo);
+    renderCompare(cxInfo.cx);
+  }
+
+  function renderBreakdown(cxInfo){
+    var rows = [
+      {label:'Pare-brise', v:cxInfo.contributions.rake},
+      {label:'Lunette AR', v:cxInfo.contributions.rear},
+      {label:'Garde au sol', v:cxInfo.contributions.clearance},
+      {label:'Soubassement', v:cxInfo.contributions.underbody},
+      {label:'Équipements', v:cxInfo.contributions.equip}
+    ];
+    var maxAbs = 0.05;
+    var html = '';
+    rows.forEach(function(r){
+      var pct = clamp(Math.abs(r.v)/maxAbs*50, 0, 50);
+      var isGood = r.v <= 0;
+      var color = isGood ? 'var(--good)' : 'var(--warn)';
+      var left = isGood ? (50-pct) : 50;
+      html += '<div class="bd-row"><span>'+r.label+'</span>' +
+        '<div class="bd-track"><div class="bd-fill" style="left:'+left+'%; width:'+pct+'%; background:'+color+';"></div></div>' +
+        '<span class="bd-val" style="color:'+color+'">'+(r.v>=0?'+':'')+r.v.toFixed(3)+'</span></div>';
+    });
+    document.getElementById('breakdown').innerHTML = html;
+  }
+
+  function renderCompare(myCx){
+    var all = REF_CARS.map(function(c){ return {name:c.name, cx:c.cx, mine:false}; });
+    all.push({name:'Votre configuration', cx:myCx, mine:true});
+    all.sort(function(a,b){ return a.cx-b.cx; });
+    var domainMax = 0.50;
+    var html = '';
+    all.forEach(function(c){
+      var pct = clamp(c.cx/domainMax*100, 2, 100);
+      html += '<div class="compare-row'+(c.mine?' me':'')+'">' +
+        '<span class="compare-name">'+c.name+'</span>' +
+        '<div class="compare-track"><div class="compare-fill'+(c.mine?' me':'')+'" style="width:'+pct+'%;"></div></div>' +
+        '<span class="compare-val">'+c.cx.toFixed(3)+'</span></div>';
+    });
+    document.getElementById('compare').innerHTML = html;
+  }
+
+  // --- 3D scene ----------------------------------------------------------
+  var vizFrame = document.querySelector('.viz-frame');
+  var canvas3d = document.getElementById('flow3d');
+  var renderer = new THREE.WebGLRenderer({canvas:canvas3d, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  camera.position.set(5.2, 2.5, 6.6);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x30364a, 1.0));
+  var keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+  keyLight.position.set(4, 6, 3);
+  scene.add(keyLight);
+  var fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+  fillLight.position.set(-5, 3, -4);
+  scene.add(fillLight);
+
+  function cssColor(varName, fallback){
+    var v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    return v || fallback;
+  }
+
+  var gridMat = new THREE.LineBasicMaterial({color:new THREE.Color(cssColor('--text-muted','#8891a0')), transparent:true, opacity:0.16});
+  var grid = new THREE.GridHelper(16, 32, 0x8891a0, 0x8891a0);
+  grid.material = gridMat;
+  scene.add(grid);
+
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.7;
+  controls.minDistance = 3;
+  controls.maxDistance = 16;
+  controls.maxPolarAngle = Math.PI*0.49;
+  controls.target.set(0, 0.6, 0);
+  renderer.domElement.addEventListener('pointerdown', function once(){
+    controls.autoRotate = false;
+  }, {once:true});
+
+  var bodyMaterial = new THREE.MeshStandardMaterial({color:0x808a99, metalness:0.5, roughness:0.38, side:THREE.DoubleSide});
+  var wheelMaterial = new THREE.MeshStandardMaterial({color:0x1c1c20, roughness:0.85});
+  var wheelGeoCache = null;
+  var carMesh = null;
+  var wheelMeshes = [];
+
+  var accentColorObj = new THREE.Color(cssColor('--accent','#2f6fed'));
+  var mutedColorObj = new THREE.Color(cssColor('--text-muted','#5c6474'));
+  var warnColorObj = new THREE.Color(cssColor('--warn','#ff6a39'));
+
+  var sphereGeo = new THREE.SphereGeometry(0.045, 8, 8);
+  var TRAIL_RANKS = 5, TRAIL_DPHASE = 0.022;
+  var TRAIL_OPACITY = [1, 0.75, 0.55, 0.38, 0.22];
+  var markers = [];
+
+  var stagGeo = new THREE.SphereGeometry(0.06, 10, 10);
+  var stagMesh = new THREE.Mesh(stagGeo, new THREE.MeshBasicMaterial({color:warnColorObj}));
+  scene.add(stagMesh);
+
+  // --- 2D slice: lattice-Boltzmann (D2Q9, BGK) --------------------------
+  // A real numerical flow solver on a longitudinal cross-section, sharing
+  // the exact same body profile (heightScaleAt/computeShapeParams) as the
+  // 3D mesh above, so the slice always matches what the 3D view shows.
+  var LBM_NX = 190, LBM_NY = 62, LBM_CELLS = LBM_NX*LBM_NY;
+  var LBM_EX = [0,1,0,-1,0,1,-1,-1,1];
+  var LBM_EY = [0,0,1,0,-1,1,1,-1,-1];
+  var LBM_W  = [4/9,1/9,1/9,1/9,1/9,1/36,1/36,1/36,1/36];
+  var LBM_OPP= [0,3,4,1,2,7,8,5,6];
+  var LBM_TAU = 0.56, LBM_OMEGA = 1/LBM_TAU;
+  var LBM_STEPS_PER_FRAME = 6;
+
+  var lbmA = [], lbmB = [];
+  for (var _i=0;_i<9;_i++){ lbmA.push(new Float32Array(LBM_CELLS)); lbmB.push(new Float32Array(LBM_CELLS)); }
+  var lbmObstacle = new Uint8Array(LBM_CELLS);
+  var lbmRho = new Float32Array(LBM_CELLS);
+  var lbmUx = new Float32Array(LBM_CELLS);
+  var lbmUy = new Float32Array(LBM_CELLS);
+  var lbmCurl = new Float32Array(LBM_CELLS);
+  var lbmU0 = 0.06;
+  var lbmReady = false;
+
+  function lbmIdx(x,y){ return y*LBM_NX+x; }
+  function lbmFeq(i,rho,ux,uy){
+    var eu = LBM_EX[i]*ux + LBM_EY[i]*uy;
+    var uu = ux*ux+uy*uy;
+    return LBM_W[i]*rho*(1 + 3*eu + 4.5*eu*eu - 1.5*uu);
+  }
+
+  function resetLBM(state, dims){
+    var coreLength = dims.coreLength, coreHeight = dims.coreHeight, groundGapM = dims.groundGapM, p = dims.shapeParams;
+    var xMin = -0.65*coreLength, xMax = 2.0*coreLength;
+    var yMax = 2.5*(coreHeight+groundGapM);
+    lbmU0 = 0.035 + (state.speed-30)/(220-30)*0.06;
+    for (var y=0;y<LBM_NY;y++){
+      for (var x=0;x<LBM_NX;x++){
+        var id = lbmIdx(x,y);
+        var worldX = xMin + (x+0.5)/LBM_NX*(xMax-xMin);
+        var worldY = (y+0.5)/LBM_NY*yMax;
+        var uCar = (worldX+coreLength/2)/coreLength;
+        var solid = false;
+        if (uCar > 0 && uCar < 1){
+          var carH = groundGapM + heightScaleAt(uCar,p)*coreHeight;
+          if (worldY <= carH) solid = true;
+        }
+        lbmObstacle[id] = solid ? 1 : 0;
+        for (var i=0;i<9;i++){
+          var val = lbmFeq(i, 1.0, solid?0:lbmU0, 0);
+          lbmA[i][id] = val;
+          lbmB[i][id] = val;
+        }
+      }
+    }
+    lbmReady = true;
+  }
+
+  function stepLBM(){
+    if (!lbmReady) return;
+    // collide (fluid cells only)
+    for (var y=0;y<LBM_NY;y++){
+      for (var x=0;x<LBM_NX;x++){
+        var id = lbmIdx(x,y);
+        if (lbmObstacle[id]) continue;
+        var rho=0, ux=0, uy=0;
+        for (var i=0;i<9;i++){ var v=lbmA[i][id]; rho+=v; ux+=LBM_EX[i]*v; uy+=LBM_EY[i]*v; }
+        ux/=rho; uy/=rho;
+        lbmRho[id]=rho; lbmUx[id]=ux; lbmUy[id]=uy;
+        for (var i2=0;i2<9;i2++){
+          var feq = lbmFeq(i2,rho,ux,uy);
+          lbmA[i2][id] += LBM_OMEGA*(feq-lbmA[i2][id]);
+        }
+      }
+    }
+    // stream, with bounce-back wherever the source neighbor is solid or off-grid
+    for (var y2=0;y2<LBM_NY;y2++){
+      for (var x2=0;x2<LBM_NX;x2++){
+        var id2 = lbmIdx(x2,y2);
+        if (lbmObstacle[id2]) continue;
+        for (var i3=0;i3<9;i3++){
+          var sx = x2-LBM_EX[i3], sy = y2-LBM_EY[i3];
+          var blocked = (sx<0||sx>=LBM_NX||sy<0||sy>=LBM_NY);
+          if (!blocked && lbmObstacle[lbmIdx(sx,sy)]) blocked = true;
+          lbmB[i3][id2] = blocked ? lbmA[LBM_OPP[i3]][id2] : lbmA[i3][lbmIdx(sx,sy)];
+        }
+      }
+    }
+    // inlet (Dirichlet velocity) / outlet (zero-gradient) overrides
+    for (var y3=0;y3<LBM_NY;y3++){
+      var idIn = lbmIdx(0,y3);
+      if (!lbmObstacle[idIn]){
+        for (var i4=0;i4<9;i4++) lbmB[i4][idIn] = lbmFeq(i4,1.0,lbmU0,0);
+      }
+      var idOut = lbmIdx(LBM_NX-1,y3), idOutSrc = lbmIdx(LBM_NX-2,y3);
+      if (!lbmObstacle[idOut]){
+        for (var i5=0;i5<9;i5++) lbmB[i5][idOut] = lbmB[i5][idOutSrc];
+      }
+    }
+    var tmp = lbmA; lbmA = lbmB; lbmB = tmp;
+  }
+
+  function computeCurl(){
+    for (var y=1;y<LBM_NY-1;y++){
+      for (var x=1;x<LBM_NX-1;x++){
+        var id = lbmIdx(x,y);
+        if (lbmObstacle[id]){ lbmCurl[id]=0; continue; }
+        var idr=lbmIdx(x+1,y), idl=lbmIdx(x-1,y), idu=lbmIdx(x,y+1), idd=lbmIdx(x,y-1);
+        var uyR = lbmObstacle[idr]?lbmUy[id]:lbmUy[idr];
+        var uyL = lbmObstacle[idl]?lbmUy[id]:lbmUy[idl];
+        var uxU = lbmObstacle[idu]?lbmUx[id]:lbmUx[idu];
+        var uxD = lbmObstacle[idd]?lbmUx[id]:lbmUx[idd];
+        lbmCurl[id] = (uyR-uyL) - (uxU-uxD);
+      }
+    }
+  }
+
+  var lbmCanvas = document.getElementById('lbmCanvas');
+  var lbmCtx = lbmCanvas.getContext('2d');
+  var lbmImg = lbmCtx.createImageData(LBM_NX, LBM_NY);
+  var LBM_BODY = {r:130,g:138,b:150};
+  var LBM_BG = {r:18,g:20,b:27};
+  var LBM_NEG = {r:74,g:140,b:255};
+  var LBM_POS = {r:255,g:122,b:69};
+
+  function renderLBM(){
+    if (!lbmReady) return;
+    computeCurl();
+    var data = lbmImg.data;
+    var scale = 14 / Math.max(lbmU0, 0.001);
+    for (var y=0;y<LBM_NY;y++){
+      var rowOut = (LBM_NY-1-y); // flip: our y=0 is the ground
+      for (var x=0;x<LBM_NX;x++){
+        var id = lbmIdx(x,y);
+        var pi = (rowOut*LBM_NX+x)*4;
+        if (lbmObstacle[id]){
+          data[pi]=LBM_BODY.r; data[pi+1]=LBM_BODY.g; data[pi+2]=LBM_BODY.b; data[pi+3]=255;
+          continue;
+        }
+        var c = clamp(lbmCurl[id]*scale, -1, 1);
+        var col = c<0 ? LBM_NEG : LBM_POS;
+        var t = Math.abs(c);
+        data[pi]   = lerp(LBM_BG.r, col.r, t);
+        data[pi+1] = lerp(LBM_BG.g, col.g, t);
+        data[pi+2] = lerp(LBM_BG.b, col.b, t);
+        data[pi+3] = 255;
+      }
+    }
+    lbmCtx.putImageData(lbmImg, 0, 0);
+  }
+
+  var current = { state:null, cxInfo:null, dims:null, frontalArea:0 };
+
+  function rebuildCar(state){
+    if (carMesh){ scene.remove(carMesh); carMesh.geometry.dispose(); }
+    var built = buildCarGeometry(state);
+    carMesh = new THREE.Mesh(built.geometry, bodyMaterial);
+    scene.add(carMesh);
+    current.dims = built;
+
+    wheelMeshes.forEach(function(w){ scene.remove(w); });
+    wheelMeshes = [];
+    var wheelR = 0.31 * (state.height/1.45);
+    var wheelThk = 0.16;
+    if (wheelGeoCache) wheelGeoCache.dispose();
+    wheelGeoCache = new THREE.CylinderGeometry(wheelR, wheelR, wheelThk, 22);
+    var xFront = -built.coreLength/2 + 0.20*built.coreLength;
+    var xRear = built.coreLength/2 - 0.16*built.coreLength;
+    var yOff = built.coreWidth/2*0.94;
+    [[xFront,-1],[xFront,1],[xRear,-1],[xRear,1]].forEach(function(pos){
+      var wm = new THREE.Mesh(wheelGeoCache, wheelMaterial);
+      wm.rotation.x = Math.PI/2;
+      wm.position.set(pos[0], wheelR, pos[1]*yOff);
+      scene.add(wm);
+      wheelMeshes.push(wm);
+    });
+
+    stagMesh.position.set(-built.coreLength/2*0.90, built.groundGapM+0.25*built.coreHeight, 0);
+
+    resetLBM(state, built);
+
+    buildStreamlines(state, built);
+    if (markers.length === 0){
+      streamPaths.forEach(function(){
+        for (var r=0;r<TRAIL_RANKS;r++){
+          var mat = new THREE.MeshBasicMaterial({color:accentColorObj, transparent:true, opacity:1});
+          var mesh = new THREE.Mesh(sphereGeo, mat);
+          scene.add(mesh);
+          markers.push({mesh:mesh, rank:r});
+        }
+      });
+    }
+
+    controls.target.set(0, built.coreHeight*0.42, 0);
+  }
+
+  function recompute(){
+    var state = getState();
+    var cxInfo = computeCx(state);
+    var frontalArea = computeFrontalArea(state);
+    current.state = state;
+    current.cxInfo = cxInfo;
+    current.frontalArea = frontalArea;
+    rebuildCar(state);
+    updateReadouts(state, cxInfo, frontalArea);
+  }
+
+  function updateMarkers(time){
+    if (!current.dims) return;
+    var tailX = current.dims.coreLength/2;
+    var rearSteepness = clamp(current.state.rearAngle/45, 0, 1);
+    var wakeLen = (0.55 - rearSteepness*0.30) * current.dims.coreLength;
+    var wakeEndX = tailX + wakeLen;
+    var idx = 0;
+    for (var si=0; si<streamPaths.length; si++){
+      var pts = streamPaths[si];
+      var basePhase = (time*0.09 + si*0.131) % 1;
+      for (var r=0;r<TRAIL_RANKS;r++){
+        var phase = basePhase - r*TRAIL_DPHASE;
+        phase = ((phase % 1) + 1) % 1;
+        var fpos = phase*(pts.length-1);
+        var i0 = Math.floor(fpos), i1 = Math.min(i0+1, pts.length-1);
+        var f = fpos - i0;
+        var p0 = pts[i0], p1 = pts[i1];
+        var wx = lerp(p0.x,p1.x,f), wy = lerp(p0.y,p1.y,f), wz = lerp(p0.z,p1.z,f);
+        var inWake = wx > tailX;
+        var wakeT = inWake ? clamp((wx-tailX)/Math.max(wakeEndX-tailX,0.001), 0, 1) : 0;
+        var jitter = 0;
+        if (inWake && wakeT < 1){
+          jitter = Math.sin(time*5 + si*2.1 + r) * 0.05 * current.dims.coreHeight * (1-wakeT);
+        }
+        var m = markers[idx++];
+        m.mesh.position.set(wx, wy+jitter, wz+jitter*0.6);
+        m.mesh.material.opacity = TRAIL_OPACITY[r] * (inWake ? 0.75 : 1);
+        m.mesh.material.color.copy(inWake ? mutedColorObj : accentColorObj);
+      }
+    }
+  }
+
+  function resize3D(){
+    var w = vizFrame.clientWidth, h = vizFrame.clientHeight;
+    if (w<=0||h<=0) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+
+  var ro = new ResizeObserver(resize3D);
+  ro.observe(vizFrame);
+
+  function animate(ts){
+    var t = (ts||0)/1000;
+    controls.update();
+    updateMarkers(t);
+    renderer.render(scene, camera);
+    for (var s=0;s<LBM_STEPS_PER_FRAME;s++) stepLBM();
+    renderLBM();
+    requestAnimationFrame(animate);
+  }
+
+  // --- Wiring --------------------------------------------------------
+  Object.keys(els).forEach(function(k){
+    els[k].addEventListener('input', recompute);
+    els[k].addEventListener('change', function(){
+      try { localStorage.setItem('souffleur-cx-state', JSON.stringify(getState())); } catch(e){}
+    });
+  });
+
+  var PRESETS = {
+    citadine: {rake:26, rearAngle:6, clearance:150, underbody:15, flushMirrors:false, aeroWheels:false, spoiler:false, length:3.95, width:1.74, height:1.54, speed:110},
+    berline: {rake:58, rearAngle:16, clearance:118, underbody:75, flushMirrors:true, aeroWheels:true, spoiler:true, length:4.95, width:1.86, height:1.40, speed:130},
+    suv: {rake:32, rearAngle:4, clearance:205, underbody:12, flushMirrors:false, aeroWheels:false, spoiler:false, length:4.55, width:1.92, height:1.72, speed:120}
+  };
+
+  document.querySelectorAll('.preset-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var p = PRESETS[btn.getAttribute('data-preset')];
+      if (!p) return;
+      els.rake.value = p.rake;
+      els.rearAngle.value = p.rearAngle;
+      els.clearance.value = p.clearance;
+      els.underbody.value = p.underbody;
+      els.flushMirrors.checked = p.flushMirrors;
+      els.aeroWheels.checked = p.aeroWheels;
+      els.spoiler.checked = p.spoiler;
+      els.length.value = p.length;
+      els.width.value = p.width;
+      els.height.value = p.height;
+      els.speed.value = p.speed;
+      recompute();
+      try { localStorage.setItem('souffleur-cx-state', JSON.stringify(getState())); } catch(e){}
+    });
+  });
+
+  function restoreState(){
+    try {
+      var raw = localStorage.getItem('souffleur-cx-state');
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (!s) return;
+      if (s.rake!=null) els.rake.value = s.rake;
+      if (s.rearAngle!=null) els.rearAngle.value = s.rearAngle;
+      if (s.clearance!=null) els.clearance.value = s.clearance;
+      if (s.underbody!=null) els.underbody.value = s.underbody;
+      if (s.flushMirrors!=null) els.flushMirrors.checked = s.flushMirrors;
+      if (s.aeroWheels!=null) els.aeroWheels.checked = s.aeroWheels;
+      if (s.spoiler!=null) els.spoiler.checked = s.spoiler;
+      if (s.length!=null) els.length.value = s.length;
+      if (s.width!=null) els.width.value = s.width;
+      if (s.height!=null) els.height.value = s.height;
+      if (s.speed!=null) els.speed.value = s.speed;
+    } catch(e){}
+  }
+
+  restoreState();
+  recompute();
+  resize3D();
+  requestAnimationFrame(animate);
+})();
+</script>
+
+</body></html>

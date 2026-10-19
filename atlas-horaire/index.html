@@ -1,0 +1,912 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Atlas horaire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: panneaux empilés. L'heure en chiffres mono est l'élément fort, le reste reste sobre. */
+:root{
+  --bg:#EDF0F3;
+  --surface:#FFFFFF;
+  --surface-2:#F3F5F8;
+  --ink:#13202C;
+  --ink-2:#4A5967;
+  --line:#D6DCE3;
+  --accent:#1B4FD6;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E4EBFC;
+  --ok:#12794A;
+  --ok-soft:#DCF2E7;
+  --warn:#8F5200;
+  --warn-soft:#FAEACB;
+  --off:#5C6975;
+  --off-soft:#E6EAEE;
+  --f-body:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1218;
+    --surface:#141C25;
+    --surface-2:#1A242F;
+    --ink:#E7EDF3;
+    --ink-2:#A0AEBC;
+    --line:#27333F;
+    --accent:#7EA2FF;
+    --accent-ink:#0C1218;
+    --accent-soft:#1B2A4A;
+    --ok:#5BD39A;
+    --ok-soft:#12301F;
+    --warn:#F0B45A;
+    --warn-soft:#3A2A0E;
+    --off:#93A1AF;
+    --off-soft:#222C36;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1218;
+  --surface:#141C25;
+  --surface-2:#1A242F;
+  --ink:#E7EDF3;
+  --ink-2:#A0AEBC;
+  --line:#27333F;
+  --accent:#7EA2FF;
+  --accent-ink:#0C1218;
+  --accent-soft:#1B2A4A;
+  --ok:#5BD39A;
+  --ok-soft:#12301F;
+  --warn:#F0B45A;
+  --warn-soft:#3A2A0E;
+  --off:#93A1AF;
+  --off-soft:#222C36;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-inline:clamp(16px,4vw,40px);
+  padding-block:28px 56px;
+}
+.wrap{max-width:1120px;margin-inline:auto;display:grid;gap:28px}
+h1,h2,h3,p{margin:0}
+h1{font-size:clamp(1.8rem,4.5vw,2.5rem);line-height:1.1;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:1.15rem;font-weight:650;letter-spacing:-.01em;text-wrap:balance}
+h3{font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.muted{color:var(--ink-2)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:grid;gap:8px}
+header.top p{color:var(--ink-2);max-width:60ch}
+
+.controls{
+  display:grid;gap:14px 16px;
+  grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+}
+.field{display:grid;gap:6px;min-width:0}
+.field>span,.field>legend{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.pair{display:flex;align-items:center;gap:8px}
+select,input[type="date"],input[type="time"]{
+  font:inherit;color:var(--ink);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:6px;height:40px;padding-inline:10px;min-width:0;width:100%;
+}
+button{font:inherit;cursor:pointer}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.panel-head{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between;padding:16px 18px 12px}
+.panel-head p{font-size:.85rem;color:var(--ink-2)}
+.panel-body{padding:0 18px 16px}
+
+.board{list-style:none;margin:0;padding:0}
+.row{
+  display:grid;gap:8px 20px;align-items:center;
+  grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1.05fr) minmax(0,1.2fr);
+  grid-template-areas:"who time gap state";
+  padding:14px 18px;border-top:1px solid var(--line);
+}
+.row.is-ref{background:var(--accent-soft)}
+.who{grid-area:who;display:flex;align-items:center;gap:12px;min-width:0}
+.code{
+  font-family:var(--f-mono);font-weight:600;font-size:.78rem;letter-spacing:.06em;
+  border:1px solid var(--line);background:var(--surface-2);border-radius:4px;padding:3px 6px;flex:none;
+}
+.cn{font-weight:650}
+.city{font-size:.85rem;color:var(--ink-2)}
+.time{grid-area:time}
+.clk{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:500;font-size:clamp(1.7rem,3.4vw,2.15rem);line-height:1.1;letter-spacing:-.02em}
+.clk .sec{font-size:.55em;color:var(--ink-2);letter-spacing:0}
+.day{font-size:.85rem;color:var(--ink-2);margin-top:2px}
+.gap{grid-area:gap;display:grid;gap:2px}
+.gap b{font-family:var(--f-mono);font-weight:600;font-size:1.05rem}
+.gap span{font-size:.8rem;color:var(--ink-2)}
+.state{grid-area:state;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;min-width:0}
+.state small{font-size:.8rem;color:var(--ink-2)}
+
+.pill{
+  display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;
+  font-size:.78rem;font-weight:600;white-space:nowrap;border:1px solid transparent;
+}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.ok{color:var(--ok);background:var(--ok-soft)}
+.pill.warn{color:var(--warn);background:var(--warn-soft)}
+.pill.off{color:var(--off);background:var(--off-soft)}
+.pill.est{color:var(--ink-2);background:transparent;border-color:var(--line)}
+.pill.est::before{display:none}
+
+.tl{display:grid;gap:2px}
+.tl-row{display:grid;grid-template-columns:10rem minmax(0,1fr);gap:12px;align-items:center;padding:5px 0}
+.tl-row label{display:flex;align-items:center;gap:8px;font-weight:550;min-width:0;cursor:pointer}
+.tl-row input{accent-color:var(--accent);width:16px;height:16px;flex:none}
+.tl-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{position:relative;height:26px;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg{position:absolute;top:0;bottom:0;background:var(--accent);opacity:.8}
+.common{
+  position:absolute;top:0;bottom:0;
+  background:color-mix(in srgb,var(--ok) 30%,transparent);
+  border-inline:2px solid var(--ok);
+}
+.nowline{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);margin-left:-1px}
+.axis{position:relative;height:18px;margin-left:calc(10rem + 12px)}
+.axis span{position:absolute;top:0;transform:translateX(-50%);font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2)}
+.axis span:first-child{transform:none}
+.axis span:last-child{transform:translateX(-100%)}
+.result{margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--surface-2);display:grid;gap:6px}
+.result.good{border-color:var(--ok)}
+.result strong{font-weight:650}
+.result ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.result li{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.9rem}
+.result li b{font-family:var(--f-mono);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.8rem;color:var(--ink-2);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-inline-end:6px}
+
+.conv-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:0 18px 14px}
+.conv-controls .field{width:11rem;max-width:100%}
+.btn{height:40px;padding-inline:16px;border-radius:6px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-weight:600}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.crow{
+  display:grid;gap:6px 20px;align-items:center;padding:11px 18px;border-top:1px solid var(--line);
+  grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr) minmax(0,.9fr) minmax(0,1.1fr);
+}
+.crow .t{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:1.25rem;font-weight:500}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 18px 14px}
+.chip{
+  display:inline-flex;align-items:center;gap:8px;height:34px;padding-inline:12px;border-radius:999px;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);font-weight:550;font-size:.88rem;
+}
+.chip .code{padding:1px 5px;font-size:.7rem}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.hol-tools{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:end;justify-content:space-between;padding:0 18px 4px}
+.hol-tools .field{width:12rem;max-width:100%}
+.month{padding:14px 18px 4px;border-top:1px solid var(--line)}
+.hol{list-style:none;margin:0;padding:0}
+.hi{
+  display:grid;gap:4px 16px;align-items:center;padding:11px 18px;
+  grid-template-columns:5.2rem minmax(0,1fr) auto;
+}
+.hi+.hi{border-top:1px dashed var(--line)}
+.dt{display:grid;line-height:1.15}
+.dt b{font-family:var(--f-mono);font-size:1.15rem;font-weight:600}
+.dt span{font-size:.78rem;color:var(--ink-2)}
+.hn{font-weight:600;min-width:0}
+.hn small{display:block;font-weight:400;color:var(--ink-2);font-size:.82rem}
+.hr{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center}
+.cc{font-family:var(--f-mono);font-size:.75rem;font-weight:600;letter-spacing:.05em;border:1px solid var(--line);border-radius:4px;padding:2px 6px;background:var(--surface-2)}
+.rel{font-size:.85rem;color:var(--ink-2);white-space:nowrap}
+.rel.now{color:var(--ok);font-weight:600}
+.empty{padding:18px;color:var(--ink-2)}
+
+.dst{list-style:none;margin:0;padding:0}
+.dst li{display:grid;gap:4px;padding:12px 18px;border-top:1px solid var(--line)}
+.dst b{font-weight:650}
+.dst .mono{font-size:.9rem}
+.dst .fx{font-size:.85rem;color:var(--ink-2)}
+
+.foot{font-size:.82rem;color:var(--ink-2);max-width:80ch}
+
+@media (max-width:760px){
+  .row{
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"who time" "gap state";
+    align-items:start;
+  }
+  .time{text-align:right}
+  .tl-row{grid-template-columns:6.5rem minmax(0,1fr);gap:8px}
+  .axis{margin-left:calc(6.5rem + 8px)}
+  .crow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"a b" "c d"}
+  .crow>:nth-child(1){grid-area:a}
+  .crow>:nth-child(2){grid-area:b;text-align:right}
+  .crow>:nth-child(3){grid-area:c}
+  .crow>:nth-child(4){grid-area:d;text-align:right}
+  .hi{grid-template-columns:4.4rem minmax(0,1fr)}
+  .hr{grid-column:2;justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1 data-i="h1"></h1>
+    <p data-i="intro"></p>
+  </header>
+
+  <section class="controls" id="controls">
+    <label class="field"><span data-i="fRef"></span><select id="ref"></select></label>
+    <label class="field"><span data-i="fUs"></span><select id="us"></select></label>
+    <fieldset class="field" style="border:0;padding:0;margin:0;min-width:0">
+      <legend data-i="fHours"></legend>
+      <div class="pair"><select id="open"></select><span data-i="to"></span><select id="close"></select></div>
+    </fieldset>
+  </section>
+
+  <section class="panel" aria-labelledby="h-board">
+    <div class="panel-head">
+      <h2 id="h-board" data-i="hBoard"></h2>
+      <p id="board-note"></p>
+    </div>
+    <ul class="board" id="board"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="h-tl">
+    <div class="panel-head">
+      <h2 id="h-tl" data-i="hTl"></h2>
+      <p id="tl-note"></p>
+    </div>
+    <div class="panel-body">
+      <div class="tl" id="tl"></div>
+      <div class="axis" id="axis" aria-hidden="true"></div>
+      <div class="result" id="overlap" aria-live="polite"></div>
+      <div class="legend">
+        <span><i style="background:var(--accent);opacity:.8"></i><span data-i="stOpen"></span></span>
+        <span><i style="background:color-mix(in srgb,var(--ok) 30%,transparent);border:2px solid var(--ok)"></i><span data-i="lgCommon"></span></span>
+        <span><i style="background:var(--ink);width:3px"></i><span data-i="lgNow"></span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-conv">
+    <div class="panel-head">
+      <h2 id="h-conv" data-i="hConv"></h2>
+      <p id="conv-note"></p>
+    </div>
+    <div class="conv-controls">
+      <label class="field"><span data-i="fDate"></span><input type="date" id="cv-date"></label>
+      <label class="field"><span data-i="fTime"></span><input type="time" id="cv-time" step="900"></label>
+      <button class="btn" id="cv-now" type="button" data-i="lgNow"></button>
+    </div>
+    <div id="cv-list"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-hol">
+    <div class="panel-head">
+      <h2 id="h-hol" data-i="hHol"></h2>
+      <p id="hol-note"></p>
+    </div>
+    <div class="chips" id="chips" role="group"></div>
+    <div class="hol-tools">
+      <label class="field"><span data-i="fPeriod"></span>
+        <select id="hz">
+          <option value="30" data-i="p30"></option>
+          <option value="90" data-i="p90"></option>
+          <option value="0" data-i="pAll"></option>
+        </select>
+      </label>
+    </div>
+    <div id="hol" style="margin-top:12px"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-dst">
+    <div class="panel-head">
+      <h2 id="h-dst" data-i="hDst"></h2>
+      <p data-i="dstIntro"></p>
+    </div>
+    <ul class="dst" id="dst"></ul>
+  </section>
+
+  <p class="foot" data-i="foot"></p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var DAY=86400000;
+var $=function(s,r){return (r||document).querySelector(s)};
+var pad=function(n){return String(n).padStart(2,"0")};
+
+/*DICT*/
+/* Ordre des langues : fr, en, zh, pt, it, de */
+var LI={fr:0,en:1,zh:2,pt:3,it:4,de:5};
+var LANGOF={us:"en",in:"en",cn:"zh",br:"pt",fr:"fr",it:"it",ma:"fr",de:"de"};
+var LOCOF={us:"en-US",in:"en-IN",cn:"zh-CN",br:"pt-BR",fr:"fr",it:"it-IT",ma:"fr",de:"de-DE"};
+
+var S={
+ h1:["Atlas horaire","Time Atlas","世界时间图","Atlas de fusos","Atlante dei fusi orari","Zeitzonen-Atlas"],
+ intro:["Heure locale, décalages, horaires de bureau et jours fériés pour 8 pays. Les calculs utilisent les fuseaux du navigateur, donc les passages à l'heure d'été sont pris en compte.",
+  "Local time, time differences, office hours and public holidays for 8 countries. Calculations use your browser's time zone data, so daylight saving changes are included.",
+  "8个国家的当地时间、时差、办公时间和公共假日。计算基于浏览器的时区数据，已包含夏令时变化。",
+  "Hora local, diferenças de fuso, horário comercial e feriados de 8 países. Os cálculos usam os fusos do navegador, portanto as mudanças de horário de verão são consideradas.",
+  "Ora locale, differenze di fuso, orari d'ufficio e festività di 8 paesi. I calcoli usano i fusi orari del browser, quindi i cambi di ora legale sono inclusi.",
+  "Ortszeit, Zeitunterschiede, Bürozeiten und Feiertage für 8 Länder. Die Berechnung nutzt die Zeitzonen des Browsers, Sommerzeitwechsel sind also berücksichtigt."],
+ settings:["Réglages","Settings","设置","Ajustes","Impostazioni","Einstellungen"],
+ fRef:["Fuseau de référence","Reference time zone","参考时区","Fuso de referência","Fuso di riferimento","Referenz-Zeitzone"],
+ fUs:["Fuseau des États-Unis","US time zone","美国时区","Fuso dos EUA","Fuso degli Stati Uniti","US-Zeitzone"],
+ fHours:["Horaires de bureau (heure locale)","Office hours (local time)","办公时间（当地时间）","Horário comercial (hora local)","Orari d'ufficio (ora locale)","Bürozeiten (Ortszeit)"],
+ to:["à","to","至","às","fino alle","bis"],
+ hFmt:["{0} h","{0}:00","{0}时","{0} h","{0}:00","{0} Uhr"],
+ hBoard:["Heure locale maintenant","Local time now","当前各地时间","Hora local agora","Ora locale adesso","Ortszeit jetzt"],
+ boardNote:["Écart calculé par rapport à {0} ({1})","Difference measured from {0} ({1})","时差以{0}（{1}）为基准","Diferença calculada em relação a {0} ({1})","Differenza calcolata rispetto a {0} ({1})","Abweichung bezogen auf {0} ({1})"],
+ refTag:["Référence","Reference","参考","Referência","Riferimento","Referenz"],
+ dstOn:["heure d'été","daylight saving","夏令时","horário de verão","ora legale","Sommerzeit"],
+ hTl:["Plages de bureau sur 24 h","Office hours across 24 h","24小时办公时段","Horário comercial em 24 h","Orari d'ufficio nelle 24 ore","Bürozeiten über 24 Stunden"],
+ tlNote:["Axe de 0 h à 24 h, fuseau de référence : {0}","Axis 0–24 h in the reference time zone: {0}","时间轴0–24时，参考时区：{0}","Eixo de 0 a 24 h, fuso de referência: {0}","Asse da 0 a 24 h, fuso di riferimento: {0}","Achse 0–24 Uhr, Referenzzeitzone: {0}"],
+ lgCommon:["Plage commune des pays cochés","Overlap of checked countries","所选国家的共同时段","Janela comum dos países marcados","Fascia comune dei paesi selezionati","Gemeinsames Zeitfenster der gewählten Länder"],
+ lgNow:["Maintenant","Now","现在","Agora","Adesso","Jetzt"],
+ ovPick:["Cochez au moins deux pays pour trouver une plage de bureau commune.","Check at least two countries to find a shared office window.","请至少勾选两个国家以查找共同办公时段。","Marque pelo menos dois países para encontrar uma janela comum.","Seleziona almeno due paesi per trovare una fascia d'ufficio comune.","Wähle mindestens zwei Länder, um ein gemeinsames Zeitfenster zu finden."],
+ ovNoneT:["Aucune plage commune","No shared window","没有共同时段","Nenhuma janela comum","Nessuna fascia comune","Kein gemeinsames Fenster"],
+ ovNoneB:["Ces pays n'ont pas d'heures de bureau en commun avec les horaires {0} h à {1} h. Élargissez les horaires ou retirez un pays.",
+  "These countries share no office hours within a {0}:00–{1}:00 schedule. Widen the hours or remove a country.",
+  "这些国家在{0}:00–{1}:00的办公时间内没有重叠。请放宽时间或取消一个国家。",
+  "Esses países não têm horário comercial em comum no expediente de {0} h às {1} h. Amplie o horário ou remova um país.",
+  "Questi paesi non hanno orari d'ufficio in comune con l'orario {0}:00–{1}:00. Amplia gli orari o rimuovi un paese.",
+  "Diese Länder haben bei {0}–{1} Uhr keine gemeinsamen Bürozeiten. Erweitere die Zeiten oder entferne ein Land."],
+ ovGood:["Plage commune disponible","Shared window available","可用的共同时段","Janela comum disponível","Fascia comune disponibile","Gemeinsames Fenster verfügbar"],
+ ovFoot:["Hors week-ends et jours fériés. La plage reste valable tant qu'aucun changement d'heure n'intervient.","Excludes weekends and public holidays. Valid until the next clock change.","不含周末和公共假日。在下一次换时前有效。","Exclui fins de semana e feriados. Válida até a próxima mudança de horário.","Esclusi weekend e festività. Valida fino al prossimo cambio d'ora.","Ohne Wochenenden und Feiertage. Gilt bis zur nächsten Zeitumstellung."],
+ tlAria:["{0} : bureau de {1} h à {2} h, heure locale","{0}: office {1}:00–{2}:00 local time","{0}：当地时间{1}:00–{2}:00办公","{0}: expediente das {1} h às {2} h, hora local","{0}: ufficio {1}:00–{2}:00, ora locale","{0}: Büro {1}–{2} Uhr Ortszeit"],
+ hConv:["Convertisseur de réunion","Meeting converter","会议时间换算","Conversor de reunião","Convertitore per riunioni","Meeting-Umrechner"],
+ convNote:["Saisie en heure {0} ({1})","Entered in {0} time ({1})","按{0}（{1}）时间输入","Digite no horário de {0} ({1})","Inserisci l'ora di {0} ({1})","Eingabe in Zeit von {0} ({1})"],
+ fDate:["Date","Date","日期","Data","Data","Datum"],
+ fTime:["Heure","Time","时间","Hora","Ora","Uhrzeit"],
+ convEmpty:["Saisissez une date et une heure.","Enter a date and a time.","请输入日期和时间。","Informe uma data e uma hora.","Inserisci una data e un'ora.","Gib Datum und Uhrzeit ein."],
+ sameDay:["même jour","same day","同一天","mesmo dia","stesso giorno","gleicher Tag"],
+ nextDay:["lendemain","next day","次日","dia seguinte","giorno dopo","Folgetag"],
+ prevDay:["veille","previous day","前一天","dia anterior","giorno prima","Vortag"],
+ hHol:["Jours fériés à venir","Upcoming public holidays","即将到来的公共假日","Próximos feriados","Prossime festività","Kommende Feiertage"],
+ holNote:["Comptés à partir d'aujourd'hui, heure {0}","Counted from today, {0} time","自今天起计算，按{0}时间","Contados a partir de hoje, hora de {0}","Calcolati da oggi, ora di {0}","Ab heute gezählt, Zeit {0}"],
+ filterAria:["Filtrer par pays","Filter by country","按国家筛选","Filtrar por país","Filtra per paese","Nach Land filtern"],
+ fPeriod:["Période","Period","时间范围","Período","Periodo","Zeitraum"],
+ p30:["30 prochains jours","Next 30 days","未来30天","Próximos 30 dias","Prossimi 30 giorni","Nächste 30 Tage"],
+ p90:["90 prochains jours","Next 90 days","未来90天","Próximos 90 dias","Prossimi 90 giorni","Nächste 90 Tage"],
+ pAll:["Tout le calendrier","Full calendar","全部日历","Todo o calendário","Tutto il calendario","Gesamter Kalender"],
+ holNone:["Aucun jour férié sur cette période pour les pays sélectionnés.","No public holidays in this period for the selected countries.","所选国家在此期间没有公共假日。","Nenhum feriado neste período para os países selecionados.","Nessuna festività in questo periodo per i paesi selezionati.","Keine Feiertage in diesem Zeitraum für die gewählten Länder."],
+ relNow:["En cours","Ongoing","进行中","Em andamento","In corso","Läuft gerade"],
+ relTom:["Demain","Tomorrow","明天","Amanhã","Domani","Morgen"],
+ relIn:["Dans {0} j","In {0} days","{0}天后","Em {0} dias","Tra {0} giorni","In {0} Tagen"],
+ pReg:["Selon les Länder","Varies by state","因州而异","Varia por estado","Varia per Land","Je nach Bundesland"],
+ pOpt:["Facultatif","Optional","非强制","Facultativo","Facoltativo","Fakultativ"],
+ pEst:["Date à confirmer","Date to be confirmed","日期待确认","Data a confirmar","Data da confermare","Datum noch unbestätigt"],
+ hDst:["Prochains changements d'heure","Upcoming clock changes","即将到来的换时","Próximas mudanças de horário","Prossimi cambi d'ora","Anstehende Zeitumstellungen"],
+ dstIntro:["Ils modifient l'écart avec votre fuseau de référence.","They change the gap with your reference time zone.","它们会改变与参考时区的时差。","Eles alteram a diferença com o seu fuso de referência.","Modificano la differenza con il tuo fuso di riferimento.","Sie ändern den Abstand zu deiner Referenzzeitzone."],
+ dstNone:["Aucun changement d'heure dans les dix prochains mois.","No clock changes in the next ten months.","未来十个月内没有换时。","Nenhuma mudança de horário nos próximos dez meses.","Nessun cambio d'ora nei prossimi dieci mesi.","Keine Zeitumstellung in den nächsten zehn Monaten."],
+ dstFwd:["avance de {0} h","moves forward {0} h","拨快{0}小时","adianta {0} h","avanza di {0} h","vor um {0} Std."],
+ dstBack:["recule de {0} h","moves back {0} h","拨慢{0}小时","atrasa {0} h","arretra di {0} h","zurück um {0} Std."],
+ dstRef:["(référence)","(reference)","（参考）","(referência)","(riferimento)","(Referenz)"],
+ dstGap:["écart","gap","时差","diferença","differenza","Abstand"],
+ foot:["Les jours fériés listés sont les jours nationaux et quelques jours régionaux signalés comme tels. Les fêtes lunaires (Aïd, Diwali, Holi) peuvent varier d'un jour selon l'observation, et la Chine publie son calendrier 2027 en fin d'année. Vérifiez la date auprès du partenaire avant de planifier une échéance.",
+  "The holidays listed are national days plus a few regional ones, flagged as such. Lunar holidays (Eid, Diwali, Holi) can vary by a day depending on observation, and China publishes its 2027 calendar late in the year. Check the date with your partner before planning a deadline.",
+  "所列假日为全国性假日及少数标明的地区性假日。农历节日（开斋节、排灯节、洒红节）可能因观测相差一天，中国将在年底公布2027年安排。规划截止日期前请与合作方确认日期。",
+  "Os feriados listados são nacionais, mais alguns regionais devidamente indicados. Feriados lunares (Eid, Diwali, Holi) podem variar um dia conforme a observação, e a China divulga o calendário de 2027 no fim do ano. Confirme a data com o parceiro antes de definir um prazo.",
+  "Le festività elencate sono nazionali, più alcune regionali segnalate come tali. Le festività lunari (Eid, Diwali, Holi) possono variare di un giorno in base all'osservazione, e la Cina pubblica il calendario 2027 a fine anno. Verifica la data con il partner prima di fissare una scadenza.",
+  "Aufgeführt sind bundesweite Feiertage sowie einige regionale, die entsprechend markiert sind. Mondfeiertage (Eid, Diwali, Holi) können je nach Beobachtung um einen Tag abweichen, und China veröffentlicht den Kalender 2027 erst Ende des Jahres. Prüfe das Datum mit dem Partner, bevor du eine Frist planst."],
+ stHol:["Férié","Holiday","假日","Feriado","Festivo","Feiertag"],
+ stWknd:["Week-end","Weekend","周末","Fim de semana","Weekend","Wochenende"],
+ stOpen:["Bureau ouvert","Office open","办公时间","Expediente","Ufficio aperto","Büro geöffnet"],
+ stClosed:["Fermé","Closed","已下班","Fechado","Chiuso","Geschlossen"],
+ dUntil:["jusqu'à {0}","until {0}","至{0}","até {0}","fino alle {0}","bis {0}"],
+ dOpensAt:["ouvre à {0}","opens at {0}","{0}开始","abre às {0}","apre alle {0}","öffnet um {0}"],
+ dOpensMon:["ouvre lundi","opens Monday","周一开始","abre na segunda","apre lunedì","öffnet Montag"],
+ dOpensTom:["ouvre demain","opens tomorrow","明天开始","abre amanhã","apre domani","öffnet morgen"],
+ dResumeMon:["reprise lundi","back on Monday","周一恢复","volta na segunda","riprende lunedì","wieder Montag"]
+};
+
+var NAMES={
+ us:["États-Unis","United States","美国","Estados Unidos","Stati Uniti","USA"],
+ in:["Inde","India","印度","Índia","India","Indien"],
+ cn:["Chine","China","中国","China","Cina","China"],
+ br:["Brésil","Brazil","巴西","Brasil","Brasile","Brasilien"],
+ fr:["France","France","法国","França","Francia","Frankreich"],
+ it:["Italie","Italy","意大利","Itália","Italia","Italien"],
+ ma:["Maroc","Morocco","摩洛哥","Marrocos","Marocco","Marokko"],
+ de:["Allemagne","Germany","德国","Alemanha","Germania","Deutschland"]
+};
+var CITY={
+ us:["New York","New York","纽约","Nova York","New York","New York"],
+ in:["New Delhi","New Delhi","新德里","Nova Délhi","Nuova Delhi","Neu-Delhi"],
+ cn:["Pékin","Beijing","北京","Pequim","Pechino","Peking"],
+ br:["Brasília","Brasília","巴西利亚","Brasília","Brasilia","Brasília"],
+ fr:["Paris","Paris","巴黎","Paris","Parigi","Paris"],
+ it:["Rome","Rome","罗马","Roma","Roma","Rom"],
+ ma:["Casablanca","Casablanca","卡萨布兰卡","Casablanca","Casablanca","Casablanca"],
+ de:["Berlin","Berlin","柏林","Berlim","Berlino","Berlin"]
+};
+var US_ZONES=[
+ {tz:"America/New_York",zone:["Est","Eastern","东部","Leste","Est","Ostküste"],city:["New York","New York","纽约","Nova York","New York","New York"]},
+ {tz:"America/Chicago",zone:["Centre","Central","中部","Central","Centro","Zentral"],city:["Chicago","Chicago","芝加哥","Chicago","Chicago","Chicago"]},
+ {tz:"America/Denver",zone:["Montagnes","Mountain","山地","Montanhas","Montagne","Mountain"],city:["Denver","Denver","丹佛","Denver","Denver","Denver"]},
+ {tz:"America/Los_Angeles",zone:["Pacifique","Pacific","太平洋","Pacífico","Pacifico","Pazifik"],city:["Los Angeles","Los Angeles","洛杉矶","Los Angeles","Los Angeles","Los Angeles"]}
+];
+
+var HN={
+ christmas:["Noël","Christmas Day","圣诞节","Natal","Natale","Weihnachten"],
+ christmas2:["Deuxième jour de Noël","Second Day of Christmas","圣诞节次日","Segundo dia de Natal","Secondo giorno di Natale","Zweiter Weihnachtstag"],
+ newyear:["Jour de l'an","New Year's Day","元旦","Ano-Novo","Capodanno","Neujahr"],
+ easterMon:["Lundi de Pâques","Easter Monday","复活节星期一","Segunda-feira de Páscoa","Lunedì dell'Angelo (Pasquetta)","Ostermontag"],
+ goodFri:["Vendredi saint","Good Friday","耶稣受难日","Sexta-feira Santa","Venerdì Santo","Karfreitag"],
+ easter:["Pâques","Easter Sunday","复活节","Páscoa","Pasqua","Ostersonntag"],
+ allSaints:["Toussaint","All Saints' Day","诸圣节","Todos os Santos","Ognissanti","Allerheiligen"],
+ armistice:["Armistice 1918","Armistice Day (1918)","一战停战纪念日","Armistício de 1918","Armistizio del 1918","Waffenstillstandstag 1918"],
+ columbus:["Columbus Day (Journée des peuples autochtones)","Columbus Day / Indigenous Peoples' Day","哥伦布日（原住民日）","Dia de Colombo (Dia dos Povos Indígenas)","Columbus Day (Giornata dei popoli indigeni)","Columbus Day (Tag der indigenen Völker)"],
+ veterans:["Veterans Day","Veterans Day","退伍军人节","Dia dos Veteranos","Veterans Day (Giornata dei veterani)","Veterans Day (Veteranentag)"],
+ thanks:["Thanksgiving","Thanksgiving","感恩节","Ação de Graças","Giorno del Ringraziamento","Thanksgiving"],
+ mlk:["Martin Luther King Jr. Day","Martin Luther King Jr. Day","马丁·路德·金纪念日","Dia de Martin Luther King Jr.","Giornata di Martin Luther King","Martin-Luther-King-Tag"],
+ presidents:["Presidents' Day","Presidents' Day","总统日","Dia dos Presidentes","Giorno dei Presidenti","Presidents' Day"],
+ gandhi:["Gandhi Jayanti (anniversaire de Gandhi)","Gandhi Jayanti (Gandhi's birthday)","甘地诞辰日","Gandhi Jayanti (aniversário de Gandhi)","Gandhi Jayanti (compleanno di Gandhi)","Gandhi Jayanti (Gandhis Geburtstag)"],
+ dussehra:["Dussehra","Dussehra","十胜节（Dussehra）","Dussehra","Dussehra","Dussehra"],
+ diwali:["Diwali (fête des lumières)","Diwali (Festival of Lights)","排灯节（Diwali）","Diwali (Festival das Luzes)","Diwali (Festa delle luci)","Diwali (Lichterfest)"],
+ nanak:["Guru Nanak Jayanti","Guru Nanak Jayanti","古鲁·那纳克诞辰","Guru Nanak Jayanti","Guru Nanak Jayanti","Guru Nanak Jayanti"],
+ republicIn:["Fête de la République","Republic Day","共和国日","Dia da República","Festa della Repubblica","Tag der Republik"],
+ holi:["Holi (fête des couleurs)","Holi (Festival of Colours)","洒红节（Holi）","Holi (Festival das Cores)","Holi (Festa dei colori)","Holi (Fest der Farben)"],
+ cnNational:["Fête nationale (Golden Week)","National Day (Golden Week)","国庆节（黄金周）","Dia Nacional (Semana Dourada)","Festa Nazionale (Golden Week)","Nationalfeiertag (Goldene Woche)"],
+ cnSpring:["Fête du Printemps (Nouvel An chinois)","Spring Festival (Chinese New Year)","春节","Festival da Primavera (Ano-Novo Chinês)","Festa di Primavera (Capodanno cinese)","Frühlingsfest (Chinesisches Neujahr)"],
+ aparecida:["Notre-Dame d'Aparecida","Our Lady of Aparecida","阿帕雷西达圣母节","Nossa Senhora Aparecida","Nostra Signora Aparecida","Unsere Liebe Frau von Aparecida"],
+ finados:["Jour des morts (Finados)","All Souls' Day","万灵节","Finados","Giorno dei defunti","Allerseelen"],
+ republicBr:["Proclamation de la République","Republic Proclamation Day","共和国宣告日","Proclamação da República","Proclamazione della Repubblica","Tag der Republikausrufung"],
+ consciencia:["Conscience noire","Black Awareness Day","黑人觉醒日","Dia da Consciência Negra","Giornata della coscienza nera","Tag des schwarzen Bewusstseins"],
+ carnaval:["Carnaval","Carnival","狂欢节","Carnaval","Carnevale","Karneval"],
+ immaculate:["Immaculée Conception","Immaculate Conception","圣母无染原罪节","Imaculada Conceição","Immacolata Concezione","Mariä Empfängnis"],
+ stefano:["Saint-Étienne (Santo Stefano)","St. Stephen's Day","圣斯德望节","Santo Estêvão (Santo Stefano)","Santo Stefano","Stephanstag"],
+ epiphany:["Épiphanie","Epiphany","主显节","Epifania (Dia de Reis)","Epifania","Heilige Drei Könige"],
+ marcheVerte:["Marche verte","Green March","绿色进军纪念日","Marcha Verde","Marcia Verde","Grüner Marsch"],
+ indepMa:["Fête de l'Indépendance","Independence Day","独立日","Dia da Independência","Festa dell'Indipendenza","Unabhängigkeitstag"],
+ manifeste:["Manifeste de l'indépendance","Independence Manifesto Day","独立宣言日","Manifesto da Independência","Manifesto dell'Indipendenza","Unabhängigkeitsmanifest"],
+ yennayer:["Nouvel An amazigh (Yennayer)","Amazigh New Year (Yennayer)","阿马齐格新年（Yennayer）","Ano-Novo Amazigh (Yennayer)","Capodanno amazigh (Yennayer)","Amazigh-Neujahr (Yennayer)"],
+ eidFitr:["Aïd al-Fitr","Eid al-Fitr","开斋节","Eid al-Fitr","Eid al-Fitr","Eid al-Fitr (Ramadanfest)"],
+ unityDe:["Fête de l'Unité allemande","German Unity Day","德国统一日","Dia da Unidade Alemã","Giornata dell'Unità tedesca","Tag der Deutschen Einheit"],
+ reformation:["Jour de la Réforme (Reformationstag)","Reformation Day","宗教改革日","Dia da Reforma","Giornata della Riforma","Reformationstag"],
+ bussbet:["Jour de prière et de repentance","Day of Repentance and Prayer","忏悔祷告日","Dia de Penitência e Oração","Giorno di penitenza e preghiera","Buß- und Bettag"]
+};
+var NT={
+ nCn1:["Jour ouvré de rattrapage : samedi 10 octobre.","Make-up working day: Saturday 10 October.","调休补班日：10月10日（周六）。","Dia útil de compensação: sábado, 10 de outubro.","Giorno lavorativo di recupero: sabato 10 ottobre.","Nachholarbeitstag: Samstag, 10. Oktober."],
+ nCn3:["Le Nouvel An tombe le 6 février 2027.","New Year's Day falls on 6 February 2027.","农历新年为2027年2月6日。","O Ano-Novo cai em 6 de fevereiro de 2027.","Il Capodanno cade il 6 febbraio 2027.","Neujahr fällt auf den 6. Februar 2027."],
+ nCarn:["Point facultatif, souvent chômé.","Optional day off, widely observed.","非法定假日，许多单位放假。","Ponto facultativo, geralmente com folga.","Giorno facoltativo, spesso non lavorativo.","Fakultativer Feiertag, oft arbeitsfrei."],
+ nEid:["Dépend de l'observation de la lune.","Depends on the moon sighting.","取决于新月观测。","Depende da observação da lua.","Dipende dall'osservazione della luna.","Hängt von der Mondsichtung ab."],
+ nRef:["9 Länder, dont Saxe, Brandebourg et Hambourg.","9 states, including Saxony, Brandenburg and Hamburg.","9个联邦州，包括萨克森、勃兰登堡和汉堡。","9 estados, incluindo Saxônia, Brandemburgo e Hamburgo.","9 Länder, tra cui Sassonia, Brandeburgo e Amburgo.","9 Bundesländer, u. a. Sachsen, Brandenburg und Hamburg."],
+ nAll:["Bade-Wurtemberg, Bavière, Rhénanie-du-Nord-Westphalie, Rhénanie-Palatinat, Sarre.","Baden-Württemberg, Bavaria, North Rhine-Westphalia, Rhineland-Palatinate, Saarland.","巴登-符腾堡、巴伐利亚、北莱茵-威斯特法伦、莱茵兰-普法尔茨、萨尔兰。","Baden-Württemberg, Baviera, Renânia do Norte-Vestfália, Renânia-Palatinado, Sarre.","Baden-Württemberg, Baviera, Renania Settentrionale-Vestfalia, Renania-Palatinato, Saarland.","Baden-Württemberg, Bayern, Nordrhein-Westfalen, Rheinland-Pfalz, Saarland."],
+ nSax:["Saxe uniquement.","Saxony only.","仅萨克森州。","Apenas Saxônia.","Solo Sassonia.","Nur Sachsen."],
+ nEpi:["Bade-Wurtemberg, Bavière, Saxe-Anhalt.","Baden-Württemberg, Bavaria, Saxony-Anhalt.","巴登-符腾堡、巴伐利亚、萨克森-安哈尔特。","Baden-Württemberg, Baviera, Saxônia-Anhalt.","Baden-Württemberg, Baviera, Sassonia-Anhalt.","Baden-Württemberg, Bayern, Sachsen-Anhalt."]
+};
+/*ENDDICT*/
+
+var C=[
+  {id:"us",tz:"America/New_York",code:"US"},
+  {id:"in",tz:"Asia/Kolkata",code:"IN"},
+  {id:"cn",tz:"Asia/Shanghai",code:"CN"},
+  {id:"br",tz:"America/Sao_Paulo",code:"BR"},
+  {id:"fr",tz:"Europe/Paris",code:"FR"},
+  {id:"it",tz:"Europe/Rome",code:"IT"},
+  {id:"ma",tz:"Africa/Casablanca",code:"MA"},
+  {id:"de",tz:"Europe/Berlin",code:"DE"}
+];
+
+/* Jours fériés. s = début, e = fin, k = clé du nom, t = nat | reg | opt, est = date à confirmer, n = clé de note */
+var HOL={
+ us:[
+  {s:"2026-10-12",k:"columbus"},
+  {s:"2026-11-11",k:"veterans"},
+  {s:"2026-11-26",k:"thanks"},
+  {s:"2026-12-25",k:"christmas"},
+  {s:"2027-01-01",k:"newyear"},
+  {s:"2027-01-18",k:"mlk"},
+  {s:"2027-02-15",k:"presidents"}
+ ],
+ in:[
+  {s:"2026-10-02",k:"gandhi"},
+  {s:"2026-10-20",k:"dussehra",est:1},
+  {s:"2026-11-08",k:"diwali",est:1},
+  {s:"2026-11-24",k:"nanak",est:1},
+  {s:"2026-12-25",k:"christmas"},
+  {s:"2027-01-26",k:"republicIn"},
+  {s:"2027-03-22",k:"holi",est:1}
+ ],
+ cn:[
+  {s:"2026-10-01",e:"2026-10-07",k:"cnNational",n:"nCn1"},
+  {s:"2027-01-01",e:"2027-01-03",k:"newyear",est:1},
+  {s:"2027-02-05",e:"2027-02-11",k:"cnSpring",est:1,n:"nCn3"}
+ ],
+ br:[
+  {s:"2026-10-12",k:"aparecida"},
+  {s:"2026-11-02",k:"finados"},
+  {s:"2026-11-15",k:"republicBr"},
+  {s:"2026-11-20",k:"consciencia"},
+  {s:"2026-12-25",k:"christmas"},
+  {s:"2027-01-01",k:"newyear"},
+  {s:"2027-02-08",e:"2027-02-09",k:"carnaval",t:"opt",n:"nCarn"},
+  {s:"2027-03-26",k:"goodFri"}
+ ],
+ fr:[
+  {s:"2026-11-01",k:"allSaints"},
+  {s:"2026-11-11",k:"armistice"},
+  {s:"2026-12-25",k:"christmas"},
+  {s:"2027-01-01",k:"newyear"},
+  {s:"2027-03-29",k:"easterMon"}
+ ],
+ it:[
+  {s:"2026-11-01",k:"allSaints"},
+  {s:"2026-12-08",k:"immaculate"},
+  {s:"2026-12-25",k:"christmas"},
+  {s:"2026-12-26",k:"stefano"},
+  {s:"2027-01-01",k:"newyear"},
+  {s:"2027-01-06",k:"epiphany"},
+  {s:"2027-03-28",k:"easter"},
+  {s:"2027-03-29",k:"easterMon"}
+ ],
+ ma:[
+  {s:"2026-11-06",k:"marcheVerte"},
+  {s:"2026-11-18",k:"indepMa"},
+  {s:"2027-01-01",k:"newyear"},
+  {s:"2027-01-11",k:"manifeste"},
+  {s:"2027-01-14",k:"yennayer"},
+  {s:"2027-03-10",e:"2027-03-11",k:"eidFitr",est:1,n:"nEid"}
+ ],
+ de:[
+  {s:"2026-10-03",k:"unityDe"},
+  {s:"2026-10-31",k:"reformation",t:"reg",n:"nRef"},
+  {s:"2026-11-01",k:"allSaints",t:"reg",n:"nAll"},
+  {s:"2026-11-18",k:"bussbet",t:"reg",n:"nSax"},
+  {s:"2026-12-25",k:"christmas"},
+  {s:"2026-12-26",k:"christmas2"},
+  {s:"2027-01-01",k:"newyear"},
+  {s:"2027-01-06",k:"epiphany",t:"reg",n:"nEpi"},
+  {s:"2027-03-26",k:"goodFri"},
+  {s:"2027-03-29",k:"easterMon"}
+ ]
+};
+
+var state={ref:"ma",us:"America/New_York",open:9,close:18,sel:new Set(["ma","fr","us"]),hf:new Set(C.map(function(c){return c.id})),hz:90};
+var lang="fr",LOC="fr";
+function T(k){
+  var s=S[k][LI[lang]];
+  for(var i=1;i<arguments.length;i++)s=s.split("{"+(i-1)+"}").join(arguments[i]);
+  return s;
+}
+function pick(arr){return arr[LI[lang]]}
+function cname(c){return pick(NAMES[c.id])}
+function cityOf(c){
+  if(c.id!=="us")return pick(CITY[c.id]);
+  for(var i=0;i<US_ZONES.length;i++)if(US_ZONES[i].tz===state.us)return pick(US_ZONES[i].city);
+  return pick(CITY.us);
+}
+function hname(h){return pick(HN[h.k])}
+function hnote(h){return h.n?pick(NT[h.n]):""}
+
+var KEY="atlas-horaire-v1";
+function save(){try{localStorage.setItem(KEY,JSON.stringify({ref:state.ref,us:state.us,open:state.open,close:state.close,sel:Array.from(state.sel),hf:Array.from(state.hf),hz:state.hz}))}catch(e){}}
+function load(){
+  try{
+    var j=JSON.parse(localStorage.getItem(KEY)||"null"); if(!j)return;
+    var ids=C.map(function(c){return c.id});
+    if(ids.indexOf(j.ref)>-1)state.ref=j.ref;
+    if(US_ZONES.some(function(z){return z.tz===j.us}))state.us=j.us;
+    if(j.open>=7&&j.open<=11)state.open=j.open;
+    if(j.close>=16&&j.close<=20)state.close=j.close;
+    if(Array.isArray(j.sel))state.sel=new Set(j.sel.filter(function(x){return ids.indexOf(x)>-1}));
+    if(Array.isArray(j.hf)&&j.hf.length)state.hf=new Set(j.hf.filter(function(x){return ids.indexOf(x)>-1}));
+    if([0,30,90].indexOf(j.hz)>-1)state.hz=j.hz;
+  }catch(e){}
+}
+
+/* Fuseaux */
+var dtfCache={};
+function dtf(tz){
+  if(!dtfCache[tz])dtfCache[tz]=new Intl.DateTimeFormat("en-GB",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  return dtfCache[tz];
+}
+function parts(tz,ms){var o={},a=dtf(tz).formatToParts(ms);for(var i=0;i<a.length;i++)o[a[i].type]=a[i].value;return o}
+function offsetMin(tz,ms){
+  var p=parts(tz,ms);
+  var asUtc=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute,+p.second);
+  return Math.round((asUtc-Math.floor(ms/1000)*1000)/60000);
+}
+function localDate(tz,ms){var p=parts(tz,ms);return p.year+"-"+p.month+"-"+p.day}
+function zonedToUtc(y,mo,d,h,mi,tz){
+  var guess=Date.UTC(y,mo-1,d,h,mi);
+  var o1=offsetMin(tz,guess), utc=guess-o1*60000, o2=offsetMin(tz,utc);
+  if(o2!==o1)utc=guess-o2*60000;
+  return utc;
+}
+function u(s){var a=s.split("-");return Date.UTC(+a[0],+a[1]-1,+a[2])}
+function tzOf(c){return c.id==="us"?state.us:c.tz}
+function refC(){return C.filter(function(c){return c.id===state.ref})[0]}
+function refTz(){return tzOf(refC())}
+function hmm(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+":"+pad(m%60)}
+function fmtGap(min){
+  if(min===0)return "0 h";
+  var s=min>0?"+":"−",a=Math.abs(min),h=Math.floor(a/60),m=a%60;
+  return s+h+" h"+(m?" "+pad(m):"");
+}
+function fmtUTC(min){var a=Math.abs(min);return "UTC"+(min<0?"−":"+")+pad(Math.floor(a/60))+":"+pad(a%60)}
+function isDst(tz,ms){
+  var y=new Date(ms).getUTCFullYear();
+  var a=offsetMin(tz,Date.UTC(y,0,1)),b=offsetMin(tz,Date.UTC(y,6,1)),n=offsetMin(tz,ms);
+  return a!==b&&n>Math.min(a,b);
+}
+
+/* Formats de dates dépendant de la langue */
+var dayFmt={},utcDayLong,utcMonth,utcMonShort,utcWd,utcRange;
+function initFmt(){
+  dayFmt={};
+  utcDayLong=new Intl.DateTimeFormat(LOC,{timeZone:"UTC",weekday:"short",day:"numeric",month:"long"});
+  utcMonth=new Intl.DateTimeFormat(LOC,{timeZone:"UTC",month:"long",year:"numeric"});
+  utcMonShort=new Intl.DateTimeFormat(LOC,{timeZone:"UTC",month:"short"});
+  utcWd=new Intl.DateTimeFormat(LOC,{timeZone:"UTC",weekday:"short"});
+  utcRange=new Intl.DateTimeFormat(LOC,{timeZone:"UTC",day:"numeric",month:"short"});
+}
+function fmtDay(tz,ms){
+  if(!dayFmt[tz])dayFmt[tz]=new Intl.DateTimeFormat(LOC,{timeZone:tz,weekday:"short",day:"numeric",month:"short"});
+  return dayFmt[tz].format(ms);
+}
+
+function statusOf(c,ms){
+  var tz=tzOf(c),p=parts(tz,ms),date=p.year+"-"+p.month+"-"+p.day;
+  var dow=new Date(Date.UTC(+p.year,+p.month-1,+p.day)).getUTCDay();
+  var min=+p.hour*60+ +p.minute,o=state.open*60,cl=state.close*60;
+  var hol=(HOL[c.id]||[]).filter(function(h){return (h.t||"nat")==="nat"&&date>=h.s&&date<=(h.e||h.s)})[0];
+  if(hol)return {k:"warn",l:T("stHol"),d:hname(hol)};
+  if(dow===0||dow===6)return {k:"off",l:T("stWknd"),d:T("dResumeMon")};
+  if(min>=o&&min<cl)return {k:"ok",l:T("stOpen"),d:T("dUntil",hmm(cl))};
+  if(min<o)return {k:"off",l:T("stClosed"),d:T("dOpensAt",hmm(o))};
+  return {k:"off",l:T("stClosed"),d:dow===5?T("dOpensMon"):T("dOpensTom")};
+}
+
+/* Tableau */
+function sortedRows(now){
+  var rOff=offsetMin(refTz(),now);
+  return C.map(function(c){var tz=tzOf(c);return {c:c,tz:tz,off:offsetMin(tz,now),gap:offsetMin(tz,now)-rOff}})
+   .sort(function(a,b){return a.off-b.off||cname(a.c).localeCompare(cname(b.c),LOC)});
+}
+function renderBoard(){
+  var now=Date.now();
+  var rows=sortedRows(now);
+  $("#board").innerHTML=rows.map(function(r){
+    var c=r.c,p=parts(r.tz,now),st=statusOf(c,now),isRef=c.id===state.ref;
+    var sub=fmtUTC(r.off)+(isDst(r.tz,now)?" · "+T("dstOn"):"");
+    var gapHtml=isRef?'<b>'+T("refTag")+'</b><span>'+sub+'</span>':'<b>'+fmtGap(r.gap)+'</b><span>'+sub+'</span>';
+    return '<li class="row'+(isRef?" is-ref":"")+'">'
+      +'<div class="who"><span class="code">'+c.code+'</span><div><div class="cn">'+cname(c)+'</div><div class="city">'+cityOf(c)+'</div></div></div>'
+      +'<div class="time"><div class="clk">'+p.hour+":"+p.minute+'<span class="sec">:'+p.second+'</span></div><div class="day">'+fmtDay(r.tz,now)+'</div></div>'
+      +'<div class="gap">'+gapHtml+'</div>'
+      +'<div class="state"><span class="pill '+st.k+'">'+st.l+'</span>'+(st.d?'<small>'+st.d+'</small>':'')+'</div>'
+      +'</li>';
+  }).join("");
+}
+
+/* Fenêtres de bureau */
+function windowSegs(delta){
+  var start=(((state.open*60-delta)%1440)+1440)%1440,len=(state.close-state.open)*60,segs=[];
+  if(start+len<=1440)segs.push([start,start+len]);
+  else{segs.push([start,1440]);segs.push([0,start+len-1440])}
+  return segs;
+}
+function commonRanges(now){
+  var rOff=offsetMin(refTz(),now),bits=[],i,m;
+  var cs=C.filter(function(c){return state.sel.has(c.id)}).map(function(c){return offsetMin(tzOf(c),now)-rOff});
+  if(!cs.length)return [];
+  for(m=0;m<1440;m++){
+    var ok=true;
+    for(i=0;i<cs.length;i++){var lm=(((m+cs[i])%1440)+1440)%1440;if(lm<state.open*60||lm>=state.close*60){ok=false;break}}
+    bits.push(ok);
+  }
+  var out=[],s=-1;
+  for(m=0;m<=1440;m++){
+    if(m<1440&&bits[m]){if(s<0)s=m}
+    else if(s>=0){out.push([s,m]);s=-1}
+  }
+  return out;
+}
+var tlSig="";
+function sigNow(now){return sortedRows(now).map(function(r){return r.off}).join(",")+"|"+state.open+state.close+Array.from(state.sel).sort().join("")}
+function renderTimeline(){
+  var now=Date.now(),rows=sortedRows(now),rOff=offsetMin(refTz(),now),common=commonRanges(now);
+  var rp=parts(refTz(),now),refMin=+rp.hour*60+ +rp.minute+ +rp.second/60;
+  tlSig=sigNow(now);
+  $("#tl").innerHTML=rows.map(function(r){
+    var c=r.c,delta=r.off-rOff;
+    var segs=windowSegs(delta).map(function(s){return '<div class="seg" style="left:'+(s[0]/14.4)+'%;width:'+((s[1]-s[0])/14.4)+'%"></div>'}).join("");
+    var cm=common.map(function(s){return '<div class="common" style="left:'+(s[0]/14.4)+'%;width:'+((s[1]-s[0])/14.4)+'%"></div>'}).join("");
+    return '<div class="tl-row"><label><input type="checkbox" data-id="'+c.id+'"'+(state.sel.has(c.id)?" checked":"")+'><span class="nm">'+cname(c)+'</span></label>'
+      +'<div class="bar" role="img" aria-label="'+T("tlAria",cname(c),state.open,state.close)+'">'+segs+cm+'<div class="nowline" data-now style="left:'+(refMin/14.4)+'%"></div></div></div>';
+  }).join("");
+  var ticks="";for(var h=0;h<=24;h+=3)ticks+='<span style="left:'+(h/24*100)+'%">'+pad(h)+'h</span>';
+  $("#axis").innerHTML=ticks;
+  $("#tl-note").textContent=T("tlNote",cname(refC()));
+  renderOverlap(common,rOff,now);
+}
+function renderOverlap(common,rOff,now){
+  var el=$("#overlap"),sel=C.filter(function(c){return state.sel.has(c.id)});
+  if(sel.length<2){el.className="result";el.innerHTML="<span>"+T("ovPick")+"</span>";return}
+  if(!common.length){el.className="result";el.innerHTML="<strong>"+T("ovNoneT")+"</strong><span class=\"muted\">"+T("ovNoneB",state.open,state.close)+"</span>";return}
+  el.className="result good";
+  var html="<strong>"+T("ovGood")+"</strong><ul>"+common.map(function(r){
+    return "<li>"+sel.map(function(c){var d=offsetMin(tzOf(c),now)-rOff;return cname(c)+" <b>"+hmm(r[0]+d)+"–"+hmm(r[1]+d)+"</b>"}).join(" · ")+"</li>";
+  }).join("")+"</ul>";
+  html+='<span class="muted" style="font-size:.82rem">'+T("ovFoot")+'</span>';
+  el.innerHTML=html;
+}
+function moveNow(){
+  var rp=parts(refTz(),Date.now()),m=+rp.hour*60+ +rp.minute+ +rp.second/60;
+  var els=document.querySelectorAll("[data-now]");
+  for(var i=0;i<els.length;i++)els[i].style.left=(m/14.4)+"%";
+}
+
+/* Convertisseur */
+function renderConv(){
+  var dv=$("#cv-date").value,tv=$("#cv-time").value,box=$("#cv-list");
+  $("#conv-note").textContent=T("convNote",cname(refC()),cityOf(refC()));
+  if(!dv||!tv){box.innerHTML='<p class="empty">'+T("convEmpty")+'</p>';return}
+  var d=dv.split("-").map(Number),t=tv.split(":").map(Number);
+  var utc=zonedToUtc(d[0],d[1],d[2],t[0],t[1],refTz());
+  box.innerHTML=sortedRows(utc).map(function(r){
+    var c=r.c,p=parts(r.tz,utc),st=statusOf(c,utc),dd=Math.round((u(p.year+"-"+p.month+"-"+p.day)-u(dv))/DAY);
+    var shift=dd===0?T("sameDay"):dd>0?T("nextDay"):T("prevDay");
+    return '<div class="crow"><div><div class="cn">'+cname(c)+'</div><div class="city">'+cityOf(c)+'</div></div>'
+      +'<div><div class="t">'+p.hour+":"+p.minute+'</div></div>'
+      +'<div class="muted">'+fmtDay(r.tz,utc)+" · "+shift+'</div>'
+      +'<div class="state"><span class="pill '+st.k+'">'+st.l+'</span>'+(st.d&&st.k==="warn"?"<small>"+st.d+"</small>":"")+'</div></div>';
+  }).join("");
+}
+function setConvNow(){
+  var now=Date.now(),p=parts(refTz(),now),m=Math.ceil((+p.hour*60+ +p.minute)/15)*15;
+  var dateStr=p.year+"-"+p.month+"-"+p.day;
+  if(m>=1440){m-=1440;dateStr=new Date(u(dateStr)+DAY).toISOString().slice(0,10)}
+  $("#cv-date").value=dateStr;$("#cv-time").value=hmm(m);
+}
+
+/* Jours fériés */
+function renderChips(){
+  var g=$("#chips");g.setAttribute("aria-label",T("filterAria"));
+  g.innerHTML=C.slice().sort(function(a,b){return cname(a).localeCompare(cname(b),LOC)}).map(function(c){
+    return '<button type="button" class="chip" data-id="'+c.id+'" aria-pressed="'+state.hf.has(c.id)+'"><span class="code">'+c.code+'</span>'+cname(c)+'</button>';
+  }).join("");
+}
+function rangeLabel(s,e){
+  if(!e||e===s)return null;
+  var a=u(s),b=u(e);
+  try{return utcRange.formatRange(a,b)}catch(x){return utcRange.format(a)+" – "+utcRange.format(b)}
+}
+function renderHol(){
+  var now=Date.now(),today=localDate(refTz(),now),t0=u(today);
+  $("#hol-note").textContent=T("holNote",cname(refC()));
+  var list=[];
+  C.forEach(function(c){
+    if(!state.hf.has(c.id))return;
+    HOL[c.id].forEach(function(h){
+      var s=u(h.s),e=u(h.e||h.s);
+      if(e<t0)return;
+      var dd=Math.round((s-t0)/DAY);
+      if(state.hz&&dd>state.hz)return;
+      list.push({c:c,h:h,s:s,e:e,dd:dd});
+    });
+  });
+  list.sort(function(a,b){return a.s-b.s||cname(a.c).localeCompare(cname(b.c),LOC)});
+  var box=$("#hol");
+  if(!list.length){box.innerHTML='<p class="empty">'+T("holNone")+'</p>';return}
+  var html="",cur="";
+  list.forEach(function(x){
+    var mk=utcMonth.format(Math.max(x.s,t0));
+    if(mk!==cur){if(cur)html+="</ul>";cur=mk;html+='<h3 class="month">'+mk+'</h3><ul class="hol">'}
+    var rl=rangeLabel(x.h.s,x.h.e);
+    var rel=(x.s<=t0&&t0<=x.e)?'<span class="rel now">'+T("relNow")+'</span>':x.dd===1?'<span class="rel">'+T("relTom")+'</span>':'<span class="rel">'+T("relIn",x.dd)+'</span>';
+    var pills="";
+    if(x.h.t==="reg")pills+='<span class="pill est">'+T("pReg")+'</span>';
+    if(x.h.t==="opt")pills+='<span class="pill est">'+T("pOpt")+'</span>';
+    if(x.h.est)pills+='<span class="pill est">'+T("pEst")+'</span>';
+    var big=rl?(new Date(x.s).getUTCDate()+"–"+new Date(x.e).getUTCDate()):String(new Date(x.s).getUTCDate());
+    var sub=rl?utcMonShort.format(x.e):utcWd.format(x.s)+" "+utcMonShort.format(x.s);
+    var note=hnote(x.h),small=(rl?rl+(note?" · ":""):"")+note;
+    html+='<li class="hi"><div class="dt"><b>'+big+'</b><span>'+sub+'</span></div>'
+      +'<div class="hn">'+hname(x.h)+(small?'<small>'+small+'</small>':"")+'</div>'
+      +'<div class="hr">'+pills+'<span class="cc">'+x.c.code+'</span>'+rel+'</div></li>';
+  });
+  html+="</ul>";
+  box.innerHTML=html;
+}
+
+/* Changements d'heure */
+function renderDst(){
+  var now=Date.now(),end=now+300*DAY,map={},ref=refTz(),keys=[];
+  C.forEach(function(c){
+    var tz=tzOf(c),prev=offsetMin(tz,now);
+    for(var t=now+DAY;t<=end;t+=DAY){
+      var o=offsetMin(tz,t);
+      if(o!==prev){
+        var lo=t-DAY,hi=t;
+        while(hi-lo>1000){var mid=Math.floor((lo+hi)/2);if(offsetMin(tz,mid)===prev)lo=mid;else hi=mid}
+        var inst=Math.round(hi/60000)*60000;
+        if(!map[inst]){map[inst]=[];keys.push(inst)}
+        map[inst].push({c:c,from:prev,to:o});
+        prev=o;
+      }
+    }
+  });
+  keys.sort(function(a,b){return a-b});
+  var el=$("#dst");
+  if(!keys.length){el.innerHTML='<li class="muted">'+T("dstNone")+'</li>';return}
+  el.innerHTML=keys.map(function(k){
+    var g=map[k],f=g[0],oldWall=k+f.from*60000,newWall=k+f.to*60000;
+    var diff=(f.to-f.from)/60,word=diff>0?T("dstFwd",diff):T("dstBack",Math.abs(diff));
+    var rb=offsetMin(ref,k-1000),ra=offsetMin(ref,k);
+    var fx=g.map(function(x){
+      if(x.c.id===state.ref)return cname(x.c)+" "+T("dstRef")+" : "+fmtUTC(x.from)+" → "+fmtUTC(x.to);
+      return cname(x.c)+" : "+T("dstGap")+" "+fmtGap(x.from-rb)+" → "+fmtGap(x.to-ra);
+    }).join(" · ");
+    return "<li><div><b>"+g.map(function(x){return cname(x.c)}).join(", ")+"</b> <span class=\"muted\">"+word+"</span></div>"
+      +'<div class="mono">'+utcDayLong.format(oldWall)+" · "+hmm(Math.floor((oldWall%DAY)/60000))+" → "+hmm(Math.floor((newWall%DAY)/60000))+"</div>"
+      +'<div class="fx">'+fx+"</div></li>";
+  }).join("");
+}
+
+/* Langue et interface */
+function setLang(){
+  lang=LANGOF[state.ref];LOC=LOCOF[state.ref];
+  document.documentElement.lang=lang;
+  initFmt();
+  var els=document.querySelectorAll("[data-i]");
+  for(var i=0;i<els.length;i++)els[i].textContent=T(els[i].getAttribute("data-i"));
+  $("#controls").setAttribute("aria-label",T("settings"));
+  fillSelects();renderChips();
+}
+function fillSelects(){
+  $("#ref").innerHTML=C.slice().sort(function(a,b){return cname(a).localeCompare(cname(b),LOC)}).map(function(c){return '<option value="'+c.id+'">'+cname(c)+" — "+pick(CITY[c.id])+"</option>"}).join("");
+  $("#us").innerHTML=US_ZONES.map(function(z){return '<option value="'+z.tz+'">'+pick(z.zone)+" — "+pick(z.city)+"</option>"}).join("");
+  var o="",i;for(i=7;i<=11;i++)o+='<option value="'+i+'">'+T("hFmt",i)+"</option>";$("#open").innerHTML=o;
+  o="";for(i=16;i<=20;i++)o+='<option value="'+i+'">'+T("hFmt",i)+"</option>";$("#close").innerHTML=o;
+  $("#ref").value=state.ref;$("#us").value=state.us;$("#open").value=state.open;$("#close").value=state.close;$("#hz").value=String(state.hz);
+}
+function renderAll(){
+  $("#board-note").textContent=T("boardNote",cname(refC()),cityOf(refC()));
+  renderBoard();renderTimeline();renderConv();renderHol();renderDst();
+}
+
+load();
+setLang();setConvNow();renderAll();
+
+$("#ref").addEventListener("change",function(e){state.ref=e.target.value;save();setLang();renderAll()});
+$("#us").addEventListener("change",function(e){state.us=e.target.value;save();renderAll()});
+$("#open").addEventListener("change",function(e){state.open=+e.target.value;if(state.close<=state.open)state.close=state.open+1;$("#close").value=state.close;save();renderAll()});
+$("#close").addEventListener("change",function(e){state.close=+e.target.value;if(state.open>=state.close){state.open=state.close-1;$("#open").value=state.open}save();renderAll()});
+$("#tl").addEventListener("change",function(e){
+  var id=e.target.getAttribute("data-id");if(!id)return;
+  if(e.target.checked)state.sel.add(id);else state.sel.delete(id);
+  save();renderTimeline();
+  var cb=document.querySelector('#tl input[data-id="'+id+'"]');if(cb)cb.focus();
+});
+$("#cv-date").addEventListener("input",renderConv);
+$("#cv-time").addEventListener("input",renderConv);
+$("#cv-now").addEventListener("click",function(){setConvNow();renderConv()});
+$("#chips").addEventListener("click",function(e){
+  var b=e.target.closest(".chip");if(!b)return;
+  var id=b.getAttribute("data-id");
+  if(state.hf.has(id)&&state.hf.size>1)state.hf.delete(id);else state.hf.add(id);
+  save();renderChips();renderHol();
+  var nb=document.querySelector('#chips .chip[data-id="'+id+'"]');if(nb)nb.focus();
+});
+$("#hz").addEventListener("change",function(e){state.hz=+e.target.value;save();renderHol()});
+
+var lastMin=-1,lastDate="";
+setInterval(function(){
+  renderBoard();moveNow();
+  var now=Date.now(),m=Math.floor(now/60000);
+  if(m!==lastMin){
+    lastMin=m;
+    if(sigNow(now)!==tlSig)renderTimeline();
+    var d=localDate(refTz(),now);
+    if(d!==lastDate){lastDate=d;renderHol()}
+  }
+},1000);
+})();
+</script>
+
+</body></html>

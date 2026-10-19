@@ -1,0 +1,1126 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Simulateur de performances véhicule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* Concept : feuille d'essai. Bande de six relevés en tête, fiche de saisie à gauche, diagrammes à droite. */
+:root{
+  --bg:#ECEFF3; --panel:#F8F9FB; --field:#FFFFFF;
+  --ink:#111A23; --muted:#566470; --line:#C7CFD7; --line-soft:#E0E5EA;
+  --accent:#17406E; --accent-ink:#FFFFFF;
+  --c1:#1C63C4; --c2:#CC4A0E; --c3:#11795E; --c4:#6F42BA; --res:#B4233E;
+  --gA:#8FB0D8; --gB:#0F2F5C;
+  --bad:#B4233E; --warn:#8A5600;
+  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C131A; --panel:#121B24; --field:#0C141C;
+    --ink:#E4EAF0; --muted:#8C9BA8; --line:#2A3743; --line-soft:#1E2A34;
+    --accent:#8DB8F5; --accent-ink:#0C131A;
+    --c1:#3F8CF0; --c2:#E2682A; --c3:#28A87F; --c4:#9479DC; --res:#FF6F86;
+    --gA:#5E82B4; --gB:#D2E4FF; --bad:#FF7A8C; --warn:#E0A540; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C131A; --panel:#121B24; --field:#0C141C;
+  --ink:#E4EAF0; --muted:#8C9BA8; --line:#2A3743; --line-soft:#1E2A34;
+  --accent:#8DB8F5; --accent-ink:#0C131A;
+  --c1:#3F8CF0; --c2:#E2682A; --c3:#28A87F; --c4:#9479DC; --res:#FF6F86;
+  --gA:#5E82B4; --gB:#D2E4FF; --bad:#FF7A8C; --warn:#E0A540; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:20px 44px}
+.wrap{max-width:1200px;margin-inline:auto;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font:500 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font:600 clamp(30px,6vw,44px)/1 var(--f-display);letter-spacing:.01em;text-transform:uppercase;margin:0;text-wrap:balance}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button{font:500 13px var(--f-body);border-radius:4px;padding:8px 12px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink)}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.readouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+@media (min-width:640px){.readouts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1000px){.readouts{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.ro{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.sym{font:500 12px var(--f-mono);color:var(--ink)}
+.lbl{font-size:12px;color:var(--muted)}
+.val{display:flex;align-items:baseline;gap:6px;margin-top:6px}
+.val b{font:600 40px/1 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.unit{font:12px var(--f-mono);color:var(--muted)}
+.note{font:12px/1.35 var(--f-mono);color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
+.status{margin:0;min-height:1.4em;font:12px var(--f-mono);color:var(--muted)}
+.status.err{color:var(--bad)} .status.warn{color:var(--warn)}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+@media (min-width:980px){.main{grid-template-columns:minmax(340px,5fr) minmax(0,7fr);align-items:start}}
+.inputs{background:var(--panel);border:1px solid var(--line);border-radius:6px;min-width:0}
+details.grp{border-top:1px solid var(--line);padding:0 14px}
+details.grp:first-child{border-top:0}
+details.grp>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:12px 0;font:600 19px var(--f-display);letter-spacing:.06em;text-transform:uppercase}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+details.grp[open]>summary::after{transform:rotate(-135deg)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;padding-bottom:16px}
+.wide{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:12px;color:var(--muted)}
+.inp{display:flex;align-items:center;border:1px solid var(--line);background:var(--field);border-radius:4px;min-width:0}
+.inp:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.inp.bad{border-color:var(--bad)}
+.inp input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:500 14px var(--f-mono);padding:7px 8px;text-align:right;outline:0}
+.inp input.txt{text-align:left}
+.inp .u{font:12px var(--f-mono);color:var(--muted);padding-right:8px;white-space:nowrap}
+select{width:100%;min-width:0;border:1px solid var(--line);background:var(--field);color:var(--ink);font:14px var(--f-body);padding:7px 8px;border-radius:4px}
+select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{grid-column:1/-1;margin:0;font-size:12px;color:var(--muted)}
+.hint button{padding:3px 8px;font-size:12px;margin-left:8px}
+.win{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:2px 0 8px}
+.win label{font-size:12px;color:var(--muted)}
+.win .inp{width:96px}
+button.sm{padding:4px 9px;font-size:12px}
+button.sm.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.tablewrap{overflow-x:auto;grid-column:1/-1}
+table{border-collapse:collapse;width:100%;min-width:340px;font-family:var(--f-mono)}
+th{font:500 11px var(--f-mono);color:var(--muted);text-align:right;padding:4px 4px 6px;white-space:nowrap}
+th small{display:block;font-size:10px}
+td{padding:2px}
+td.ix{font:11px var(--f-mono);color:var(--muted);text-align:right;padding-right:6px;width:24px}
+td input{width:100%;min-width:0;border:1px solid var(--line-soft);background:var(--field);color:var(--ink);font:500 12px var(--f-mono);padding:5px 5px;text-align:right;border-radius:3px}
+td input.bad{border-color:var(--bad)}
+td input:focus-visible{outline:2px solid var(--accent);outline-offset:0}
+textarea{width:100%;min-height:90px;border:1px solid var(--line);background:var(--field);color:var(--ink);font:12px var(--f-mono);border-radius:4px;padding:8px}
+.paste{grid-column:1/-1;display:flex;flex-direction:column;gap:8px}
+.paste summary{cursor:pointer;font-size:13px;color:var(--accent)}
+.coh{grid-column:1/-1;font:12px var(--f-mono);color:var(--muted)} .coh.warn{color:var(--warn)}
+
+.charts{display:flex;flex-direction:column;gap:26px;min-width:0}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:26px}
+figure{margin:0;min-width:0}
+figcaption h2{font:600 19px var(--f-display);letter-spacing:.06em;text-transform:uppercase;margin:0 0 2px}
+figcaption p{margin:0 0 6px;font-size:12px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:2px 0 4px;font-size:12px;color:var(--ink)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.chart{position:relative;min-width:0}
+.chart svg{display:block;max-width:100%}
+svg text{font:11px var(--f-mono);fill:var(--muted)}
+svg text.at{fill:var(--muted)}
+svg .grid{stroke:var(--line-soft);stroke-width:1;fill:none}
+svg .axis,svg .tick{stroke:var(--line);stroke-width:1;fill:none}
+svg .cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;fill:none}
+.ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.ln.c1{stroke:var(--c1)} .ln.c2{stroke:var(--c2)} .ln.c3{stroke:var(--c3)} .ln.c4{stroke:var(--c4)} .ln.res{stroke:var(--res)} .ln.mute{stroke:var(--muted);stroke-width:1.5}
+.ln.thin{stroke-width:1.5}
+.dash{stroke-dasharray:6 4}
+.dot{fill:var(--panel);stroke-width:2}
+.dot.c1{stroke:var(--c1)} .dot.c2{stroke:var(--c2)} .dot.c3{stroke:var(--c3)} .dot.c4{stroke:var(--c4)} .dot.mute{stroke:var(--muted)}
+.tip{position:absolute;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px/1.4 var(--f-mono);box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;z-index:2}
+.tip b{font-weight:500;color:var(--muted)}
+.tip i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.empty{font-size:13px;color:var(--muted);padding:20px 0}
+.foot{margin:0;font-size:12px;color:var(--muted);max-width:90ch}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Dynamique longitudinale · plein gaz · départ arrêté</p>
+      <h1>Simulateur de performances</h1>
+    </div>
+    <div class="actions">
+      <button id="btnPdf" type="button" hidden>Exporter en PDF</button>
+      <button id="btnCopy" type="button" class="ghost">Copier les résultats</button>
+      <button id="btnReset" type="button" class="ghost">Valeurs d’exemple</button>
+    </div>
+  </header>
+
+  <section class="readouts" aria-label="Résultats de simulation">
+    <article class="ro"><div class="sym">V<sub>max</sub></div><div class="lbl">Vitesse maximale</div><div class="val"><b id="r-vmax">—</b><span class="unit">km/h</span></div><div class="note" id="n-vmax"></div></article>
+    <article class="ro"><div class="sym" id="sym-v1">v(2 s)</div><div class="lbl" id="lbl-v1">Vitesse à 2 s</div><div class="val"><b id="r-v1">—</b><span class="unit">km/h</span></div><div class="note" id="n-v1"></div></article>
+    <article class="ro"><div class="sym">t 30→60</div><div class="lbl">Reprise 30 à 60 km/h</div><div class="val"><b id="r-e1">—</b><span class="unit">s</span></div><div class="note" id="n-e1"></div></article>
+    <article class="ro"><div class="sym">t 60→90</div><div class="lbl">Reprise 60 à 90 km/h</div><div class="val"><b id="r-e2">—</b><span class="unit">s</span></div><div class="note" id="n-e2"></div></article>
+    <article class="ro"><div class="sym">t 0→100</div><div class="lbl">Accélération 0 à 100 km/h</div><div class="val"><b id="r-t100">—</b><span class="unit">s</span></div><div class="note" id="n-t100"></div></article>
+    <article class="ro"><div class="sym" id="sym-v2">v(3 s) · 20 %</div><div class="lbl" id="lbl-v2">Vitesse à 3 s en pente</div><div class="val"><b id="r-v2">—</b><span class="unit">km/h</span></div><div class="note" id="n-v2"></div></article>
+  </section>
+  <p id="status" class="status" role="status"></p>
+
+  <div class="main">
+    <aside class="inputs" id="form" aria-label="Paramètres"></aside>
+    <div class="charts">
+      <figure>
+        <figcaption><h2>Diagramme de traction</h2><p>Force disponible à la roue par rapport, face aux résistances.</p></figcaption>
+        <div class="legend" id="lg-trac"></div>
+        <div class="chart" id="ch-trac"></div>
+      </figure>
+      <figure>
+        <figcaption><h2>Accélération</h2><p>Vitesse en fonction du temps, départ arrêté.</p></figcaption>
+        <div class="win" role="group" aria-label="Fenêtre temporelle du diagramme">
+          <label for="f-twin">Fenêtre</label>
+          <div class="inp" id="w-twin"><input id="f-twin" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><span class="u">s</span></div>
+          <button type="button" class="ghost sm" data-win="">Auto</button>
+          <button type="button" class="ghost sm" data-win="15">15 s</button>
+          <button type="button" class="ghost sm" data-win="30">30 s</button>
+          <button type="button" class="ghost sm" data-win="60">60 s</button>
+          <button type="button" class="ghost sm" data-win="120">120 s</button>
+          <button type="button" class="ghost sm" data-win="300">300 s</button>
+        </div>
+        <div class="legend" id="lg-acc"></div>
+        <div class="chart" id="ch-acc"></div>
+      </figure>
+      <div class="pair">
+        <figure><figcaption><h2>Puissance moteur</h2><p>Pleine charge, kW.</p></figcaption><div class="chart" id="ch-pow"></div></figure>
+        <figure><figcaption><h2>Couple moteur</h2><p>Pleine charge, N·m.</p></figcaption><div class="chart" id="ch-tq"></div></figure>
+      </div>
+      <div class="pair">
+        <figure><figcaption><h2>Débit carburant</h2><p>BH, kg/h.</p></figcaption><div class="chart" id="ch-bh"></div></figure>
+        <figure><figcaption><h2>Consommation spécifique</h2><p>b<sub>e</sub>, g/kW·h.</p></figcaption><div class="chart" id="ch-be"></div></figure>
+      </div>
+    </div>
+  </div>
+  <p class="foot">Modèle quasi statique : F<sub>roue</sub> = C(n)·i·η / r, résistances = Crr·m·g·cosθ + ½·ρ·Cx·S·v² + m·g·sinθ, masse équivalente avec inerties tournantes, patinage d’embrayage au régime de départ, coupure de traction pendant les passages, limite d’adhérence μ·charge motrice.</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+// <PHYSICS>
+const G = 9.80665, PI = Math.PI;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+
+function interp(xs, ys, x) {
+  const n = xs.length;
+  if (x <= xs[0]) return ys[0];
+  for (let i = 1; i < n; i++) {
+    if (x <= xs[i]) { const f = (x - xs[i-1]) / (xs[i] - xs[i-1]); return ys[i-1] + f * (ys[i] - ys[i-1]); }
+  }
+  return ys[n-1];
+}
+
+function makeEngine(rows, src) {
+  const rp = rows.map(r => r.rpm);
+  const tq = rows.map(r => src === 'P' ? r.P * 1000 / (r.rpm * PI / 30) : r.T);
+  const hasFuel = rows.every(r => isFinite(r.BH));
+  const bh = rows.map(r => r.BH);
+  return {
+    rp, tq, rpmMin: rp[0], rpmMax: rp[rp.length - 1], hasFuel,
+    torque: x => interp(rp, tq, x),
+    power: x => interp(rp, tq, x) * x * PI / 30 / 1000,
+    bh: x => interp(rp, bh, x)
+  };
+}
+
+function ratio(p, gear, v) {
+  if (!p.cvt) return p.gears[gear] * p.final;
+  const i = v > 0.01 ? (p.cvtTarget * PI / 30) * p.r / v / p.final : p.cvtMax;
+  return clamp(i, p.cvtMin, p.cvtMax) * p.final;
+}
+const rpmOf = (p, it, v) => v / p.r * it * 30 / PI;
+
+function fAvail(p, eng, gear, v, launch) {
+  const it = ratio(p, gear, v), rW = rpmOf(p, it, v);
+  if (rW > eng.rpmMax) return 0;
+  const floor = (launch && (p.cvt || gear === 0)) ? p.launch : eng.rpmMin;
+  return eng.torque(Math.max(rW, floor)) * it * p.eta / p.r;
+}
+
+function simulate(p, eng, o) {
+  const dt = o.dt || 0.002;
+  const th = o.theta || 0, sn = Math.sin(th), cs = Math.cos(th);
+  const W = p.m * G, Fg = W * sn, Fr0 = p.crr * W * cs;
+  const kA = 0.5 * p.rho * p.Cd * p.A, Flim = p.mu * p.fr * W * cs;
+  const nG = p.cvt ? 1 : p.gears.length;
+  const speeds = o.speeds || [], times = o.times || [];
+  const marks = speeds.map(() => null);
+  const vAt = times.map(() => null), dAt = times.map(() => null);
+  const trace = [];
+  const launch = !!o.launch;
+  const tEnd = o.tEnd || 60;
+  let t = 0, v = o.v0 || 0, x = 0, gear = o.gear0 || 0, shiftLeft = 0, nextGear = gear;
+  let shifts = 0, limT = 0, rev = false, calm = 0, lastTr = 0;
+  if (o.trace) trace.push([0, v * 3.6]);
+  const steps = Math.round(tEnd / dt);
+  for (let n = 0; n < steps; n++) {
+    const it = ratio(p, gear, v);
+    const rW = rpmOf(p, it, v);
+    const floor = (launch && (p.cvt || gear === 0)) ? p.launch : eng.rpmMin;
+    const slip = rW < floor;
+    const rpm = slip ? floor : rW;
+    let F = 0;
+    if (shiftLeft <= 0) {
+      const raw = eng.torque(rpm) * it * p.eta / p.r;
+      if (raw > Flim) { F = Flim; limT += dt; } else F = raw;
+    }
+    let net = F - Fg - Fr0 - kA * v * v;
+    if (v <= 0 && net < 0) net = 0;
+    const jr = (slip || shiftLeft > 0) ? 0 : p.Je * (it / p.r) * (it / p.r);
+    const a = net / (p.m * (1 + p.kw) + jr);
+    const vPrev = v, xPrev = x;
+    v = Math.max(0, v + a * dt);
+    x += 0.5 * (vPrev + v) * dt;
+    t += dt;
+    const canUp = !p.cvt && gear < nG - 1 && !o.fixedGear;
+    if (shiftLeft <= 0 && !canUp) {
+      const it2 = ratio(p, gear, v), r2 = rpmOf(p, it2, v);
+      if (r2 > eng.rpmMax) { v = eng.rpmMax * PI / 30 * p.r / it2; rev = true; }
+    }
+    for (let i = 0; i < speeds.length; i++) {
+      if (marks[i] === null && v >= speeds[i]) {
+        const f = v > vPrev ? clamp((speeds[i] - vPrev) / (v - vPrev), 0, 1) : 1;
+        marks[i] = { t: t - dt + f * dt, x: xPrev + f * (x - xPrev), sh: shifts, lim: limT };
+      }
+    }
+    for (let j = 0; j < times.length; j++) {
+      if (vAt[j] === null && t >= times[j] - 1e-9) { vAt[j] = v; dAt[j] = x; }
+    }
+    if (shiftLeft > 0) {
+      shiftLeft -= dt;
+      if (shiftLeft <= 1e-12) { gear = nextGear; shifts++; shiftLeft = 0; }
+    } else if (canUp && v > 0.3) {
+      const r2 = rpmOf(p, ratio(p, gear, v), v);
+      let go;
+      if (p.strategy === 'rpm') go = r2 >= p.shiftRpm;
+      else go = r2 >= eng.rpmMax || fAvail(p, eng, gear + 1, v, launch) > fAvail(p, eng, gear, v, launch);
+      if (go) {
+        if (p.shiftTime > 0) { shiftLeft = p.shiftTime; nextGear = gear + 1; }
+        else { gear++; shifts++; }
+      }
+    }
+    const trDt = o.traceDt || 0.05, minT = o.minT || 0;
+    if (o.trace && t - lastTr >= trDt - 1e-9) { trace.push([t, v * 3.6]); lastTr = t; }
+    if (o.untilMarks && t >= minT && marks.every(m => m) && vAt.every(z => z !== null)) break;
+    const aEff = (v - vPrev) / dt;
+    if (Math.abs(aEff) < 1e-5 && v > 1 && shiftLeft <= 0 && t >= minT) { if (++calm > 1500) break; } else calm = 0;
+  }
+  return { t, x, v, marks, vAt, dAt, trace, shifts, limT, rev, gear };
+}
+
+function vmaxFlat(p, eng) {
+  const W = p.m * G, Fr0 = p.crr * W, kA = 0.5 * p.rho * p.Cd * p.A;
+  const list = p.cvt ? [0] : p.gears.map((_, i) => i);
+  let best = null;
+  for (const g of list) {
+    let last = null;
+    for (let kmh = 5; kmh <= 700; kmh += 0.05) {
+      const v = kmh / 3.6, it = ratio(p, g, v), rW = rpmOf(p, it, v);
+      if (rW > eng.rpmMax) break;
+      const F = eng.torque(Math.max(rW, eng.rpmMin)) * it * p.eta / p.r;
+      if (F >= Fr0 + kA * v * v) last = { kmh, rpm: rW, gear: g };
+    }
+    if (last && (!best || last.kmh > best.kmh)) best = last;
+  }
+  if (best) {
+    best.rev = best.rpm >= eng.rpmMax * 0.995;
+    best.gkm = eng.hasFuel ? eng.bh(Math.max(best.rpm, eng.rpmMin)) * 1000 / best.kmh : null;
+    best.bh = eng.hasFuel ? eng.bh(best.rpm) : null;
+  }
+  return best;
+}
+
+function elast(p, eng, k0, k1, g) {
+  const r = simulate(p, eng, { launch: false, v0: k0 / 3.6, gear0: g - 1, fixedGear: true, speeds: [k1 / 3.6], tEnd: 60, untilMarks: true });
+  return { t: r.marks[0] ? r.marks[0].t : null, rev: r.rev };
+}
+
+function computeAll(S) {
+  const eng = makeEngine(S.rows, S.src), p = S.p;
+  const vmax = vmaxFlat(p, eng);
+  const flat = simulate(p, eng, { launch: true, speeds: [30, 60, 90, 100, 110].map(k => k / 3.6), times: [S.t1], tEnd: Math.max(60, S.t1 + 2, (S.twin || 0) + 1), minT: S.twin || 0, traceDt: Math.max(0.05, (S.twin || 0) / 1500), trace: true, untilMarks: true });
+  const hill = simulate(p, eng, { launch: true, theta: Math.atan(S.grade / 100), times: [S.t2], tEnd: Math.max(10, S.t2 * 2, S.twin || 0), minT: S.twin || 0, traceDt: Math.max(0.05, (S.twin || 0) / 1500), trace: true });
+  const m = flat.marks;
+  let e1, e2;
+  if (S.elMode === 'cont') {
+    e1 = { t: m[0] && m[1] ? m[1].t - m[0].t : null };
+    e2 = { t: m[1] && m[2] ? m[2].t - m[1].t : null };
+  } else {
+    e1 = elast(p, eng, 30, 60, S.g1);
+    e2 = elast(p, eng, 60, 90, S.g2);
+  }
+  return { eng, vmax, flat, hill, e1, e2 };
+}
+// </PHYSICS>
+
+/* ---------- Interface ---------- */
+const $ = id => document.getElementById(id);
+const NF = {};
+const fmt = (v, d = 1) => {
+  if (v === null || v === undefined || !isFinite(v)) return '—';
+  return (NF[d] || (NF[d] = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }))).format(v);
+};
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const num = s => { const t = String(s).replace(/\s/g, '').replace(',', '.'); return t === '' ? NaN : Number(t); };
+function tireParse(s) {
+  const m = /^\s*(\d{3})\s*\/\s*(\d{2,3})\s*[A-Za-z]{0,2}\s*[R\-]?\s*(\d{2})\b/i.exec(String(s));
+  if (!m) return null;
+  const w = +m[1], a = +m[2], rim = +m[3], side = w * a / 100;
+  return { w, a, rim, side, radius: rim * 25.4 / 2 + side };
+}
+
+const TIRES = [
+  ['car_std', 'Auto · route standard', 0.010], ['car_lrr', 'Auto · basse résistance', 0.007],
+  ['car_sport', 'Auto · sport (UHP)', 0.012], ['car_winter', 'Auto · hiver', 0.011],
+  ['moto_road', '2 roues · route', 0.015], ['moto_sport', '2 roues · sport', 0.014],
+  ['scooter', 'Scooter · petit diamètre', 0.018], ['offroad', 'Tout-terrain', 0.025],
+  ['custom', 'Personnalisé', null]
+];
+const SELECTS = {
+  tire: TIRES.map(t => [t[0], t[1] + (t[2] != null ? ' (' + t[2].toFixed(3).replace('.', ',') + ')' : '')]),
+  mode: [['gearbox', 'Boîte à rapports'], ['cvt', 'Variateur continu (CVT)']],
+  strat: [['opt', 'Optimal (force maximale)'], ['rpm', 'Régime de passage fixe']],
+  elMode: [['cont', 'Enchaîné depuis l’arrêt'], ['gear', 'Rapport imposé, départ lancé']],
+  src: [['T', 'Couple T_ec (N·m)'], ['P', 'Puissance P_ec (T = P/ω)']]
+};
+const DEF_ROWS = [
+  ['800', '7.96', '95', '2.71', '340'], ['1000', '12.04', '115', '3.85', '320'], ['1500', '23.56', '150', '6.95', '295'],
+  ['2000', '35.19', '168', '9.85', '280'], ['2500', '47.12', '180', '12.82', '272'], ['3000', '59.06', '188', '15.83', '268'],
+  ['3500', '71.11', '194', '18.92', '266'], ['4000', '82.94', '198', '22.06', '266'], ['4500', '92.83', '197', '25.06', '270'],
+  ['5000', '100.53', '192', '27.95', '278'], ['5500', '105.40', '183', '30.57', '290'], ['6000', '108.07', '172', '32.96', '305'],
+  ['6500', '107.55', '158', '34.42', '320'], ['7000', '102.63', '140', '34.89', '340']
+];
+const GROUPS = [
+  { title: 'Véhicule', items: [
+    { k: 'curb', label: 'Masse à vide', unit: 'kg', def: '1250' },
+    { k: 'test', label: 'Masse d’essai (simulée)', unit: 'kg', def: '1325' },
+    { k: 'cd', label: 'Coefficient de traînée Cx', unit: '', def: '0.30' },
+    { k: 'area', label: 'Windward area S (surface frontale)', unit: 'm²', def: '2.20' },
+    { k: 'rho', label: 'Masse volumique de l’air', unit: 'kg/m³', def: '1.225' },
+    { k: 'tiresize', label: 'Type de pneu (dimension)', unit: '', def: '205/55R16', text: true, wide: true },
+    { tirehint: true },
+    { k: 'rr', label: 'Rayon de roulement', unit: 'mm', def: '316' },
+    { sel: 'tire', label: 'Famille de pneu (Crr indicatif)' },
+    { k: 'crr', label: 'Résistance au roulement Crr', unit: '', def: '0.010' },
+    { k: 'mu', label: 'Adhérence μ', unit: '', def: '1.00' },
+    { k: 'fr', label: 'Charge sur roues motrices', unit: '%', def: '60' },
+    { k: 'eta', label: 'Rendement transmission', unit: '%', def: '90' },
+    { k: 'je', label: 'Inertie moteur', unit: 'kg·m²', def: '0.15' },
+    { k: 'kw', label: 'Inertie des roues (équiv. masse)', unit: '%', def: '3' },
+    { hint: 'Valeurs de Crr indicatives. La masse d’essai est la masse simulée.', id: 'hint-mass' }
+  ] },
+  { title: 'Transmission', items: [
+    { sel: 'mode', label: 'Type de transmission', wide: true },
+    { k: 'gears', label: 'Rapports de boîte (1re, 2e, 3e…)', unit: '', def: '3.58; 2.04; 1.40; 1.09; 0.88; 0.74', text: true, wide: true, vis: 'gear' },
+    { k: 'final', label: 'Rapport final (pont)', unit: '', def: '3.94' },
+    { k: 'cvtMin', label: 'Rapport CVT mini', unit: '', def: '0.80', vis: 'cvt' },
+    { k: 'cvtMax', label: 'Rapport CVT maxi', unit: '', def: '2.60', vis: 'cvt' },
+    { k: 'cvtTarget', label: 'Régime cible CVT', unit: 'tr/min', def: '6000', vis: 'cvt' },
+    { k: 'launch', label: 'Régime de départ (patinage)', unit: 'tr/min', def: '3500' },
+    { sel: 'strat', label: 'Stratégie de passage', wide: true, vis: 'gear' },
+    { k: 'shiftRpm', label: 'Régime de passage', unit: 'tr/min', def: '6500', vis: 'rpm' },
+    { k: 'shiftTime', label: 'Durée d’un passage', unit: 's', def: '0.30', vis: 'gear' }
+  ] },
+  { title: 'Conditions d’essai', items: [
+    { k: 't1', label: 'Instant de mesure (plat)', unit: 's', def: '2' },
+    { k: 'grade', label: 'Pente', unit: '%', def: '20' },
+    { k: 't2', label: 'Instant de mesure (pente)', unit: 's', def: '3' },
+    { sel: 'elMode', label: 'Reprises 30→60 et 60→90', wide: true },
+    { k: 'g1', label: 'Rapport pour 30→60', unit: '', def: '3', vis: 'elg' },
+    { k: 'g2', label: 'Rapport pour 60→90', unit: '', def: '4', vis: 'elg' }
+  ] }
+];
+const LBL = {};
+GROUPS.forEach(g => g.items.forEach(i => { if (i.k) LBL[i.k] = i.label; }));
+
+function buildForm() {
+  let h = '';
+  GROUPS.forEach(g => {
+    h += `<details class="grp" open><summary>${g.title}</summary><div class="grid">`;
+    g.items.forEach(i => {
+      const vis = i.vis ? ` data-vis="${i.vis}"` : '';
+      const wide = i.wide ? ' wide' : '';
+      if (i.tirehint) h += '<div class="hint"><span id="tire-info"></span><button type="button" class="ghost" id="btnTire" hidden>Appliquer au rayon de roulement</button></div>';
+      else if (i.hint) h += `<p class="hint" id="${i.id}">${i.hint}</p>`;
+      else if (i.sel) {
+        h += `<div class="field${wide}"${vis}><label for="s-${i.sel}">${i.label}</label><select id="s-${i.sel}">${SELECTS[i.sel].map(o => `<option value="${o[0]}">${esc(o[1])}</option>`).join('')}</select></div>`;
+      } else {
+        h += `<div class="field${wide}"${vis}><label for="f-${i.k}">${i.label}</label><div class="inp" id="w-${i.k}"><input id="f-${i.k}" class="${i.text ? 'txt' : ''}" type="text" inputmode="${i.text ? 'text' : 'decimal'}" autocomplete="off" value="${esc(i.def)}">${i.unit ? `<span class="u">${i.unit}</span>` : ''}</div></div>`;
+      }
+    });
+    h += '</div></details>';
+  });
+  h += `<details class="grp" open><summary>Fiche moteur · 14 points</summary><div class="grid">
+    <div class="field wide"><label for="s-src">Courbe de couple utilisée pour la simulation</label><select id="s-src">${SELECTS.src.map(o => `<option value="${o[0]}">${esc(o[1])}</option>`).join('')}</select></div>
+    <div class="tablewrap"><table id="engine"><thead><tr><th></th><th>tr/min</th><th>P<sub>ec</sub><small>kW</small></th><th>T<sub>ec</sub><small>N·m</small></th><th>BH<small>kg/h</small></th><th>b<sub>e</sub><small>g/kW·h</small></th></tr></thead><tbody>${
+      DEF_ROWS.map((r, i) => `<tr><td class="ix">${i + 1}</td>${r.map((v, j) => `<td><input type="text" inputmode="decimal" autocomplete="off" aria-label="Point ${i + 1}, colonne ${j + 1}" data-r="${i}" data-c="${j}" value="${v}"></td>`).join('')}</tr>`).join('')
+    }</tbody></table></div>
+    <p class="coh" id="coh"></p>
+    <details class="paste"><summary>Coller depuis un tableur</summary>
+      <textarea id="pasteTxt" aria-label="Tableau à coller" placeholder="tr/min  P_ec  T_ec  BH  be (une ligne par point, séparateur tabulation ou point-virgule)"></textarea>
+      <div><button type="button" id="btnPaste" class="ghost">Appliquer au tableau</button></div>
+    </details>
+  </div></details>`;
+  $('form').innerHTML = h;
+}
+
+function applyVisibility() {
+  const cvt = $('s-mode').value === 'cvt';
+  const rpm = $('s-strat').value === 'rpm';
+  const elg = $('s-elMode').value === 'gear';
+  document.querySelectorAll('#form [data-vis]').forEach(el => {
+    const v = el.dataset.vis;
+    el.hidden = (v === 'gear' && cvt) || (v === 'cvt' && !cvt) || (v === 'rpm' && (cvt || !rpm)) || (v === 'elg' && (!elg || cvt));
+  });
+}
+
+/* ---------- Lecture et validation ---------- */
+function parse() {
+  const err = [], bad = new Set(), badCells = [];
+  const mode = $('s-mode').value, strat = $('s-strat').value, elMode = $('s-elMode').value, src = $('s-src').value;
+  const cvt = mode === 'cvt';
+  const val = (k, ok, need = true) => {
+    const v = num($('f-' + k).value);
+    if (need && !ok(v)) { bad.add(k); err.push(LBL[k]); }
+    return v;
+  };
+  const pos = v => isFinite(v) && v > 0, nn = v => isFinite(v) && v >= 0, pct = v => isFinite(v) && v > 0 && v <= 100;
+  const curb = val('curb', pos), m = val('test', pos), cd = val('cd', nn), area = val('area', pos), rho = val('rho', pos);
+  const rr = val('rr', pos), crr = val('crr', nn), mu = val('mu', pos), fr = val('fr', pct), eta = val('eta', pct);
+  const je = val('je', nn), kw = val('kw', nn), fin = val('final', pos), launch = val('launch', pos);
+  const t1 = val('t1', pos), t2 = val('t2', pos), grade = val('grade', v => isFinite(v) && v >= 0 && v < 100);
+  const shiftTime = val('shiftTime', nn, !cvt);
+  const shiftRpm = val('shiftRpm', pos, !cvt && strat === 'rpm');
+  const cvtMin = val('cvtMin', pos, cvt), cvtMax = val('cvtMax', v => isFinite(v) && v >= cvtMin, cvt), cvtTarget = val('cvtTarget', pos, cvt);
+  let gears = [1];
+  if (!cvt) {
+    gears = $('f-gears').value.split(/[;\s]+/).filter(Boolean).map(num);
+    if (!gears.length || gears.some(g => !(g > 0))) { bad.add('gears'); err.push(LBL.gears); }
+  }
+  const needG = !cvt && elMode === 'gear';
+  const g1 = val('g1', v => Number.isInteger(v) && v >= 1 && v <= gears.length, needG);
+  const g2 = val('g2', v => Number.isInteger(v) && v >= 1 && v <= gears.length, needG);
+
+  const rows = [];
+  document.querySelectorAll('#engine tbody tr').forEach((tr, i) => {
+    const ins = [...tr.querySelectorAll('input')];
+    const c = ins.map(inp => num(inp.value));
+    if (!isFinite(c[0])) return;
+    const need = src === 'P' ? 1 : 2;
+    if (!isFinite(c[need]) || c[need] < 0 || c[0] <= 0) { badCells.push(ins[0], ins[need]); err.push('Fiche moteur, point ' + (i + 1)); return; }
+    rows.push({ rpm: c[0], P: c[1], T: c[2], BH: c[3], be: c[4] });
+  });
+  rows.sort((a, b) => a.rpm - b.rpm);
+  if (rows.length < 3) err.push('Fiche moteur : au moins 3 points');
+  for (let i = 1; i < rows.length; i++) if (rows[i].rpm === rows[i-1].rpm) { err.push('Fiche moteur : régimes en double'); break; }
+
+  const rpmMax = rows.length ? rows[rows.length - 1].rpm : 0;
+  const p = {
+    m, rho, Cd: cd, A: area, crr, r: rr / 1000, mu, fr: fr / 100, eta: eta / 100, Je: je, kw: kw / 100,
+    cvt, gears, final: fin, cvtMin, cvtMax, cvtTarget: Math.min(cvtTarget, rpmMax),
+    launch: Math.min(launch, rpmMax), shiftTime, strategy: strat, shiftRpm: Math.min(shiftRpm, rpmMax)
+  };
+  const tz = tireParse($('f-tiresize').value);
+  if (!tz) bad.add('tiresize');
+  let twin = null;
+  if ($('f-twin').value.trim() !== '') {
+    const tw = num($('f-twin').value);
+    if (isFinite(tw) && tw >= 1 && tw <= 600) twin = tw; else bad.add('twin');
+  }
+  return { err, bad, badCells, curb, tz, S: { p, rows, src, t1, t2, grade, elMode, g1, g2, twin } };
+}
+
+/* ---------- Diagrammes ---------- */
+function niceStep(raw) {
+  const mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+}
+function axisFor(lo, hi, n = 5) {
+  if (!(hi > lo)) hi = lo + 1;
+  const step = niceStep((hi - lo) / n);
+  const min = Math.floor(lo / step + 1e-9) * step, max = Math.ceil(hi / step - 1e-9) * step;
+  const ticks = [];
+  for (let v = min; v <= max + step * 1e-6; v += step) ticks.push(+v.toFixed(8));
+  const d = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
+  return { min, max, ticks, d };
+}
+function lineAt(pts, x) {
+  if (x < pts[0][0] || x > pts[pts.length - 1][0]) return null;
+  for (let i = 1; i < pts.length; i++) {
+    if (x <= pts[i][0]) { const f = (x - pts[i-1][0]) / ((pts[i][0] - pts[i-1][0]) || 1); return pts[i-1][1] + f * (pts[i][1] - pts[i-1][1]); }
+  }
+  return pts[pts.length - 1][1];
+}
+let clipN = 0;
+let CHART_SINK = null, LEG_SINK = null, EMP_SINK = null;
+function chart(host, c, pdf) {
+  if (CHART_SINK && !pdf) { CHART_SINK[host.id] = c; return; }
+  const W = pdf ? 720 : Math.max(260, Math.floor(host.clientWidth));
+  const H = pdf ? 300 : Math.round(clamp(W * 0.6, 230, 320));
+  const M = { l: 56, r: 14, t: 12, b: 42 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+  const X = v => M.l + (v - c.x.min) / (c.x.max - c.x.min) * iw;
+  const Y = v => M.t + ih - (v - c.y.min) / (c.y.max - c.y.min) * ih;
+  const id = 'clip' + (++clipN);
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.aria)}"><defs><clipPath id="${id}"><rect x="${M.l}" y="${M.t}" width="${iw}" height="${ih}"/></clipPath></defs>`
+    + (pdf ? PDF_CSS + `<rect width="${W}" height="${H}" fill="#FFFFFF"/>` : '');
+  for (const t of c.y.ticks) {
+    const y = Y(t);
+    s += `<line class="grid" x1="${M.l}" x2="${M.l + iw}" y1="${y}" y2="${y}"/><text x="${M.l - 8}" y="${y + 4}" text-anchor="end">${fmt(t, c.y.d)}</text>`;
+  }
+  for (const t of c.x.ticks) {
+    const x = X(t);
+    s += `<line class="tick" x1="${x}" x2="${x}" y1="${M.t + ih}" y2="${M.t + ih + 4}"/><text x="${x}" y="${M.t + ih + 17}" text-anchor="middle">${fmt(t, c.x.d)}</text>`;
+  }
+  s += `<line class="axis" x1="${M.l}" x2="${M.l + iw}" y1="${M.t + ih}" y2="${M.t + ih}"/>`;
+  s += `<text class="at" x="${M.l + iw / 2}" y="${H - 5}" text-anchor="middle">${esc(c.x.label)}</text>`;
+  s += `<text class="at" transform="translate(12 ${M.t + ih / 2}) rotate(-90)" text-anchor="middle">${esc(c.y.label)}</text>`;
+  s += `<g clip-path="url(#${id})">`;
+  for (const l of c.lines) {
+    const d = l.pts.map((q, i) => (i ? 'L' : 'M') + X(q[0]).toFixed(1) + ' ' + Y(q[1]).toFixed(1)).join('');
+    const col = (pdf && l.hex) || l.color;
+    s += `<path class="ln ${l.cls || ''}${l.dash ? ' dash' : ''}" d="${d}"${col ? ` style="stroke:${col}"` : ''}/>`;
+  }
+  for (const d of c.dots || []) {
+    s += `<circle class="dot ${d.cls}" cx="${X(d.x).toFixed(1)}" cy="${Y(d.y).toFixed(1)}" r="${d.r || 4}"><title>${esc(d.title || '')}</title></circle>`;
+  }
+  s += '</g>';
+  for (const l of c.lines) {
+    if (!l.endLabel) continue;
+    let last = null;
+    for (const q of l.pts) if (q[0] <= c.x.max && q[1] <= c.y.max) last = q;
+    if (last) s += `<text x="${X(last[0]) + 4}" y="${Y(last[1]) + 4}" text-anchor="start">${esc(l.endLabel)}</text>`;
+  }
+  if (pdf) return s + '</svg>';
+  s += `<line class="cross" id="${id}x" x1="0" x2="0" y1="${M.t}" y2="${M.t + ih}" style="display:none"/></svg><div class="tip" style="display:none"></div>`;
+  host.innerHTML = s;
+
+  const svg = host.querySelector('svg'), tip = host.querySelector('.tip'), cross = svg.querySelector('.cross');
+  const hide = () => { tip.style.display = 'none'; cross.style.display = 'none'; };
+  svg.addEventListener('pointerleave', hide);
+  svg.addEventListener('pointermove', e => {
+    const r = svg.getBoundingClientRect();
+    const px = e.clientX - r.left;
+    if (px < M.l || px > M.l + iw) { hide(); return; }
+    const xv = c.x.min + (px - M.l) / iw * (c.x.max - c.x.min);
+    let rows = '';
+    for (const l of c.lines) {
+      if (!l.name) continue;
+      const y = lineAt(l.pts, xv);
+      if (y === null) continue;
+      rows += `<div><i style="background:${l.color || `var(--${l.cls})`}"></i>${esc(l.name)} <b>${fmt(y, l.d != null ? l.d : 1)} ${esc(l.unit || '')}</b></div>`;
+    }
+    if (!rows) { hide(); return; }
+    tip.innerHTML = `<div><b>${esc(c.tipX)} ${fmt(xv, c.x.d > 0 ? c.x.d : 0)}</b></div>${rows}`;
+    tip.style.display = 'block';
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.style.display = 'block';
+    const tw = tip.offsetWidth;
+    tip.style.left = clamp(px + 12 + tw > W ? px - 12 - tw : px + 12, 0, Math.max(0, W - tw)) + 'px';
+    tip.style.top = (M.t + 6) + 'px';
+  });
+}
+const legend = (el, items) => {
+  if (LEG_SINK) { LEG_SINK[el.id] = items; return; }
+  el.innerHTML = items.map(i => `<span><svg width="22" height="8" viewBox="0 0 22 8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" class="ln ${i.cls || ''}${i.dash ? ' dash' : ''}" ${i.color ? `style="stroke:${i.color}"` : ''}/></svg>${esc(i.label)}</span>`).join('');
+};
+const empty = (el, msg) => { if (EMP_SINK) { EMP_SINK[el.id] = msg; return; } el.innerHTML = `<p class="empty">${esc(msg)}</p>`; };
+
+let LAST = null;
+function renderCharts() {
+  if (!LAST) return;
+  const { S, res } = LAST, p = S.p, eng = res.eng;
+  const W = p.m * G, kA = 0.5 * p.rho * p.Cd * p.A;
+  /* Traction */
+  const xMaxK = Math.max(60, (res.vmax ? res.vmax.kmh : 150) * 1.08);
+  const curves = [];
+  const addCurve = (name, pts) => curves.push({ name, pts });
+  if (!p.cvt) {
+    p.gears.forEach((gr, g) => {
+      const it = gr * p.final;
+      const vLo = eng.rpmMin * PI / 30 * p.r / it, vHi = eng.rpmMax * PI / 30 * p.r / it;
+      const pts = [];
+      if (g === 0) {
+        const vL = p.launch * PI / 30 * p.r / it, F0 = eng.torque(p.launch) * it * p.eta / p.r;
+        pts.push([0, F0], [vL * 3.6, F0]);
+      }
+      for (let i = 0; i <= 80; i++) {
+        const v = vLo + (vHi - vLo) * i / 80;
+        if (g === 0 && v * 3.6 <= pts[pts.length - 1][0]) continue;
+        pts.push([v * 3.6, eng.torque(rpmOf(p, it, v)) * it * p.eta / p.r]);
+      }
+      addCurve('Rapport ' + (g + 1), pts);
+    });
+  } else {
+    const pts = [];
+    for (let k = 1; k <= xMaxK * 1.3; k += xMaxK / 120) {
+      const v = k / 3.6, it = ratio(p, 0, v), rW = rpmOf(p, it, v);
+      if (rW > eng.rpmMax) break;
+      pts.push([k, eng.torque(Math.max(rW, p.launch)) * it * p.eta / p.r]);
+    }
+    addCurve('CVT', pts);
+  }
+  let Fpeak = 0;
+  curves.forEach(c => c.pts.forEach(q => { if (q[0] <= xMaxK) Fpeak = Math.max(Fpeak, q[1]); }));
+  const th = Math.atan(S.grade / 100);
+  const flatRes = [], hillRes = [];
+  for (let i = 0; i <= 60; i++) {
+    const k = xMaxK * i / 60, v = k / 3.6;
+    flatRes.push([k, p.crr * W + kA * v * v]);
+    hillRes.push([k, W * Math.sin(th) + p.crr * W * Math.cos(th) + kA * v * v]);
+  }
+  const Flim = p.mu * p.fr * W;
+  Fpeak = Math.max(Fpeak, hillRes[0][1]);
+  const lines = [];
+  curves.forEach((c, i) => {
+    const pct = curves.length > 1 ? Math.round(100 - 100 * i / (curves.length - 1)) : 50;
+    lines.push({ pts: c.pts, color: `color-mix(in srgb, var(--gA) ${pct}%, var(--gB))`, hex: mixHex('#8FB0D8', '#0F2F5C', pct), name: c.name, unit: 'N', d: 0, endLabel: p.cvt ? '' : String(i + 1) });
+  });
+  lines.push({ pts: flatRes, cls: 'res', name: 'Résistance, plat', unit: 'N', d: 0 });
+  lines.push({ pts: hillRes, cls: 'res', dash: true, name: `Résistance, pente ${fmt(S.grade, 0)} %`, unit: 'N', d: 0 });
+  if (Flim <= Fpeak * 1.4) lines.push({ pts: [[0, Flim], [xMaxK, Flim]], cls: 'mute', dash: true, name: 'Limite d’adhérence', unit: 'N', d: 0 });
+  const yAx = axisFor(0, Math.max(Fpeak, Flim <= Fpeak * 1.4 ? Flim : 0) * 1.05);
+  const xAx = axisFor(0, xMaxK);
+  if (res.vmax) lines.push({ pts: [[res.vmax.kmh, 0], [res.vmax.kmh, yAx.max]], cls: 'mute', name: '', thin: true });
+  chart($('ch-trac'), { aria: 'Diagramme de traction : force à la roue en fonction de la vitesse', x: { ...xAx, label: 'Vitesse (km/h)' }, y: { ...yAx, label: 'Force à la roue (N)' }, lines, tipX: 'à', });
+  legend($('lg-trac'), [
+    { color: 'color-mix(in srgb, var(--gA) 50%, var(--gB))', hex: mixHex('#8FB0D8', '#0F2F5C', 50), label: p.cvt ? 'Force disponible (CVT)' : 'Force disponible, un trait par rapport' },
+    { cls: 'res', label: 'Résistance, plat' }, { cls: 'res', dash: true, label: `Résistance, pente ${fmt(S.grade, 0)} %` },
+    ...(Flim <= Fpeak * 1.4 ? [{ cls: 'mute', dash: true, label: 'Limite d’adhérence' }] : [])
+  ]);
+
+  /* Accélération */
+  const fl = res.flat, hl = res.hill;
+  let tCut = 30;
+  const m = fl.marks;
+  if (m[4]) tCut = m[4].t + 0.4; else if (m[3]) tCut = m[3].t + 0.4;
+  if (S.twin) tCut = S.twin;
+  const fpts = fl.trace.filter(q => q[0] <= tCut);
+  const hpts = S.twin ? hl.trace.filter(q => q[0] <= S.twin) : hl.trace;
+  const vTop = Math.max(...fpts.map(q => q[1]), ...hpts.map(q => q[1]), 10);
+  const tTop = S.twin || Math.max(fpts[fpts.length - 1][0], hpts[hpts.length - 1][0]);
+  const showVm = !!res.vmax && res.vmax.kmh <= vTop * 1.1;
+  const dots = [];
+  if (fl.vAt[0] !== null) dots.push({ x: S.t1, y: fl.vAt[0] * 3.6, cls: 'c1', title: `Plat, ${fmt(S.t1, 1)} s : ${fmt(fl.vAt[0] * 3.6, 1)} km/h` });
+  if (hl.vAt[0] !== null) dots.push({ x: S.t2, y: hl.vAt[0] * 3.6, cls: 'c2', title: `Pente, ${fmt(S.t2, 1)} s : ${fmt(hl.vAt[0] * 3.6, 1)} km/h` });
+  [30, 60, 90, 100].forEach((k, i) => { if (m[i]) dots.push({ x: m[i].t, y: k, cls: 'mute', r: 3, title: `${k} km/h à ${fmt(m[i].t, 2)} s` }); });
+  chart($('ch-acc'), { aria: 'Vitesse en fonction du temps, sur plat et en pente', x: { ...axisFor(0, tTop), label: 'Temps (s)' }, y: { ...axisFor(0, vTop * 1.05), label: 'Vitesse (km/h)' },
+    lines: [{ pts: fpts, cls: 'c1', name: 'Plat', unit: 'km/h', d: 1 }, { pts: hpts, cls: 'c2', dash: true, name: `Pente ${fmt(S.grade, 0)} %`, unit: 'km/h', d: 1 },
+      ...(showVm ? [{ pts: [[0, res.vmax.kmh], [tTop, res.vmax.kmh]], cls: 'mute', dash: true, name: 'Vmax', unit: 'km/h', d: 1 }] : [])], dots, tipX: 't =' });
+  legend($('lg-acc'), [{ cls: 'c1', label: 'Plat' }, { cls: 'c2', dash: true, label: `Pente ${fmt(S.grade, 0)} %` }, { cls: 'mute', label: 'Seuils 30, 60, 90, 100 km/h (points)' },
+    ...(showVm ? [{ cls: 'mute', dash: true, label: 'Vmax calculée' }] : [])]);
+
+  /* Moteur */
+  const rA = axisFor(0, eng.rpmMax);
+  const xr = { ...rA, label: 'Régime (tr/min)' };
+  const grid = [];
+  for (let i = 0; i <= 120; i++) grid.push(eng.rpmMin + (eng.rpmMax - eng.rpmMin) * i / 120);
+  const rowsOK = S.rows;
+  const Pl = grid.map(r => [r, eng.power(r)]), Tl = grid.map(r => [r, eng.torque(r)]);
+  const Pmax = Math.max(...Pl.map(q => q[1]), ...rowsOK.map(r => isFinite(r.P) ? r.P : 0));
+  const Tmax = Math.max(...Tl.map(q => q[1]), ...rowsOK.map(r => isFinite(r.T) ? r.T : 0));
+  chart($('ch-pow'), { aria: 'Puissance moteur en fonction du régime', x: xr, y: { ...axisFor(0, Pmax * 1.05), label: 'Puissance (kW)' }, tipX: 'à',
+    lines: [{ pts: Pl, cls: 'c2', name: 'P', unit: 'kW', d: 1 }],
+    dots: rowsOK.filter(r => isFinite(r.P)).map(r => ({ x: r.rpm, y: r.P, cls: 'c2', r: 3, title: `${fmt(r.rpm, 0)} tr/min : ${fmt(r.P, 1)} kW` })) });
+  chart($('ch-tq'), { aria: 'Couple moteur en fonction du régime', x: xr, y: { ...axisFor(0, Tmax * 1.05), label: 'Couple (N·m)' }, tipX: 'à',
+    lines: [{ pts: Tl, cls: 'c1', name: 'T', unit: 'N·m', d: 1 }],
+    dots: rowsOK.filter(r => isFinite(r.T)).map(r => ({ x: r.rpm, y: r.T, cls: 'c1', r: 3, title: `${fmt(r.rpm, 0)} tr/min : ${fmt(r.T, 1)} N·m` })) });
+  const hasBH = rowsOK.every(r => isFinite(r.BH)), hasBe = rowsOK.every(r => isFinite(r.be));
+  if (hasBH) {
+    const pts = rowsOK.map(r => [r.rpm, r.BH]);
+    chart($('ch-bh'), { aria: 'Débit carburant en fonction du régime', x: xr, y: { ...axisFor(0, Math.max(...pts.map(q => q[1])) * 1.05), label: 'BH (kg/h)' }, tipX: 'à',
+      lines: [{ pts, cls: 'c3', name: 'BH', unit: 'kg/h', d: 2 }], dots: pts.map(q => ({ x: q[0], y: q[1], cls: 'c3', r: 3, title: `${fmt(q[0], 0)} tr/min : ${fmt(q[1], 2)} kg/h` })) });
+  } else empty($('ch-bh'), 'Renseigner la colonne BH pour tracer ce diagramme.');
+  if (hasBe) {
+    const pts = rowsOK.map(r => [r.rpm, r.be]);
+    const lo = Math.min(...pts.map(q => q[1])), hi = Math.max(...pts.map(q => q[1]));
+    chart($('ch-be'), { aria: 'Consommation spécifique en fonction du régime', x: xr, y: { ...axisFor(lo - (hi - lo) * 0.15, hi + (hi - lo) * 0.1), label: 'b_e (g/kW·h)' }, tipX: 'à',
+      lines: [{ pts, cls: 'c4', name: 'b_e', unit: 'g/kW·h', d: 0 }], dots: pts.map(q => ({ x: q[0], y: q[1], cls: 'c4', r: 3, title: `${fmt(q[0], 0)} tr/min : ${fmt(q[1], 0)} g/kW·h` })) });
+  } else empty($('ch-be'), 'Renseigner la colonne b_e pour tracer ce diagramme.');
+}
+
+/* ---------- Résultats ---------- */
+const RO = {};
+function setRO(id, v, note) { $('r-' + id).textContent = v; $('n-' + id).textContent = note || ''; }
+function clearRO() { ['vmax', 'v1', 'e1', 'e2', 't100', 'v2'].forEach(k => setRO(k, '—', '')); }
+
+function renderResults() {
+  const { S, res } = LAST, p = S.p, eng = res.eng;
+  const vm = res.vmax;
+  const parts = [];
+  if (vm) {
+    parts.push(p.cvt ? 'CVT' : 'rapport ' + (vm.gear + 1), fmt(vm.rpm, 0) + ' tr/min', vm.rev ? 'limité par le régime max' : 'équilibre puissance et résistances');
+    if (vm.gkm != null) parts.push(fmt(vm.gkm, 0) + ' g/km');
+    setRO('vmax', fmt(vm.kmh, 1), parts.join(' · '));
+  } else setRO('vmax', '—', 'Le véhicule n’avance pas à 5 km/h');
+  $('sym-v1').textContent = `v(${fmt(S.t1, S.t1 % 1 ? 1 : 0)} s)`;
+  $('lbl-v1').textContent = `Vitesse à ${fmt(S.t1, S.t1 % 1 ? 1 : 0)} s, plat`;
+  const f = res.flat;
+  setRO('v1', f.vAt[0] !== null ? fmt(f.vAt[0] * 3.6, 1) : '—', f.vAt[0] !== null ? fmt(f.dAt[0], 1) + ' m parcourus' : 'Non atteint');
+  const el = (id, e, k0, k1, g) => {
+    if (e.t === null) setRO(id, '—', e.rev ? 'Rapport trop court' : 'Non atteint');
+    else setRO(id, fmt(e.t, 2), S.elMode === 'cont' ? 'enchaîné depuis l’arrêt' : (p.cvt ? 'CVT, départ lancé à ' + k0 : 'rapport ' + g + ', départ lancé à ' + k0));
+  };
+  el('e1', res.e1, 30, 60, S.g1);
+  el('e2', res.e2, 60, 90, S.g2);
+  const m = f.marks[3];
+  if (m) {
+    const bits = [m.sh + (m.sh > 1 ? ' passages' : ' passage'), fmt(m.x, 0) + ' m'];
+    if (m.lim > 0.05) bits.push('adhérence limitante ' + fmt(m.lim, 1) + ' s');
+    setRO('t100', fmt(m.t, 2), bits.join(' · '));
+  } else setRO('t100', '—', 'Non atteint (Vmax ' + (vm ? fmt(vm.kmh, 0) : '—') + ' km/h)');
+  const deg = Math.atan(S.grade / 100) * 180 / PI;
+  $('sym-v2').textContent = `v(${fmt(S.t2, S.t2 % 1 ? 1 : 0)} s) · ${fmt(S.grade, 0)} %`;
+  $('lbl-v2').textContent = `Vitesse à ${fmt(S.t2, S.t2 % 1 ? 1 : 0)} s, pente ${fmt(S.grade, 0)} %`;
+  const h = res.hill, vh = h.vAt[0];
+  setRO('v2', vh !== null ? fmt(vh * 3.6, 1) : '—', vh === null ? 'Non atteint' : (vh < 0.01 ? 'Le véhicule ne démarre pas' : 'pente ' + fmt(deg, 1) + '° · ' + fmt(h.dAt[0], 1) + ' m'));
+}
+
+function textSummary() {
+  const g = id => $('r-' + id).textContent;
+  return [
+    ['Vitesse maximale', g('vmax'), 'km/h'], [$('lbl-v1').textContent, g('v1'), 'km/h'],
+    ['Reprise 30 à 60 km/h', g('e1'), 's'], ['Reprise 60 à 90 km/h', g('e2'), 's'],
+    ['Accélération 0 à 100 km/h', g('t100'), 's'], [$('lbl-v2').textContent, g('v2'), 'km/h']
+  ].map(r => r.join('\t')).join('\n');
+}
+
+/* ---------- Export PDF ---------- */
+const PDF_CSS = '<style>text{font:11px Helvetica,Arial,sans-serif;fill:#566470}.grid{stroke:#E0E5EA;stroke-width:1;fill:none}.axis,.tick{stroke:#C7CFD7;stroke-width:1;fill:none}.ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.ln.c1{stroke:#1C63C4}.ln.c2{stroke:#CC4A0E}.ln.c3{stroke:#11795E}.ln.c4{stroke:#6F42BA}.ln.res{stroke:#B4233E}.ln.mute{stroke:#566470;stroke-width:1.5}.dash{stroke-dasharray:6 4}.dot{fill:#FFFFFF;stroke-width:2}.dot.c1{stroke:#1C63C4}.dot.c2{stroke:#CC4A0E}.dot.c3{stroke:#11795E}.dot.c4{stroke:#6F42BA}.dot.mute{stroke:#566470}</style>';
+const PDF_HEX = { c1: '#1C63C4', c2: '#CC4A0E', c3: '#11795E', c4: '#6F42BA', res: '#B4233E', mute: '#566470' };
+const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mixHex = (a, b, pct) => { const A = hex2(a), B = hex2(b); return '#' + A.map((v, i) => Math.round(v * pct / 100 + B[i] * (100 - pct) / 100).toString(16).padStart(2, '0')).join(''); };
+const pdfT = s => String(s == null ? '' : s)
+  .replace(/[  ]/g, ' ').replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/→/g, '->').replace(/[—–]/g, '-')
+  .replace(/η/g, 'eta').replace(/μ/g, 'mu').replace(/ω/g, 'omega').replace(/ρ/g, 'rho').replace(/θ/g, 'theta')
+  .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/œ/g, 'oe').replace(/…/g, '...');
+
+function svgToPng(svg, W, H, scale) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = W * scale; cv.height = H * scale;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      resolve(cv.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Rendu du diagramme impossible'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+
+async function buildPdf() {
+  const { jsPDF } = window.jspdf;
+  const { S, res } = LAST, p = S.p, eng = res.eng;
+  CHART_SINK = {}; LEG_SINK = {}; EMP_SINK = {};
+  const cfgs = CHART_SINK, legs = LEG_SINK, emps = EMP_SINK;
+  try { renderCharts(); } finally { CHART_SINK = null; LEG_SINK = null; EMP_SINK = null; }
+  const imgs = {};
+  for (const id of Object.keys(cfgs)) imgs[id] = await svgToPng(chart(null, cfgs[id], true), 720, 300, 2);
+
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  doc.setProperties({ title: 'Rapport d\'analyse de performances', subject: 'Simulation longitudinale' });
+  const PW = 210, ML = 15, CW = 180;
+  const INK = [17, 26, 35], MUT = [86, 100, 112], ACC = [23, 64, 110], LN = [199, 207, 215];
+  let y = 18;
+  const need = h => { if (y + h > 280) { doc.addPage(); y = 18; } };
+  const h2 = t => {
+    need(16);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...ACC);
+    doc.text(pdfT(t).toUpperCase(), ML, y);
+    y += 2; doc.setDrawColor(...LN); doc.setLineWidth(0.3); doc.line(ML, y, ML + CW, y); y += 6;
+  };
+  const h3 = t => { need(14); doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...INK); doc.text(pdfT(t), ML, y); y += 3; };
+  const para = (t, size = 9, color = INK) => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(size); doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(pdfT(t), CW);
+    need(lines.length * 4.3 + 2);
+    doc.text(lines, ML, y); y += lines.length * 4.3 + 1.5;
+  };
+  const table = opts => {
+    need(24);
+    doc.autoTable({
+      startY: y, margin: { left: ML, right: ML }, theme: 'plain',
+      styles: { font: 'helvetica', fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 }, textColor: INK, lineColor: LN, lineWidth: { bottom: 0.1 } },
+      headStyles: { fontStyle: 'bold', textColor: MUT, fontSize: 8, lineWidth: { bottom: 0.4 } },
+      ...opts
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  };
+  const v = id => $('f-' + id).value.trim();
+  const opt = id => { const e = $(id); return e.options[e.selectedIndex].text; };
+  const tz = tireParse(v('tiresize'));
+
+  let Pm = { v: 0, r: 0 }, Tm = { v: 0, r: 0 };
+  for (let i = 0; i <= 400; i++) {
+    const r = eng.rpmMin + (eng.rpmMax - eng.rpmMin) * i / 400, pw = eng.power(r), tq = eng.torque(r);
+    if (pw > Pm.v) Pm = { v: pw, r };
+    if (tq > Tm.v) Tm = { v: tq, r };
+  }
+  const vAt = (it, r) => r * PI / 30 * p.r / it * 3.6;
+
+  /* En-tête */
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(21); doc.setTextColor(...INK);
+  doc.text('Rapport d\'analyse de performances', ML, y); y += 7;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...MUT);
+  doc.text(pdfT('Simulation longitudinale pleine charge, départ arrêté'), ML, y);
+  doc.text(pdfT(new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })), ML + CW, y, { align: 'right' });
+  y += 4; doc.setDrawColor(...INK); doc.setLineWidth(0.6); doc.line(ML, y, ML + CW, y); y += 7;
+  para(`Véhicule simulé : masse d'essai ${fmt(p.m, 0)} kg, Cx ${v('cd')}, windward area ${v('area')} m², pneu ${v('tiresize')}. Moteur : ${fmt(Pm.v, 1)} kW à ${fmt(Pm.r, 0)} tr/min, ${fmt(Tm.v, 0)} N·m à ${fmt(Tm.r, 0)} tr/min. Transmission : ${p.cvt ? 'variateur continu (CVT)' : p.gears.length + ' rapports'}.`, 9.5);
+  y += 2;
+
+  /* 1. KPI */
+  h2('1. Résultats de la simulation');
+  const kp = [['Vitesse maximale', 'km/h', 'vmax'], [$('lbl-v1').textContent, 'km/h', 'v1'], ['Reprise 30 à 60 km/h', 's', 'e1'],
+    ['Reprise 60 à 90 km/h', 's', 'e2'], ['Accélération 0 à 100 km/h', 's', 't100'], [$('lbl-v2').textContent, 'km/h', 'v2']];
+  table({
+    head: [['Indicateur', 'Valeur', 'Unité', 'Conditions']],
+    body: kp.map(k => [pdfT(k[0]), pdfT($('r-' + k[2]).textContent), k[1], pdfT($('n-' + k[2]).textContent)]),
+    bodyStyles: { fontSize: 9 },
+    columnStyles: { 0: { cellWidth: 56 }, 1: { halign: 'right', fontStyle: 'bold', cellWidth: 22 }, 2: { cellWidth: 14 }, 3: { cellWidth: 'auto' } }
+  });
+
+  /* 2. Entrées */
+  h2('2. Données d\'entrée');
+  GROUPS.forEach(g => {
+    const rows = [];
+    g.items.forEach(i => {
+      if (!i.k && !i.sel) return;
+      const el = i.k ? $('f-' + i.k) : $('s-' + i.sel);
+      const f = el.closest('.field');
+      if (f && f.hidden) return;
+      rows.push([pdfT(i.label), pdfT(i.k ? el.value.trim() : el.options[el.selectedIndex].text), pdfT(i.unit || '')]);
+    });
+    h3(g.title);
+    table({ head: [['Paramètre', 'Valeur', 'Unité']], body: rows, columnStyles: { 0: { cellWidth: 90 }, 1: { halign: 'right', cellWidth: 60 }, 2: { cellWidth: 'auto' } } });
+  });
+  if (tz) para(`Dimension de pneu ${v('tiresize')} : largeur ${tz.w} mm, hauteur de flanc ${fmt(tz.side, 0)} mm, jante ${tz.rim} in, rayon nominal ${fmt(tz.radius, 0)} mm. Le rayon de roulement utilisé dans le calcul est celui saisi (${v('rr')} mm).`, 8.5, MUT);
+  h3('Fiche moteur, ' + S.rows.length + ' points (courbe pleine charge)');
+  const dash = x => isFinite(x) ? x : '-';
+  table({
+    head: [['Point', 'N (tr/min)', 'P_ec (kW)', 'T_ec (N·m)', 'BH (kg/h)', 'b_e (g/kW·h)']],
+    body: S.rows.map((r, i) => [i + 1, fmt(r.rpm, 0), isFinite(r.P) ? fmt(r.P, 2) : '-', isFinite(r.T) ? fmt(r.T, 1) : '-', isFinite(r.BH) ? fmt(r.BH, 2) : '-', isFinite(r.be) ? fmt(r.be, 0) : '-'].map(pdfT)),
+    bodyStyles: { fontSize: 8.5, halign: 'right' }, headStyles: { halign: 'right', fontStyle: 'bold', textColor: MUT, fontSize: 8, lineWidth: { bottom: 0.4 } },
+    columnStyles: { 0: { halign: 'left', cellWidth: 16 } }
+  });
+
+  /* 3. Hypothèses */
+  h2('3. Hypothèses du modèle');
+  const flim = p.mu * p.fr * p.m * G;
+  const hyp = [
+    'Modèle quasi statique de dynamique longitudinale, sans vent, pleine charge constante, sur route plane (sauf essai en pente).',
+    `Courbe moteur : interpolation linéaire entre les ${S.rows.length} points de la fiche, couple pris sur ${S.src === 'T' ? 'T_ec' : 'P_ec (T = P/omega)'}. Au-delà de ${fmt(eng.rpmMax, 0)} tr/min, le limiteur de régime plafonne la vitesse.`,
+    `Masse simulée : masse d'essai ${fmt(p.m, 0)} kg (masse à vide ${v('curb')} kg, charge embarquée ${fmt(p.m - num(v('curb')), 0)} kg). Inertie des roues équivalente à ${v('kw')} % de la masse ; inertie moteur ${v('je')} kg·m² ramenée à la roue, non appliquée pendant le patinage ni les passages de rapport.`,
+    `Résistance aérodynamique : 0,5 x rho x Cx x S x v², avec rho = ${v('rho')} kg/m³, Cx = ${v('cd')} et windward area S = ${v('area')} m².`,
+    `Résistance au roulement : Crr = ${v('crr')} constant (${opt('s-tire')} ; dimension ${v('tiresize')}), appliquée à m x g x cos(theta). Rayon de roulement ${v('rr')} mm.`,
+    p.cvt
+      ? `Transmission : variateur continu, rapport ${v('cvtMin')} à ${v('cvtMax')}, régime cible ${fmt(p.cvtTarget, 0)} tr/min, rapport final ${v('final')}, rendement constant ${v('eta')} %.`
+      : `Transmission : rapports ${p.gears.join(' ; ')}, rapport final ${v('final')}, rendement constant ${v('eta')} %.`,
+    `Départ : patinage d'embrayage à ${fmt(p.launch, 0)} tr/min tant que le régime imposé par la vitesse est inférieur ; le couple moteur à ce régime est transmis aux roues.`,
+    `Adhérence : force de traction limitée à mu x charge motrice x m x g x cos(theta), soit ${fmt(flim, 0)} N à plat (mu = ${v('mu')}, charge motrice ${v('fr')} %), sans transfert de charge dynamique.`,
+    p.cvt ? 'Passages de rapport : sans objet (variateur continu).'
+      : `Passages de rapport : stratégie « ${opt('s-strat')} »${p.strategy === 'rpm' ? ' à ' + fmt(p.shiftRpm, 0) + ' tr/min' : ''}, durée ${v('shiftTime')} s pendant laquelle la traction est coupée et les résistances continuent de s'appliquer.`,
+    'Vitesse maximale : plus grande vitesse pour laquelle la force disponible reste supérieure aux résistances sur route plane, tous rapports testés ; elle est limitée soit par le régime maximal, soit par la puissance.',
+    S.elMode === 'cont' ? 'Reprises 30-60 et 60-90 km/h : lues sur l\'accélération pleine charge enchaînée depuis l\'arrêt, passages de rapport inclus.'
+      : `Reprises 30-60 et 60-90 km/h : départ lancé à vitesse stabilisée, rapport imposé (${p.cvt ? 'CVT' : 'rapport ' + S.g1 + ' puis rapport ' + S.g2}), sans passage de rapport.`,
+    `Essai en pente : angle theta = atan(${v('grade')} %), vitesse relevée à ${v('t2')} s après un départ arrêté, mêmes stratégies de départ et de passage.`,
+    'Intégration numérique au pas de 2 ms ; les instants de franchissement de seuil sont interpolés linéairement.',
+    'Non modélisés : effets thermiques, altitude et température (masse volumique de l\'air fixée), vent, transfert de charge, glissement du pneu, pertes de transmission dépendant du régime.'
+  ];
+  hyp.forEach(t => para('- ' + t, 9));
+  y += 2;
+  h3('Grandeurs dérivées');
+  const der = [
+    ['Puissance maximale (modèle)', fmt(Pm.v, 1) + ' kW à ' + fmt(Pm.r, 0) + ' tr/min'],
+    ['Couple maximal (modèle)', fmt(Tm.v, 1) + ' N·m à ' + fmt(Tm.r, 0) + ' tr/min'],
+    ['Plage de régime de la fiche', fmt(eng.rpmMin, 0) + ' à ' + fmt(eng.rpmMax, 0) + ' tr/min'],
+    ['Masse équivalente en translation (hors moteur)', fmt(p.m * (1 + p.kw), 0) + ' kg'],
+    ['Force d\'adhérence maximale à plat', fmt(flim, 0) + ' N'],
+    ['Résistance de roulement à plat', fmt(p.crr * p.m * G, 0) + ' N'],
+    ['Produit Cx x S', fmt(p.Cd * p.A, 3) + ' m²']
+  ];
+  table({ head: [['Grandeur', 'Valeur']], body: der.map(r => r.map(pdfT)), columnStyles: { 0: { cellWidth: 100 }, 1: { halign: 'right' } } });
+  if (!p.cvt) {
+    table({
+      head: [['Rapport', 'Rapport total', 'Vitesse à N max (km/h)', 'Vitesse à P max (km/h)']],
+      body: p.gears.map((gr, i) => [String(i + 1), fmt(gr * p.final, 2), fmt(vAt(gr * p.final, eng.rpmMax), 1), fmt(vAt(gr * p.final, Pm.r), 1)].map(pdfT)),
+      bodyStyles: { halign: 'right' }, headStyles: { halign: 'right', fontStyle: 'bold', textColor: MUT, fontSize: 8, lineWidth: { bottom: 0.4 } },
+      columnStyles: { 0: { halign: 'left' } }
+    });
+  }
+
+  /* 4. Diagrammes */
+  h2('4. Diagrammes');
+  const figs = [['ch-trac', 'lg-trac', 'Diagramme de traction : force à la roue et résistances'], ['ch-acc', 'lg-acc', 'Accélération : vitesse en fonction du temps' + (S.twin ? ' (fenêtre ' + fmt(S.twin, 0) + ' s)' : '')],
+    ['ch-pow', null, 'Puissance moteur, pleine charge'], ['ch-tq', null, 'Couple moteur, pleine charge'],
+    ['ch-bh', null, 'Débit carburant BH'], ['ch-be', null, 'Consommation spécifique b_e']];
+  const iw = 165, ih = iw * 300 / 720;
+  figs.forEach(([id, lg, title]) => {
+    need(ih + 20);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...INK);
+    doc.text(pdfT(title), ML, y); y += 5;
+    if (lg && legs[lg]) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      let x = ML;
+      legs[lg].forEach(it => {
+        const lab = pdfT(it.label), tw = doc.getTextWidth(lab);
+        if (x + 8 + tw > ML + CW) { x = ML; y += 4.5; }
+        doc.setDrawColor(...hex2(it.hex || PDF_HEX[it.cls] || '#566470')); doc.setLineWidth(0.6);
+        doc.setLineDashPattern(it.dash ? [1.6, 1.2] : [], 0);
+        doc.line(x, y - 1, x + 6, y - 1);
+        doc.setLineDashPattern([], 0);
+        doc.setTextColor(...INK); doc.text(lab, x + 8, y);
+        x += 8 + tw + 5;
+      });
+      y += 4;
+    }
+    if (imgs[id]) { doc.addImage(imgs[id], 'PNG', ML, y, iw, ih); y += ih + 8; }
+    else { para(emps[id] || 'Données non renseignées.', 9, MUT); y += 4; }
+  });
+
+  /* Pied de page */
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUT);
+    doc.setDrawColor(...LN); doc.setLineWidth(0.2); doc.line(ML, 287, ML + CW, 287);
+    doc.text(pdfT('Simulateur de performances véhicule'), ML, 291.5);
+    doc.text('Page ' + i + ' / ' + n, ML + CW, 291.5, { align: 'right' });
+  }
+  return doc.output('blob');
+}
+
+async function exportPdf() {
+  const b = $('btnPdf'), label = 'Exporter en PDF';
+  const flash = m => { b.textContent = m; setTimeout(() => { b.textContent = label; b.disabled = false; }, 2400); };
+  if (!LAST) { flash('Corrigez les champs en rouge'); return; }
+  if (!(window.jspdf && window.jspdf.jsPDF)) { flash('Bibliothèque PDF indisponible'); return; }
+  b.disabled = true; b.textContent = 'Création du PDF…';
+  try {
+    const dl = await window.claude.use('downloads');
+    if (!dl) { flash('Export indisponible ici'); return; }
+    const blob = await buildPdf();
+    await dl.save({ filename: 'rapport-performances-' + new Date().toISOString().slice(0, 10) + '.pdf', data: blob });
+    flash('PDF enregistré');
+  } catch (e) {
+    CHART_SINK = null; LEG_SINK = null; EMP_SINK = null;
+    flash(e && e.code === 'declined' ? 'Enregistrement annulé' : 'Échec de l’export');
+  }
+}
+
+/* ---------- Cycle de mise à jour ---------- */
+const LS = 'simulateur-performances-v1';
+const KEYS = []; GROUPS.forEach(g => g.items.forEach(i => { if (i.k) KEYS.push(i.k); }));
+KEYS.push('twin');
+const SELS = ['tire', 'mode', 'strat', 'elMode', 'src'];
+function collect() {
+  const f = {}, s = {}, rows = [];
+  KEYS.forEach(k => f[k] = $('f-' + k).value);
+  SELS.forEach(k => s[k] = $('s-' + k).value);
+  document.querySelectorAll('#engine tbody tr').forEach(tr => rows.push([...tr.querySelectorAll('input')].map(i => i.value)));
+  return { f, s, rows };
+}
+function save() { try { localStorage.setItem(LS, JSON.stringify(collect())); } catch (e) { /* stockage indisponible */ } }
+function apply(st) {
+  if (!st) return;
+  KEYS.forEach(k => { if (st.f && st.f[k] != null) $('f-' + k).value = st.f[k]; });
+  SELS.forEach(k => { if (st.s && st.s[k] != null) $('s-' + k).value = st.s[k]; });
+  if (st.rows) document.querySelectorAll('#engine tbody tr').forEach((tr, i) => { [...tr.querySelectorAll('input')].forEach((inp, j) => { if (st.rows[i] && st.rows[i][j] != null) inp.value = st.rows[i][j]; }); });
+}
+function load() { try { apply(JSON.parse(localStorage.getItem(LS))); } catch (e) { /* ignoré */ } }
+
+function update() {
+  const P = parse();
+  document.querySelectorAll('.inp').forEach(w => w.classList.remove('bad'));
+  document.querySelectorAll('#engine input').forEach(i => i.classList.remove('bad'));
+  P.bad.forEach(k => { const w = $('w-' + k); if (w) w.classList.add('bad'); });
+  P.badCells.forEach(c => c.classList.add('bad'));
+  const st = $('status');
+  const mass = P.S.p.m, curb = P.curb;
+  const tz = P.tz;
+  $('tire-info').textContent = tz ? `Largeur ${tz.w} mm · flanc ${fmt(tz.side, 0)} mm · jante ${tz.rim} in · rayon nominal ${fmt(tz.radius, 0)} mm` : 'Format attendu : 155/70R13';
+  $('btnTire').hidden = !tz;
+  document.querySelectorAll('.win button[data-win]').forEach(b => b.classList.toggle('on', b.dataset.win === $('f-twin').value.trim()));
+  if (isFinite(mass) && isFinite(curb)) $('hint-mass').textContent = 'Charge embarquée : ' + fmt(mass - curb, 0) + ' kg (masse d’essai moins masse à vide). Valeurs de Crr indicatives.';
+  // cohérence P / T
+  const coh = $('coh');
+  const devs = P.S.rows.filter(r => isFinite(r.P) && isFinite(r.T) && r.P > 0).map(r => Math.abs(r.P - r.T * r.rpm * PI / 30 / 1000) / r.P);
+  if (devs.length) { const mx = Math.max(...devs) * 100; coh.textContent = 'Écart maximal entre P_ec et T_ec·ω : ' + fmt(mx, 1) + ' %'; coh.className = 'coh' + (mx > 3 ? ' warn' : ''); } else { coh.textContent = ''; }
+  if (P.err.length) {
+    st.className = 'status err';
+    st.textContent = 'À corriger : ' + [...new Set(P.err)].join(', ');
+    LAST = null; clearRO(); return;
+  }
+  st.className = 'status';
+  st.textContent = '';
+  const t0 = performance.now();
+  try { LAST = { S: P.S, res: computeAll(P.S) }; } catch (e) { LAST = null; st.className = 'status err'; st.textContent = 'Calcul impossible avec ces paramètres.'; clearRO(); return; }
+  const warns = [];
+  if (!tz) warns.push('Dimension de pneu non reconnue (exemple : 155/70R13) : le rayon de roulement saisi est utilisé tel quel.');
+  if (P.bad.has('twin')) warns.push('Fenêtre temporelle : saisir une valeur entre 1 et 600 s (affichage automatique en attendant).');
+  if (mass < curb) warns.push('La masse d’essai est inférieure à la masse à vide.');
+  if (warns.length) { st.className = 'status warn'; st.textContent = warns.join(' '); }
+  else st.textContent = 'Masse simulée ' + fmt(mass, 0) + ' kg · calcul en ' + fmt(performance.now() - t0, 0) + ' ms';
+  renderResults(); renderCharts();
+}
+
+let raf = 0;
+function schedule() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; applyVisibility(); update(); save(); }); }
+
+function onEdit(e) {
+  const t = e.target;
+  if (t.id === 's-tire') { const tr = TIRES.find(x => x[0] === t.value); if (tr && tr[2] != null) $('f-crr').value = tr[2].toFixed(3); }
+  else if (t.id === 'f-crr') $('s-tire').value = 'custom';
+  schedule();
+}
+
+function pasteTable() {
+  const lines = $('pasteTxt').value.split(/\r?\n/);
+  const out = [];
+  lines.forEach(l => {
+    const cells = l.trim().split(/[\t; ]+/).filter(Boolean);
+    const nums = cells.map(num);
+    if (nums.length >= 2 && nums.filter(isFinite).length >= 2 && isFinite(nums[0])) out.push(cells.slice(0, 5));
+  });
+  const trs = document.querySelectorAll('#engine tbody tr');
+  trs.forEach((tr, i) => { [...tr.querySelectorAll('input')].forEach((inp, j) => { inp.value = out[i] && out[i][j] != null ? out[i][j] : ''; }); });
+  $('pasteTxt').value = '';
+  schedule();
+}
+
+function init() {
+  buildForm();
+  load();
+  applyVisibility();
+  const form = $('form');
+  form.addEventListener('input', onEdit);
+  form.addEventListener('change', onEdit);
+  $('btnPaste').addEventListener('click', pasteTable);
+  form.addEventListener('click', e => {
+    if (e.target.id !== 'btnTire') return;
+    const tz = tireParse($('f-tiresize').value);
+    if (tz) { $('f-rr').value = String(Math.round(tz.radius)); schedule(); }
+  });
+  $('btnPdf').addEventListener('click', exportPdf);
+  $('f-twin').addEventListener('input', schedule);
+  document.querySelector('.win').addEventListener('click', e => {
+    const b = e.target.closest('button[data-win]');
+    if (b) { $('f-twin').value = b.dataset.win; schedule(); }
+  });
+  try {
+    if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { if (d) $('btnPdf').hidden = false; }, () => {});
+  } catch (e) { /* export indisponible */ }
+  $('btnReset').addEventListener('click', () => {
+    KEYS.forEach(k => { let d; GROUPS.forEach(g => g.items.forEach(i => { if (i.k === k) d = i.def; })); $('f-' + k).value = d == null ? '' : d; });
+    SELS.forEach(k => { $('s-' + k).selectedIndex = 0; });
+    document.querySelectorAll('#engine tbody tr').forEach((tr, i) => [...tr.querySelectorAll('input')].forEach((inp, j) => { inp.value = DEF_ROWS[i][j]; }));
+    schedule();
+  });
+  $('btnCopy').addEventListener('click', () => {
+    const b = $('btnCopy'), txt = textSummary();
+    const done = m => { b.textContent = m; setTimeout(() => { b.textContent = 'Copier les résultats'; }, 1600); };
+    try { navigator.clipboard.writeText(txt).then(() => done('Copié'), () => done('Copie refusée')); } catch (e) { done('Copie refusée'); }
+  });
+  update();
+  let rt = 0;
+  const onResize = () => { cancelAnimationFrame(rt); rt = requestAnimationFrame(renderCharts); };
+  if (window.ResizeObserver) new ResizeObserver(onResize).observe(document.querySelector('.charts')); else window.addEventListener('resize', onResize);
+}
+init();
+})();
+</script>
+
+</body></html>
