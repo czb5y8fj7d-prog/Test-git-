@@ -1,7 +1,7 @@
 {
-  "name": "LocalLM — Chat IA local",
-  "short_name": "LocalLM",
-  "description": "Chat avec un modèle de langage qui tourne 100 % dans votre navigateur, sans serveur ni compte.",
+  "name": "LL — Chat IA",
+  "short_name": "LL",
+  "description": "Chat IA privé : sur l'iPhone, ou sur votre propre serveur (documents, photos, recherche web, voix).",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",
@@ -10,8 +10,39 @@
   "background_color": "#0b0d10",
   "theme_color": "#0b0d10",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./",
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle conversation",
+      "short_name": "Nouveau",
+      "url": "./index.html"
+    }
   ]
 }

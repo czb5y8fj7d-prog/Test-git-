@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>LocalLM</title>
+  <title>LL</title>
   <meta name="theme-color" content="#0b0d10">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="LocalLM">
+  <meta name="apple-mobile-web-app-title" content="LL">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-180.png">
@@ -33,9 +33,22 @@
     <div class="p-sub" id="pSub"></div>
   </div>
 
+  <div id="toolbar">
+    <select id="personaSel" aria-label="Rôle de l'assistant"></select>
+    <button type="button" id="chipThink" class="chip" aria-pressed="false" title="Réflexion du modèle">🧠 Réflexion</button>
+    <button type="button" id="chipWeb" class="chip" aria-pressed="false" title="Autoriser la recherche web">🌐 Web</button>
+    <button type="button" id="srvStatus" class="chip status" hidden></button>
+  </div>
+
   <form id="composer" autocomplete="off">
-    <textarea id="input" rows="1" placeholder="Écrire un message…" enterkeyhint="send"></textarea>
-    <button id="btnSend" type="submit" aria-label="Envoyer">➤</button>
+    <div id="attach" hidden></div>
+    <div class="c-row">
+      <button type="button" id="btnAttach" class="round" aria-label="Joindre un fichier ou une photo">📎</button>
+      <input type="file" id="fileIn" multiple hidden>
+      <textarea id="input" rows="1" placeholder="Écrire un message…" enterkeyhint="send"></textarea>
+      <button type="button" id="btnMic" class="round" aria-label="Dicter" hidden>🎙</button>
+      <button id="btnSend" type="submit" aria-label="Envoyer">➤</button>
+    </div>
   </form>
 </div>
 
@@ -57,12 +70,29 @@
     <p class="hint">Utilise un modèle hébergé sur votre propre serveur Ollama (par exemple derrière Caddy). Vos messages sont alors envoyés à ce serveur, en HTTPS.</p>
     <label for="rUrl">Adresse</label>
     <input id="rUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://158-69-0-183.sslip.io">
-    <label for="rKey">Clé d'accès</label>
-    <input id="rKey" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Clé fournie par le script du serveur">
-    <button id="btnRemoteTest" class="primary wide">Tester et récupérer les modèles</button>
+    <label for="rAuth">Connexion</label>
+    <select id="rAuth">
+      <option value="pw">Mot de passe</option>
+      <option value="key">Clé d'accès</option>
+    </select>
+    <div id="authPw">
+      <input id="rPw" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Mot de passe du serveur">
+      <p class="hint" id="pwHint">Le mot de passe est défini sur le serveur avec la commande « ll-auth passwd ». Il n'est pas enregistré sur cet appareil : seule une session révocable l'est.</p>
+    </div>
+    <div id="authKey" hidden>
+      <input id="rKey" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Clé fournie par le script du serveur">
+    </div>
+    <button id="btnRemoteTest" class="primary wide">Se connecter et récupérer les modèles</button>
     <p class="hint" id="remoteInfo"></p>
+    <button id="btnLogout" class="ghost wide" hidden>Se déconnecter de cet appareil</button>
+    <button id="btnLogoutAll" class="ghost wide" hidden>Déconnecter tous les appareils</button>
     <label class="check"><input type="checkbox" id="chkHideLocal"> Afficher seulement les modèles du serveur</label>
     <label class="check"><input type="checkbox" id="chkThink"> Afficher la réflexion du modèle</label>
+    <label class="check"><input type="checkbox" id="chkTools"> Outils : calcul, date, documents joints</label>
+    <label class="check"><input type="checkbox" id="chkWeb"> Autoriser la recherche web (le serveur interroge le web)</label>
+    <label for="selVision">Modèle pour les photos</label>
+    <select id="selVision"></select>
+    <p class="hint" id="visionHint"></p>
     <label for="selCtxR">Taille de contexte du serveur</label>
     <select id="selCtxR">
       <option value="2048">2048</option>
@@ -90,7 +120,8 @@
     </select>
     <p class="hint">Un contexte plus grand consomme plus de mémoire. Le modèle est rechargé au prochain message si le contexte change. L'historique est tronqué automatiquement.</p>
 
-    <h3>Prompt système</h3>
+    <h3>Prompt système personnalisé</h3>
+    <p class="hint">Utilisé quand le rôle « Personnalisé » est choisi (menu au-dessus de la zone de saisie).</p>
     <textarea id="sysPrompt" rows="5" aria-label="Prompt système"></textarea>
     <button id="btnSysReset" class="ghost wide">Rétablir le prompt par défaut</button>
 

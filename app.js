@@ -1,5 +1,5 @@
 /* =====================================================================
-   LocalLM — chat LLM 100 % local dans le navigateur (version simple)
+   LL — chat LLM : 100 % local dans le navigateur, ou sur votre propre serveur
    • Moteur principal : @mlc-ai/web-llm (WebGPU)
    • Repli sans WebGPU : @wllama/wllama (GGUF, WebAssembly)
    • JavaScript vanilla, aucun build, aucun serveur, aucun tracker.
@@ -9,15 +9,28 @@
    ===================================================================== */
 
 import { MODELS, ENGINES } from './models.js';
+import { esc, renderMd, plainText } from './md.js';
+import { ACCEPT, extractText, prepareImage, isImage, selectExcerpts } from './docs.js';
+import { toolDefs, runTool, TOOL_LABEL } from './tools.js';
+import * as voice from './voice.js';
 
 /* ---------- Valeurs par défaut des réglages (modifiables dans ⚙) ---------- */
 const DEFAULT_SYSTEM = 'Tu es un assistant utile, précis et concis. Tu réponds dans la langue de l\'utilisateur.';
+
+/* Rôles : un prompt système prêt à l'emploi, choisi depuis la barre au-dessus de la saisie */
+const PERSONAS = [
+  { id: 'general', name: '💬 Généraliste', prompt: null },
+  { id: 'analyst', name: '📊 Analyste marché', prompt: 'Tu es un analyste de marché senior, spécialisé dans l\'automobile et les deux-roues (Europe, Maroc, réglementation, benchmark concurrentiel). Tu réponds en français, de façon structurée : constats chiffrés d\'abord, puis hypothèses explicites, puis implications. Tu distingues les faits établis des estimations, tu indiques les sources et les limites, et tu signales quand une donnée demande vérification.' },
+  { id: 'translator', name: '🌍 Traducteur', prompt: 'Tu es un traducteur professionnel. Tu traduis fidèlement le texte de l\'utilisateur : français ↔ anglais par défaut (ou la langue demandée), en conservant le ton, le registre et la mise en forme. Tu réponds uniquement par la traduction, sauf ambiguïté importante que tu signales en une ligne.' },
+  { id: 'editor', name: '✍️ Relecteur', prompt: 'Tu es un relecteur-correcteur exigeant. Tu corriges l\'orthographe, la grammaire, la ponctuation et la clarté du texte de l\'utilisateur sans en changer le sens ni la voix. Tu renvoies d\'abord le texte corrigé, puis une courte liste des changements importants.' },
+  { id: 'coder', name: '💻 Codeur', prompt: 'Tu es un ingénieur logiciel senior. Tu réponds avec du code correct, simple et commenté seulement quand c\'est utile, dans des blocs de code avec le langage indiqué. Tu expliques brièvement tes choix, tu signales les cas limites et les erreurs possibles, et tu poses une question quand la demande est ambiguë.' },
+  { id: 'custom', name: '⚙ Personnalisé', prompt: undefined },
+];
 
 /* =====================================================================
    1. UTILITAIRES
    ===================================================================== */
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtMB = (b) => Math.round(b / 1048576) + ' Mo';
 const fmtSize = (mb) => (mb >= 1000 ? (mb / 1000).toFixed(1).replace('.', ',') + ' Go' : mb + ' Mo');
 
@@ -56,17 +69,19 @@ function idb(mode, fn) {
   }));
 }
 
-let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, hideLocal: null, ctxR: 4096, think: true, ...ls.get('locallm.settings', {}) };
+let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, hideLocal: null, ctxR: 4096, think: true, persona: 'general', web: false, tools: true, visionModel: null, ...ls.get('locallm.settings', {}) };
 const ctxFor = (m) => (m.type === 'remote' ? Math.min(S.ctxR, m.maxCtx) : Math.min(S.ctx, m.maxCtx || 4096));   // contexte effectif pour un modèle
 const saveS = () => ls.set('locallm.settings', S);
 if (!S.v) { if (S.remote) S.max_tokens = Math.max(S.max_tokens, 4096); S.v = 2; saveS(); }   // migration : réponses plus longues si un serveur est configuré
+if (S.v < 3) { if (S.remote && !S.remote.auth) S.remote.auth = 'key'; S.v = 3; saveS(); }
 const cached = new Set(ls.get('locallm.cached', []));
 function setCached(id, on) { if (on) cached.add(id); else cached.delete(id); ls.set('locallm.cached', [...cached]); }
 
 /* =====================================================================
    3. ÉTAT
    ===================================================================== */
-let chat = { id: 'main', messages: [] };   // la conversation
+let chat = { id: 'main', messages: [], docs: [] };   // la conversation (docs : documents joints, texte extrait)
+const pending = { docs: [], images: [], busy: 0 };   // pièces jointes du message en cours de rédaction
 const gen = { phase: 'idle', stick: true, stream: null, bubble: null, stopRequested: false };   // idle | loading | generating
 const gpu = { ok: false, f16: false, reason: '' };
 const E = { kind: null, modelId: null, ctx: 0, inst: null, ac: null };   // moteur chargé
@@ -79,7 +94,7 @@ const remoteModels = () => {
   let host = R.url; try { host = new URL(R.url).host; } catch { /* ignoré */ }
   return (R.models || []).map((n) => ({
     id: 'remote:' + n, remoteName: n, name: n.replace(/:latest$/, ''), type: 'remote',
-    sizeMB: 0, maxCtx: 32768, note: 'Sur votre serveur (' + host + ') · vos messages lui sont envoyés en HTTPS',
+    sizeMB: 0, maxCtx: 32768, vision: ((R.vision || []).includes(n)) || /vl(?=[:_.-]|$)|vision|llava|minicpm-v|gemma3|moondream/i.test(n), note: 'Sur votre serveur (' + host + ') · vos messages lui sont envoyés en HTTPS',
   }));
 };
 const allModels = () => [...MODELS, ...remoteModels()];
@@ -157,6 +172,7 @@ const ERR_TEXT = {
   /* serveur distant */
   server: () => 'Serveur injoignable. Vérifiez la connexion, l\'adresse (https://…) et que le serveur est démarré.',
   auth: () => 'Le serveur a refusé la clé d\'accès. Vérifiez-la dans Réglages › Serveur distant.',
+  authsession: () => 'Session expirée ou révoquée : reconnectez-vous dans Réglages › Serveur distant.',
   remotemem: () => 'Le serveur n\'a pas assez de mémoire pour ce modèle avec cette taille de contexte. Réduisez « Taille de contexte du serveur » dans les réglages, ou choisissez un modèle plus petit.',
   remote404: () => 'Le serveur ne trouve pas ce modèle. Sur le serveur : « ollama pull <nom> », puis « Tester et récupérer les modèles » dans les réglages.',
   servererr: (e) => 'Erreur du serveur : ' + String((e && e.message) || e).slice(0, 220),
@@ -198,19 +214,19 @@ function askConfirm(text, okLabel = 'Continuer') {
 
 function selectModel(id) {
   const was = modelById(S.modelId);
-  S.modelId = id; saveS(); renderModelSel();
+  S.modelId = id; saveS(); renderModelSel(); renderToolbar(); refreshStatus();
   const m = modelById(id);
   if (m && m.type === 'remote' && !(was && was.type === 'remote')) notice('info', 'Ce modèle tourne sur votre serveur : vos messages lui sont envoyés (HTTPS).');
   if (!chat.messages.length && gen.phase === 'idle') renderChat();
 }
 
-function reportError(e, m) {
+function reportError(e, m, resume = null) {
   console.error('[LocalLM]', e);
   const kind = classify(e);
   const actions = [];
   if (kind === 'network' || kind === 'unknown') actions.push({ label: 'Réessayer', fn: () => { loadModelUI(); } });
-  if (kind === 'server') actions.push({ label: 'Réessayer', fn: () => { regenerate(); } });
-  if (['server', 'auth', 'remote404', 'remotemem'].includes(kind)) actions.push({ label: 'Ouvrir les réglages', fn: openSheet });
+  if (kind === 'server') actions.push(...(resume || [{ label: 'Réessayer', fn: () => { regenerate(); } }]));
+  if (['server', 'auth', 'authsession', 'remote404', 'remotemem'].includes(kind)) actions.push({ label: 'Ouvrir les réglages', fn: openSheet });
   const small = smallerModel(m, ['memory', 'gpulimit'].includes(kind));
   if (small && ['memory', 'gpulimit', 'quota', 'unknown', 'f16'].includes(kind)) {
     actions.push({ label: 'Essayer « ' + small.name + ' »', fn: () => { selectModel(small.id); loadModelUI(); } });
@@ -256,7 +272,13 @@ async function keepAwake(on) {
     else if (wakeLock) { await wakeLock.release(); wakeLock = null; }
   } catch { /* non supporté */ }
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && gen.phase === 'loading') keepAwake(true); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (gen.phase === 'loading' || gen.phase === 'generating') keepAwake(true);
+  refreshStatus();
+  const last = chat.messages[chat.messages.length - 1];
+  if (gen.phase === 'idle' && last && last.interrupted) notice('warn', 'La réponse a été coupée pendant que l\'app était en arrière-plan.', [{ label: 'Reprendre', fn: continueGeneration }]);
+});
 
 async function loadMLC(m) {
   const webllm = await importWebLLM();
@@ -300,12 +322,12 @@ async function unloadEngine() {
 }
 
 /* S'assure que le modèle choisi est chargé. Le verrou gen.phase est posé par l'appelant. */
-async function ensureLoaded() {
-  let m = modelById(S.modelId);
+async function ensureLoaded(forceId = null) {
+  let m = modelById(forceId || S.modelId);
   if (!m || !usable(m).ok) {
     m = pickDefault();
     if (!m) { notice('err', 'Aucun modèle utilisable sur cet appareil. Ajoutez un modèle dans models.js.'); return false; }
-    selectModel(m.id);
+    if (!forceId) selectModel(m.id);
   }
   if (E.inst && E.modelId === m.id && E.ctx === ctxFor(m)) return true;
 
@@ -368,86 +390,92 @@ async function remoteHttpError(res) {
   } catch { /* ignoré */ }
   detail = String(detail).slice(0, 200);
   const typed = (kind, msg) => Object.assign(new Error(msg), { kind, status: res.status });
-  if (res.status === 401 || res.status === 403) return typed('auth', detail);
+  if (res.status === 401 || res.status === 403) return typed(S.remote && S.remote.auth === 'session' ? 'authsession' : 'auth', detail);
   if (res.status === 404) return typed('remote404', detail);
   if (/memory/i.test(detail)) return typed('remotemem', detail);
   return typed('servererr', 'HTTP ' + res.status + (detail ? ' — ' + detail : ''));
 }
 
 const noThink = new Set();   // modèles du serveur qui refusent le mode « réflexion »
+const noTools = new Set();   // … ou les outils
 const stripThink = (s) => String(s).replace(/<think>[\s\S]*?(<\/think>|$)/g, '').trim();
 
 /* Génération via Ollama (API native /api/chat) : fixe le contexte réel (num_ctx) et reçoit la
    réflexion à part du texte. Le flux est une suite de lignes JSON. La réflexion est insérée dans
-   le message entre <think>…</think> (affichée dans un bloc repliable, retirée de l'historique). */
-async function generateRemote(m, messages, maxGen, onToken) {
+   le message entre <think>…</think> (affichée dans un bloc repliable, retirée de l'historique).
+   Renvoie { tps, toolCalls } : toolCalls = appels d'outils demandés par le modèle (le cas échéant). */
+async function generateRemote(m, messages, maxGen, onToken, tools) {
   const R = S.remote || {};
-  const ac = new AbortController();
+  const ac = E.ac || new AbortController();
   E.ac = ac;
   const serverDown = (e) => Object.assign(new Error(String((e && e.message) || e)), { kind: 'server' });
-  try {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const body = {
-        model: m.remoteName, messages, stream: true,
-        options: { temperature: S.temperature, top_p: S.top_p, num_predict: maxGen, num_ctx: E.ctx },
-      };
-      if (!noThink.has(m.remoteName)) body.think = S.think !== false;
-      let res;
-      try {
-        res = await fetch(R.url + '/api/chat', {
-          method: 'POST', signal: ac.signal,
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key },
-          body: JSON.stringify(body),
-        });
-      } catch (e) {
-        if (ac.signal.aborted) return { tps: null };
-        throw serverDown(e);
-      }
-      if (!res.ok) {
-        const err = await remoteHttpError(res);
-        if (attempt === 0 && err.status === 400 && /think/i.test(err.message) && 'think' in body) { noThink.add(m.remoteName); continue; }   // modèle sans mode réflexion : on réessaie sans
-        throw err;
-      }
-
-      let n = 0, t1 = 0, inThink = false, tps = null, buf = '';
-      const tick = () => { if (!n) t1 = performance.now(); n++; };
-      const feed = (line) => {
-        line = line.trim();
-        if (!line) return;
-        let j; try { j = JSON.parse(line); } catch { return; }
-        if (j.error) throw Object.assign(new Error(String(j.error)), { kind: /memory/i.test(String(j.error)) ? 'remotemem' : 'servererr' });
-        const msg = j.message || {};
-        if (msg.thinking) { if (!inThink) { inThink = true; onToken('<think>'); } tick(); onToken(msg.thinking); }
-        if (msg.content) { if (inThink) { inThink = false; onToken('</think>'); } tick(); onToken(msg.content); }
-        if (j.done && j.eval_count && j.eval_duration) tps = j.eval_count / (j.eval_duration / 1e9);
-      };
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      try {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += dec.decode(value, { stream: true });
-          let i;
-          while ((i = buf.indexOf('\n')) >= 0) { feed(buf.slice(0, i)); buf = buf.slice(i + 1); }
-        }
-        feed(buf);
-      } catch (e) {
-        if (!ac.signal.aborted) throw (e && e.kind ? e : serverDown(e));   // coupure en cours de route
-      }
-      if (inThink) onToken('</think>');   // réflexion jamais suivie d'une réponse : on referme le bloc
-      if (tps == null && n > 1) { const dt = (performance.now() - t1) / 1000; if (dt > 0.2) tps = (n - 1) / dt; }
-      return { tps };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const body = {
+      model: m.remoteName, messages, stream: true, keep_alive: '30m',
+      options: { temperature: S.temperature, top_p: S.top_p, num_predict: maxGen, num_ctx: E.ctx },
+    };
+    if (!noThink.has(m.remoteName)) body.think = S.think !== false;
+    if (tools && tools.length && !noTools.has(m.remoteName)) body.tools = tools;
+    let res;
+    try {
+      res = await fetch(R.url + '/api/chat', {
+        method: 'POST', signal: ac.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      if (ac.signal.aborted) return { tps: null };
+      throw serverDown(e);
     }
-  } finally { E.ac = null; }
+    if (!res.ok) {
+      const err = await remoteHttpError(res);
+      if (err.status === 400 && /think/i.test(err.message) && 'think' in body) { noThink.add(m.remoteName); continue; }   // modèle sans mode réflexion : on réessaie sans
+      if (err.status === 400 && /tool/i.test(err.message) && 'tools' in body) { noTools.add(m.remoteName); continue; }   // modèle sans outils
+      throw err;
+    }
+
+    let n = 0, t1 = 0, inThink = false, tps = null, buf = '';
+    const toolCalls = [];
+    const tick = () => { if (!n) t1 = performance.now(); n++; };
+    const feed = (line) => {
+      line = line.trim();
+      if (!line) return;
+      let j; try { j = JSON.parse(line); } catch { return; }
+      if (j.error) throw Object.assign(new Error(String(j.error)), { kind: /memory/i.test(String(j.error)) ? 'remotemem' : 'servererr' });
+      const msg = j.message || {};
+      if (msg.thinking) { if (!inThink) { inThink = true; onToken('<think>'); } tick(); onToken(msg.thinking); }
+      if (msg.content) { if (inThink) { inThink = false; onToken('</think>'); } tick(); onToken(msg.content); }
+      if (Array.isArray(msg.tool_calls)) for (const c of msg.tool_calls) if (c && c.function && c.function.name) toolCalls.push({ name: c.function.name, args: c.function.arguments });
+      if (j.done && j.eval_count && j.eval_duration) tps = j.eval_count / (j.eval_duration / 1e9);
+    };
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n')) >= 0) { feed(buf.slice(0, i)); buf = buf.slice(i + 1); }
+      }
+      feed(buf);
+    } catch (e) {
+      if (!ac.signal.aborted) throw (e && e.kind ? e : serverDown(e));   // coupure en cours de route
+    }
+    if (inThink) onToken('</think>');   // réflexion jamais suivie d'une réponse : on referme le bloc
+    if (tps == null && n > 1) { const dt = (performance.now() - t1) / 1000; if (dt > 0.2) tps = (n - 1) / dt; }
+    return { tps, toolCalls };
+  }
   return { tps: null };
 }
 
-async function generate(messages, maxGen, onToken) {
+async function generate(messages, maxGen, onToken, tools) {
   const m = modelById(E.modelId);
   const opts = { temperature: S.temperature, top_p: S.top_p, max_tokens: maxGen };
   if (E.kind === 'demo') return demoGenerate(messages, onToken);
-  if (E.kind === 'remote') return generateRemote(m, messages, maxGen, onToken);
+  if (E.kind === 'remote') return generateRemote(m, messages, maxGen, onToken, tools);
+  /* moteurs locaux : le format OpenAI n'accepte pas nos champs « images » / « tool » */
+  messages = messages.filter((x) => x.role !== 'tool' && !x.tool_calls).map((x) => ({ role: x.role, content: x.content }));
   if (E.kind === 'mlc') {
     const req = { messages, stream: true, stream_options: { include_usage: true }, ...opts };
     if (m && m.thinking === false) req.extra_body = { enable_thinking: false };
@@ -497,14 +525,56 @@ function stopGeneration() {
    ===================================================================== */
 const estTok = (s) => Math.ceil(String(s).length / 3) + 4;   // ≈ 3 caractères / token (estimation prudente)
 
-function buildPrompt(history, m, maxGen, scale = 1) {
-  history = history.map((h) => (h.role === 'assistant' ? { ...h, content: stripThink(h.content) } : h)).filter((h) => h.content);   // la réflexion n'est pas renvoyée au modèle
-  const sys = (S.system || '').trim();
-  const budget = Math.max(128, Math.floor(((E.ctx || ctxFor(m)) - maxGen - 64 - (sys ? estTok(sys) : 0)) * scale));
+const persona = () => PERSONAS.find((p) => p.id === S.persona) || PERSONAS[0];
+function toolsActive(m) { return !!m && m.type === 'remote' && (S.tools || S.web); }
+function toolList(m) {
+  if (!toolsActive(m)) return [];
+  return toolDefs({ base: !!S.tools, docs: !!S.tools && chat.docs.length > 0, web: !!S.web });
+}
+
+/* Prompt système effectif : rôle choisi + date + consignes sur les outils */
+function systemText(m) {
+  const p = persona();
+  let t = (p.prompt === undefined ? S.system : (p.prompt || DEFAULT_SYSTEM)).trim();
+  const d = new Date();
+  t += '\n\nDate et heure actuelles : ' + d.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' }) + '.';
+  if (toolList(m).length) t += '\nTu disposes d\'outils : utilise-les quand ils sont utiles (calcul exact, informations récentes, documents joints) et ne devine jamais un résultat que tu peux obtenir. Après un résultat d\'outil, réponds à l\'utilisateur.';
+  return t;
+}
+
+/* Documents joints : tout le texte s'il tient, sinon les extraits les plus proches de la question */
+function docsContext(query, ctxTokens) {
+  if (!chat.docs || !chat.docs.length) return '';
+  let remaining = Math.max(1500, Math.floor(ctxTokens * 0.45 * 3));   // en caractères
+  const order = [...chat.docs].sort((a, b) => a.text.length - b.text.length);
+  const share = new Map();
+  order.forEach((d, i) => { const take = Math.min(d.text.length, Math.floor(remaining / (order.length - i))); share.set(d, take); remaining -= take; });
+  const parts = chat.docs.map((d) => {
+    const r = selectExcerpts(d.text, query, share.get(d));
+    return '### ' + d.name + (r.partial ? ' (extraits les plus pertinents)' : '') + '\n' + r.text;
+  });
+  return 'Documents joints par l\'utilisateur (à utiliser seulement s\'ils sont utiles à la question) :\n\n' + parts.join('\n\n');
+}
+
+/* tail : messages éphémères ajoutés à la fin (appels d'outils et leurs résultats, « continue… ») */
+function buildPrompt(history, m, maxGen, scale = 1, tail = []) {
+  const lastUser = [...history].reverse().find((h) => h.role === 'user');
+  history = history.map((h) => (h.role === 'assistant' ? { ...h, content: stripThink(h.content) } : h)).filter((h) => h.content || (h.images && h.images.length));
+  /* images : seulement celles des 2 derniers messages qui en portent (le reste coûterait trop cher) */
+  let withImg = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].images && history[i].images.length) { if (++withImg > 2) history[i] = { ...history[i], images: [] }; }
+  }
+  let sys = systemText(m);
+  const ctxTok = E.ctx || ctxFor(m);
+  const dc = docsContext(lastUser ? lastUser.content : '', ctxTok);
+  if (dc) sys += '\n\n' + dc;
+  const tailTok = tail.reduce((n, t) => n + estTok(t.content || '') + 20, 0);
+  const budget = Math.max(128, Math.floor((ctxTok - maxGen - 64 - estTok(sys) - tailTok) * scale));
   const kept = [];
   let used = 0;
   for (let i = history.length - 1; i >= 0; i--) {
-    const t = estTok(history[i].content);
+    const t = estTok(history[i].content) + ((history[i].images || []).length ? 800 : 0);
     if (kept.length && used + t > budget) break;
     kept.unshift(history[i]); used += t;
   }
@@ -516,36 +586,20 @@ function buildPrompt(history, m, maxGen, scale = 1) {
   const msgs = [];
   for (const k of kept) {                       // fusionne les messages consécutifs de même rôle
     const last = msgs[msgs.length - 1];
-    if (last && last.role === k.role) last.content += '\n\n' + k.content;
-    else msgs.push({ role: k.role, content: k.content });
+    const imgs = (k.images || []).length ? k.images : null;
+    if (last && last.role === k.role) { last.content += '\n\n' + k.content; if (imgs) last.images = [...(last.images || []), ...imgs]; }
+    else msgs.push(imgs ? { role: k.role, content: k.content, images: imgs } : { role: k.role, content: k.content });
   }
   if (sys) {
     if (m.noSystem && msgs.length) msgs[0] = { role: 'user', content: sys + '\n\n' + msgs[0].content };
     else msgs.unshift({ role: 'system', content: sys });
   }
-  return { messages: msgs, dropped };
+  return { messages: [...msgs, ...tail], dropped };
 }
 
 /* =====================================================================
    8. RENDU
    ===================================================================== */
-function inlineMd(s) {
-  return s.replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>').replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>');
-}
-/* Le texte est échappé d'abord, puis on ajoute quelques balises sûres (code, gras, bloc <think>) */
-function renderMd(src) {
-  let think = '';
-  src = src.replace(/<think>([\s\S]*?)(<\/think>|$)/g, (_, t, close) => {
-    if (t.trim()) think += '<details class="think"' + (close ? '' : ' open') + '><summary>Réflexion</summary>' + esc(t.trim()) + '</details>';
-    return '';
-  });
-  const body = src.split('```').map((part, i) => {
-    if (i % 2 === 1) { const nl = part.indexOf('\n'); return '<pre><code>' + esc((nl >= 0 ? part.slice(nl + 1) : '').replace(/\n$/, '')) + '</code></pre>'; }
-    return inlineMd(esc(i > 0 ? part.replace(/^\n/, '') : part));
-  }).join('');
-  return think + body;
-}
-
 const chatEl = () => $('chat');
 const nearBottom = () => { const c = chatEl(); return c.scrollHeight - c.scrollTop - c.clientHeight < 90; };
 const scrollBottom = () => { const c = chatEl(); c.scrollTop = c.scrollHeight; };
@@ -564,6 +618,22 @@ function copyText(text, btn) {
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(legacy); else legacy();
 }
 
+/* Contenu d'une bulle : le message de l'utilisateur (pièces jointes + texte) ou celui de l'assistant (outils + Markdown) */
+function bubbleHTML(msg) {
+  if (msg.role === 'user') {
+    let h = '';
+    if (msg.images && msg.images.length) h += '<div class="thumbs">' + msg.images.map((b) => '<img alt="photo jointe" src="data:image/jpeg;base64,' + b.replace(/[^A-Za-z0-9+/=]/g, '') + '">').join('') + '</div>';
+    if (msg.docs && msg.docs.length) h += '<div class="fchips">' + msg.docs.map((n) => '<span>📄 ' + esc(n) + '</span>').join('') + '</div>';
+    return h + '<div class="txt">' + esc(msg.content) + '</div>';
+  }
+  const steps = (msg.steps || []).map((st) => {
+    const label = (TOOL_LABEL[st.name] ? TOOL_LABEL[st.name](st.args || {}) : st.name);
+    return '<details class="tool"><summary>' + esc(label) + (st.result == null ? ' …' : '') + '</summary>' + (st.result != null ? '<pre>' + esc(st.result) + '</pre>' : '') + '</details>';
+  }).join('');
+  return steps + renderMd(msg.content);
+}
+
+let speakingIdx = -1;
 function renderChat() {
   const box = $('msgs');
   box.textContent = '';
@@ -571,8 +641,8 @@ function renderChat() {
   if (!chat.messages.length) {
     const cur = modelById(S.modelId);
     box.innerHTML = cur && cur.type === 'remote'
-      ? '<div class="empty"><h2>LocalLM</h2><p>Le modèle tourne sur <b>votre serveur</b> : vos messages lui sont envoyés (HTTPS).</p></div>'
-      : '<div class="empty"><h2>LocalLM</h2><p>Le modèle tourne <b>dans votre navigateur</b> : aucune donnée n\'est envoyée à un serveur.</p></div>';
+      ? '<div class="empty"><h2>LL</h2><p>Le modèle tourne sur <b>votre serveur</b> : vos messages lui sont envoyés (HTTPS).</p></div>'
+      : '<div class="empty"><h2>LL</h2><p>Le modèle tourne <b>dans votre navigateur</b> : aucune donnée n\'est envoyée à un serveur.</p></div>';
     return;
   }
   const lastIdx = chat.messages.length - 1;
@@ -581,16 +651,26 @@ function renderChat() {
     wrap.className = 'msg ' + msg.role;
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    if (msg.role === 'assistant') bubble.innerHTML = renderMd(msg.content); else bubble.textContent = msg.content;
+    bubble.innerHTML = bubbleHTML(msg);
     wrap.append(bubble);
     if (gen.phase === 'generating' && i === lastIdx && msg.role === 'assistant') {
       bubble.classList.add('streaming'); gen.bubble = bubble;
     } else {
       const tools = document.createElement('div'); tools.className = 'tools';
       tools.append(toolBtn('Copier', (b) => copyText(msg.role === 'assistant' ? stripThink(msg.content) : msg.content, b)));
-      if (msg.role === 'assistant' && i === lastIdx && gen.phase === 'idle') tools.append(toolBtn('↻ Régénérer', regenerate));
+      if (msg.role === 'assistant' && voice.speechSupported) {
+        tools.append(toolBtn(speakingIdx === i ? '⏹ Arrêter' : '🔊 Lire', () => {
+          if (speakingIdx === i) { voice.stopSpeaking(); speakingIdx = -1; renderChat(); return; }
+          speakingIdx = i; renderChat();
+          voice.speak(plainText(msg.content), { lang: 'fr-FR', onEnd: () => { if (speakingIdx === i) { speakingIdx = -1; renderChat(); } } });
+        }));
+      }
+      if (msg.role === 'assistant' && i === lastIdx && gen.phase === 'idle') {
+        if (msg.interrupted) tools.append(toolBtn('▶ Reprendre', continueGeneration));
+        tools.append(toolBtn('↻ Régénérer', regenerate));
+      }
       if (msg.stats && msg.stats.tps) { const s = document.createElement('span'); s.textContent = msg.stats.tps.toFixed(1) + ' tok/s'; tools.append(s); }
-      if (msg.stopped) { const s = document.createElement('span'); s.textContent = 'interrompu'; tools.append(s); }
+      if (msg.stopped) { const s = document.createElement('span'); s.textContent = msg.interrupted ? 'coupé' : 'interrompu'; tools.append(s); }
       wrap.append(tools);
     }
     box.append(wrap);
@@ -604,7 +684,7 @@ function scheduleStreamRender() {
   rafId = requestAnimationFrame(() => {
     rafId = 0;
     if (!gen.bubble || !gen.stream) return;
-    gen.bubble.innerHTML = renderMd(gen.stream.content);
+    gen.bubble.innerHTML = bubbleHTML(gen.stream);
     if (gen.stick) scrollBottom();
   });
 }
@@ -688,20 +768,100 @@ async function persist() {
   }
 }
 
+/* ---------- pièces jointes ---------- */
+function renderAttach() {
+  const box = $('attach');
+  box.textContent = '';
+  const all = [
+    ...pending.images.map((x, i) => ({ k: 'img', i, x })),
+    ...pending.docs.map((x, i) => ({ k: 'doc', i, x })),
+  ];
+  for (let n = 0; n < pending.busy; n++) all.push({ k: 'busy' });
+  box.hidden = !all.length;
+  for (const a of all) {
+    const el = document.createElement('div'); el.className = 'att' + (a.k === 'busy' ? ' busy' : '');
+    if (a.k === 'img') {
+      const im = document.createElement('img'); im.alt = ''; im.src = a.x.thumb; el.append(im);
+    } else if (a.k === 'doc') el.append(Object.assign(document.createElement('span'), { textContent: '📄' }));
+    const t = document.createElement('div'); t.className = 'a-name';
+    if (a.k === 'busy') t.textContent = 'Lecture…';
+    else { t.textContent = a.x.name; const sub = document.createElement('span'); sub.className = 'a-sub'; sub.textContent = a.k === 'img' ? 'photo' : (a.x.chars >= 1000 ? Math.round(a.x.chars / 1000) + ' k car.' : a.x.chars + ' car.') + (a.x.note ? ' · ' + a.x.note : ''); t.append(sub); }
+    el.append(t);
+    if (a.k !== 'busy') {
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'a-x'; x.textContent = '✕'; x.setAttribute('aria-label', 'Retirer');
+      x.onclick = () => { (a.k === 'img' ? pending.images : pending.docs).splice(a.i, 1); renderAttach(); };
+      el.append(x);
+    }
+    box.append(el);
+  }
+}
+
+async function addFiles(files) {
+  files = [...files];
+  for (const f of files) {
+    if (isImage(f)) { if (pending.images.length >= 6) { notice('warn', '6 photos maximum par message.'); continue; } }
+    else if (pending.docs.length >= 8) { notice('warn', '8 documents maximum par message.'); continue; }
+    pending.busy++; renderAttach();
+    try {
+      if (isImage(f)) pending.images.push(await prepareImage(f));
+      else {
+        const d = await extractText(f);
+        const dup = pending.docs.findIndex((x) => x.name === d.name);
+        if (dup >= 0) pending.docs[dup] = d; else pending.docs.push(d);
+      }
+    } catch (e) { notice('err', String((e && e.message) || e), e && e.kind === 'network' ? [] : []); }
+    finally { pending.busy--; renderAttach(); }
+  }
+}
+
+/* Modèle à utiliser pour cette génération : un modèle « vision » si un message récent porte des photos */
+function visionModel() {
+  const list = remoteModels();
+  return list.find((m) => m.remoteName === S.visionModel) || list.find((m) => m.vision) || null;
+}
+function routeModelId(history) {
+  const recent = history.filter((h) => h.role === 'user').slice(-2);
+  if (!recent.some((h) => h.images && h.images.length)) return null;
+  const cur = modelById(S.modelId);
+  if (cur && cur.type === 'remote' && cur.vision) return cur.id;
+  const v = visionModel();
+  return v ? v.id : false;   // false : aucune solution
+}
+function noVisionNotice() {
+  notice('warn', 'Aucun modèle capable de lire des images n\'est disponible. Sur le serveur, installez-en un : « ollama pull qwen2.5vl:7b », puis « Se connecter et récupérer les modèles » dans les réglages. Vous pouvez aussi retirer la photo.', [{ label: 'Ouvrir les réglages', fn: openSheet }]);
+}
+
+/* ---------- envoi ---------- */
 async function onSubmit() {
   if (gen.phase === 'generating') { stopGeneration(); return; }
   if (gen.phase !== 'idle') return;
+  if (pending.busy) { notice('info', 'Lecture des pièces jointes en cours…'); return; }
   const input = $('input');
-  const text = input.value.trim();
-  if (!text) return;
+  let text = input.value.trim();
+  const hasAtt = pending.docs.length || pending.images.length;
+  if (!text && !hasAtt) return;
+  if (!text) text = pending.images.length && !pending.docs.length ? 'Décris cette image.' : 'Résume ce document.';
   hideNotice();
+  const userMsg = { role: 'user', content: text, ts: Date.now() };
+  if (pending.images.length) userMsg.images = pending.images.map((x) => x.b64);
+  if (pending.docs.length) userMsg.docs = pending.docs.map((x) => x.name);
+  const route = routeModelId([...chat.messages, userMsg]);
+  if (route === false) { noVisionNotice(); return; }
+  if (route && modelById(route).type !== 'remote') { noVisionNotice(); return; }
+  voice.stopDictation();
   gen.phase = 'loading'; setSendMode();      // verrou : un second appui pendant le chargement est ignoré
   let ready = false;
   try {
-    ready = await ensureLoaded();            // le texte reste dans la saisie si le chargement échoue
+    ready = await ensureLoaded(route || null);   // le texte reste dans la saisie si le chargement échoue
     if (ready) {
       input.value = ''; autosize();
-      chat.messages.push({ role: 'user', content: text, ts: Date.now() });
+      for (const d of pending.docs) {
+        const k = chat.docs.findIndex((x) => x.name === d.name);
+        const rec = { name: d.name, text: d.text, chars: d.chars };
+        if (k >= 0) chat.docs[k] = rec; else chat.docs.push(rec);
+      }
+      pending.docs = []; pending.images = []; renderAttach();
+      chat.messages.push(userMsg);
       gen.stick = true;
       await persist();
     }
@@ -713,10 +873,13 @@ async function onSubmit() {
 async function regenerate() {
   if (gen.phase !== 'idle' || !chat.messages.length) return;
   hideNotice();
+  const base = chat.messages.slice(0, chat.messages[chat.messages.length - 1].role === 'assistant' ? -1 : undefined);
+  const route = routeModelId(base);
+  if (route === false) { noVisionNotice(); return; }
   gen.phase = 'loading'; setSendMode();
   let ready = false;
   try {
-    ready = await ensureLoaded();
+    ready = await ensureLoaded(route || null);
     if (ready) {
       if (chat.messages[chat.messages.length - 1].role === 'assistant') chat.messages.pop();
       ready = chat.messages.length > 0;
@@ -727,36 +890,86 @@ async function regenerate() {
   await runGeneration();
 }
 
-async function runGeneration() {
+/* Reprend une réponse coupée (réseau, veille de l'iPhone…) là où elle s'est arrêtée */
+async function continueGeneration() {
+  const last = chat.messages[chat.messages.length - 1];
+  if (gen.phase !== 'idle' || !last || last.role !== 'assistant') return;
+  if (!stripThink(last.content)) { regenerate(); return; }   // rien d'utile à prolonger : on recommence
+  hideNotice();
+  gen.phase = 'loading'; setSendMode();
+  let ready = false;
+  try { ready = await ensureLoaded(routeModelId(chat.messages.slice(0, -1)) || null); } catch (e) { console.error('[LocalLM]', e); }
+  if (!ready) { gen.phase = 'idle'; setSendMode(); renderChat(); return; }
+  gen.stick = true;
+  await runGeneration(true);
+}
+
+const CONTINUE_PROMPT = 'Ta réponse précédente a été coupée. Continue exactement là où elle s\'est arrêtée, sans répéter ce qui précède et sans introduction.';
+const closeThink = (s) => ((s.lastIndexOf('<think>') > s.lastIndexOf('</think>')) ? s + '</think>' : s);
+
+async function runGeneration(cont = false) {
   const m = modelById(E.modelId);
   const maxGen = Math.max(32, Math.min(S.max_tokens, Math.floor(E.ctx / 2)));
-  const history = chat.messages.slice();
-  const msg = { role: 'assistant', content: '', ts: Date.now(), model: m.name };
+  let msg;
+  if (cont) { msg = chat.messages[chat.messages.length - 1]; msg.content = closeThink(msg.content); msg.interrupted = false; msg.stopped = false; }
+  else { msg = { role: 'assistant', content: '', ts: Date.now(), model: m.name }; chat.messages.push(msg); }
+  const history = chat.messages.filter((x) => x !== msg || cont);
+  const tail0 = cont ? [{ role: 'user', content: CONTINUE_PROMPT }] : [];
   gen.phase = 'generating'; gen.stopRequested = false; gen.stream = msg;
-  chat.messages.push(msg);
+  const tools = toolList(m);
+  if (m.type === 'remote') E.ac = new AbortController();
+  keepAwake(true);
   setSendMode(); renderChat();
 
-  let result = null, err = null, scale = 1;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const { messages, dropped } = buildPrompt(history, m, maxGen, scale);
-    if (attempt === 0 && dropped > 0) notice('info', dropped + ' ancien(s) message(s) ignoré(s) pour tenir dans le contexte.');
-    try {
-      msg.content = '';
-      result = await generate(messages, maxGen, (d) => { msg.content += d; scheduleStreamRender(); });
-      err = null; break;
-    } catch (e) {
-      err = e;
-      if (classify(e) === 'ctx' && attempt < 2) { scale *= 0.6; continue; }   // contexte dépassé : on retente avec moins d'historique
-      break;
+  let result = null, err = null;
+  const extra = [];   // messages éphémères : appels d'outils et résultats
+  try {
+    for (let round = 0; round < 6; round++) {
+      let scale = 1;
+      err = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { messages, dropped } = buildPrompt(history, m, maxGen, scale, [...tail0, ...extra]);
+        if (round === 0 && attempt === 0 && dropped > 0) notice('info', dropped + ' ancien(s) message(s) ignoré(s) pour tenir dans le contexte.');
+        try {
+          const start = msg.content.length;
+          result = await generate(messages, maxGen, (d) => { msg.content += d; scheduleStreamRender(); }, tools);
+          result.start = start;
+          err = null; break;
+        } catch (e) {
+          err = e;
+          if (classify(e) === 'ctx' && attempt < 2) { scale *= 0.6; continue; }   // contexte dépassé : on retente avec moins d'historique
+          break;
+        }
+      }
+      if (err || gen.stopRequested || !result || !result.toolCalls || !result.toolCalls.length) break;
+
+      /* le modèle demande des outils : on les exécute puis on le relance avec les résultats */
+      extra.push({ role: 'assistant', content: stripThink(msg.content.slice(result.start)), tool_calls: result.toolCalls.map((c) => ({ function: { name: c.name, arguments: c.args && typeof c.args === 'object' ? c.args : {} } })) });
+      msg.steps = msg.steps || [];
+      for (const c of result.toolCalls) {
+        const step = { name: c.name, args: typeof c.args === 'object' ? c.args : {}, result: null };
+        msg.steps.push(step); scheduleStreamRender();
+        let out;
+        try { out = await runTool(c.name, step.args, { remote: S.remote, docs: chat.docs, selectExcerpts, signal: E.ac && E.ac.signal }); }
+        catch (e) { out = 'Interrompu.'; }
+        step.result = String(out).slice(0, 4000);
+        extra.push({ role: 'tool', tool_name: c.name, content: String(out).slice(0, 8000) });
+        scheduleStreamRender();
+        if (gen.stopRequested) break;
+      }
+      if (gen.stopRequested) break;
+      if (round === 5) notice('warn', 'Le modèle a enchaîné trop d\'appels d\'outils : arrêt.');
     }
-  }
+  } finally { keepAwake(false); E.ac = null; }
 
   gen.phase = 'idle'; gen.stream = null; gen.bubble = null;
   if (err) {
-    if (!msg.content.trim()) chat.messages.pop(); else msg.stopped = true;
-    reportError(err, m);
-    if (['memory', 'gpulimit'].includes(classify(err))) await unloadEngine();   // moteur peu fiable après un manque de mémoire
-  } else if (!msg.content.trim()) {
+    const kind = classify(err);
+    if (!stripThink(msg.content) && !(msg.steps && msg.steps.length) && !cont) chat.messages.pop();
+    else { msg.stopped = true; if (kind === 'server' && stripThink(msg.content)) { msg.interrupted = true; msg.content = closeThink(msg.content); } }
+    reportError(err, m, msg.interrupted ? [{ label: 'Reprendre', fn: continueGeneration }] : null);
+    if (['memory', 'gpulimit'].includes(kind)) await unloadEngine();   // moteur peu fiable après un manque de mémoire
+  } else if (!msg.content.trim() && !(msg.steps && msg.steps.length)) {
     chat.messages.pop();
     notice('warn', 'Le modèle a renvoyé une réponse vide. Réessayez ou changez de modèle.');
   } else {
@@ -766,13 +979,16 @@ async function runGeneration() {
   }
   await persist();
   setSendMode(); renderChat();
+  refreshStatus();
 }
 
 /* Nouvelle conversation (efface l'actuelle) */
 async function clearChat() {
   if (gen.phase !== 'idle') return;
-  if (chat.messages.length && !(await askConfirm('Effacer la conversation et en commencer une nouvelle ?', 'Effacer'))) return;
-  chat.messages = [];
+  if ((chat.messages.length || chat.docs.length) && !(await askConfirm('Effacer la conversation et en commencer une nouvelle ?', 'Effacer'))) return;
+  chat.messages = []; chat.docs = [];
+  pending.docs = []; pending.images = []; renderAttach();
+  voice.stopSpeaking(); speakingIdx = -1;
   hideNotice();
   await persist();
   renderChat();
@@ -852,52 +1068,129 @@ function remoteUrlOk(u) {
 }
 function remoteSummary() {
   const R = S.remote;
-  return R && R.url ? '✓ Configuré · ' + ((R.models || []).length ? R.models.length + ' modèle(s) : ' + R.models.join(', ') : 'aucun modèle installé') : '';
+  return R && R.url ? '✓ Connecté (' + (R.auth === 'session' ? 'session' : 'clé d\'accès') + ') · ' + ((R.models || []).length ? R.models.length + ' modèle(s) : ' + R.models.join(', ') : 'aucun modèle installé') : '';
 }
+
+/* Connexion par mot de passe : renvoie le jeton de session, ou lève une erreur lisible */
+async function loginWithPassword(url, password) {
+  let res;
+  try { res = await fetch(url + '/_ll/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); }
+  catch { throw new Error('Serveur injoignable. Vérifiez l\'adresse (https://…) et la connexion.'); }
+  const j = await res.json().catch(() => ({}));
+  if (res.ok && j.token) return j.token;
+  if (res.status === 401) throw new Error('Mot de passe incorrect.');
+  if (res.status === 429) throw new Error('Trop d\'essais : réessayez dans quelques minutes.');
+  if (res.status === 409) throw new Error('Aucun mot de passe défini sur le serveur. Sur le serveur : « ll-auth passwd ».');
+  if (res.status === 404) throw new Error('Le serveur ne propose pas encore la connexion par mot de passe : relancez install-hub.sh, ou utilisez la clé d\'accès.');
+  throw new Error('Connexion refusée (' + res.status + ').');
+}
+
+/* Modèles capables de lire des images (détectés via /api/show) */
+async function detectVision(url, key, names) {
+  const out = [];
+  await Promise.all(names.map(async (n) => {
+    try {
+      const r = await fetch(url + '/api/show', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ model: n }) });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (Array.isArray(j.capabilities) && j.capabilities.includes('vision')) out.push(n);
+    } catch { /* ignoré */ }
+  }));
+  return out;
+}
+
 async function testRemote() {
   const info = $('remoteInfo'), btn = $('btnRemoteTest');
-  const url = remoteBase($('rUrl').value), key = $('rKey').value.trim();
+  const url = remoteBase($('rUrl').value);
+  const mode = $('rAuth').value;
   if (!remoteUrlOk(url)) { info.textContent = 'Adresse invalide : elle doit commencer par https://'; return; }
-  if (!key) { info.textContent = 'Saisissez la clé d\'accès.'; return; }
-  btn.disabled = true; btn.textContent = 'Test en cours…'; info.textContent = '';
+  let key = '', auth = mode === 'pw' ? 'session' : 'key';
+  const pw = $('rPw').value;
+  if (mode === 'pw') {
+    if (!pw && !(S.remote && S.remote.auth === 'session' && S.remote.url === url && S.remote.key)) { info.textContent = 'Saisissez le mot de passe.'; return; }
+  } else {
+    key = $('rKey').value.trim();
+    if (!key) { info.textContent = 'Saisissez la clé d\'accès.'; return; }
+  }
+  btn.disabled = true; btn.textContent = 'Connexion…'; info.textContent = '';
   const ac = new AbortController();
-  const to = setTimeout(() => ac.abort(), 12000);
+  const to = setTimeout(() => ac.abort(), 15000);
   try {
+    if (mode === 'pw') {
+      if (pw) { try { key = await loginWithPassword(url, pw); } catch (e) { info.textContent = e.message; return; } $('rPw').value = ''; }
+      else key = S.remote.key;
+    }
     let res;
     try { res = await fetch(url + '/api/tags', { headers: { Authorization: 'Bearer ' + key }, signal: ac.signal }); }
     catch { info.textContent = 'Serveur injoignable. Vérifiez l\'adresse (https://…), la connexion et que le serveur est démarré.'; return; }
-    if (res.status === 401 || res.status === 403) { info.textContent = 'Clé refusée par le serveur.'; return; }
+    if (res.status === 401 || res.status === 403) { info.textContent = mode === 'pw' ? 'Session refusée : saisissez de nouveau le mot de passe.' : 'Clé refusée par le serveur.'; return; }
     if (!res.ok) { info.textContent = 'Le serveur a répondu « ' + res.status + ' ». Est-ce bien l\'adresse du serveur Ollama ?'; return; }
     const j = await res.json().catch(() => null);
     const names = j && Array.isArray(j.models) ? j.models.map((x) => x && (x.name || x.model)).filter(Boolean) : [];
-    S.remote = { url, key, models: names }; saveS();
+    S.remote = { url, key, auth, models: names, vision: [] }; saveS();
     $('rUrl').value = url;   // adresse normalisée (sans « /v1/ » final)
-    if (!names.length) { renderModelSel(); info.textContent = 'Connexion réussie, mais aucun modèle installé. Sur le serveur : ollama pull <nom>.'; return; }
+    if (!names.length) { renderModelSel(); syncSettingsUI(); info.textContent = 'Connexion réussie, mais aucun modèle installé. Sur le serveur : ollama pull <nom>.'; return; }
+    S.remote.vision = await detectVision(url, key, names); saveS();
     if (S.hideLocal == null) { S.hideLocal = true; S.max_tokens = Math.max(S.max_tokens, 4096); saveS(); }   // 1re connexion : seulement les modèles du serveur (décochable) et réponses longues
     const cur = modelById(S.modelId);
-    if (!cur || cur.type !== 'remote') selectModel('remote:' + names[0]); else renderModelSel();
+    if (!cur || cur.type !== 'remote') selectModel('remote:' + (names.find((n) => !S.remote.vision.includes(n)) || names[0])); else renderModelSel();
     syncSettingsUI();   // met à jour curseurs et cases (longueur de réponse relevée, etc.)
     info.textContent = remoteSummary();
-  } finally { clearTimeout(to); btn.disabled = false; btn.textContent = 'Tester et récupérer les modèles'; }
+    refreshStatus();
+  } finally { clearTimeout(to); btn.disabled = false; btn.textContent = 'Se connecter et récupérer les modèles'; }
 }
 function syncHideLocalUI() {
   $('chkHideLocal').checked = S.hideLocal === true;
   $('chkHideLocal').disabled = !remoteModels().length;
 }
-function clearRemote() {
+/* Appel au service du serveur (déconnexion) ; silencieux en cas d'échec */
+async function serverAuthCall(path) {
+  const R = S.remote;
+  if (!R || !R.url || !R.key) return false;
+  try { const r = await fetch(R.url + path, { method: 'POST', headers: { Authorization: 'Bearer ' + R.key } }); return r.ok; } catch { return false; }
+}
+async function logoutHere() {
+  closeSheet();
+  if (!(await askConfirm('Se déconnecter du serveur sur cet appareil ?', 'Se déconnecter'))) return;
+  await serverAuthCall('/_ll/auth/logout');
+  clearRemote(true);
+  notice('info', 'Déconnecté.');
+}
+async function logoutAll() {
+  closeSheet();
+  if (!(await askConfirm('Déconnecter tous les appareils (celui-ci compris) ? Il faudra se reconnecter partout.', 'Tout déconnecter'))) return;
+  const ok = await serverAuthCall('/_ll/auth/logout-all');
+  if (!ok) { notice('err', 'Impossible de joindre le service de connexion du serveur (relancer install-hub.sh ?).'); return; }
+  if (S.remote && S.remote.auth === 'session') clearRemote(true);
+  notice('info', 'Tous les appareils sont déconnectés.');
+}
+function clearRemote(keepUrl = false) {
+  const url = S.remote && S.remote.url;
   S.remote = null; S.hideLocal = null;
   const cur = modelById(S.modelId);
   if (!cur) { const d = pickDefault(); S.modelId = d ? d.id : null; }
   saveS();
-  $('rUrl').value = ''; $('rKey').value = ''; $('remoteInfo').textContent = 'Serveur retiré.';
-  syncHideLocalUI();
-  renderModelSel();
+  $('rUrl').value = keepUrl === true && url ? url : ''; $('rKey').value = ''; $('rPw').value = ''; $('remoteInfo').textContent = keepUrl === true ? '' : 'Serveur retiré.';
+  syncHideLocalUI(); syncSettingsUI();
+  renderModelSel(); refreshStatus();
   if (!chat.messages.length && gen.phase === 'idle') renderChat();
 }
 
+function syncAuthUI() {
+  const mode = $('rAuth').value;
+  $('authPw').hidden = mode !== 'pw'; $('authKey').hidden = mode !== 'key';
+  const R = S.remote;
+  const sess = !!(R && R.auth === 'session');
+  $('rPw').placeholder = sess ? '•••• connecté : laissez vide' : 'Mot de passe du serveur';
+  $('btnLogout').hidden = !sess; $('btnLogoutAll').hidden = !R;
+}
+
 function syncSettingsUI() {
-  $('rUrl').value = (S.remote && S.remote.url) || '';
-  $('rKey').value = (S.remote && S.remote.key) || '';
+  const R = S.remote;
+  $('rUrl').value = (R && R.url) || '';
+  $('rAuth').value = R && R.auth === 'key' ? 'key' : 'pw';
+  $('rKey').value = (R && R.auth === 'key' && R.key) || '';
+  syncAuthUI();
   $('remoteInfo').textContent = remoteSummary();
   syncHideLocalUI();
   $('rTemp').value = S.temperature; $('vTemp').textContent = (+S.temperature).toFixed(2);
@@ -906,7 +1199,20 @@ function syncSettingsUI() {
   $('selCtx').value = String(S.ctx);
   $('selCtxR').value = String(S.ctxR);
   $('chkThink').checked = S.think !== false;
+  $('chkTools').checked = S.tools !== false;
+  $('chkWeb').checked = !!S.web;
   $('sysPrompt').value = S.system;
+  renderVisionSel();
+  renderToolbar();
+}
+function renderVisionSel() {
+  const sel = $('selVision'); sel.textContent = '';
+  const list = remoteModels();
+  const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Automatique'; sel.append(auto);
+  for (const m of list) { const o = document.createElement('option'); o.value = m.remoteName; o.textContent = m.name + (m.vision ? ' (vision)' : ''); sel.append(o); }
+  sel.value = S.visionModel && list.some((m) => m.remoteName === S.visionModel) ? S.visionModel : '';
+  const v = visionModel();
+  $('visionHint').textContent = !list.length ? 'Disponible avec un serveur configuré.' : v ? 'Les photos seront lues par « ' + v.name + ' ».' : 'Aucun modèle de vision sur le serveur. Pour en installer un : « ollama pull qwen2.5vl:7b », puis reconnectez-vous ici.';
 }
 function openSheet() {
   syncSettingsUI(); renderModelCards(); updateStorageInfo();
@@ -916,6 +1222,48 @@ function openSheet() {
 function closeSheet() {
   $('sheet').classList.remove('open'); $('sheet').setAttribute('aria-hidden', 'true');
   $('scrim').hidden = true;
+}
+
+/* ----- barre d'outils : rôle, réflexion, web, état du serveur ----- */
+function renderToolbar() {
+  const sel = $('personaSel');
+  if (!sel.options.length) for (const p of PERSONAS) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.append(o); }
+  sel.value = persona().id;
+  const cur = modelById(S.modelId);
+  const remote = !!(cur && cur.type === 'remote');
+  $('chipThink').hidden = !remote; $('chipWeb').hidden = !remote;
+  $('chipThink').setAttribute('aria-pressed', String(S.think !== false));
+  $('chipWeb').setAttribute('aria-pressed', String(!!S.web));
+  if (!remote) $('srvStatus').hidden = true;
+}
+
+let statusSeq = 0;
+const sameModel = (a, b) => String(a).replace(/:latest$/, '') === String(b).replace(/:latest$/, '');
+async function refreshStatus() {
+  const cur = modelById(S.modelId), el = $('srvStatus'), R = S.remote;
+  if (!cur || cur.type !== 'remote' || !R) { el.hidden = true; return; }
+  const my = ++statusSeq;
+  try {
+    const r = await fetch(R.url + '/api/ps', { headers: { Authorization: 'Bearer ' + R.key } });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    if (my !== statusSeq) return;
+    const loaded = (j.models || []).some((x) => sameModel(x.name || x.model, cur.remoteName));
+    el.hidden = false; el.disabled = false;
+    el.className = 'chip status ' + (loaded ? 'ok' : 'cold');
+    el.textContent = loaded ? '● prêt' : '○ à froid';
+    el.title = loaded ? 'Modèle chargé en mémoire sur le serveur' : 'Modèle non chargé : le premier message sera plus lent. Toucher pour le précharger.';
+    el.dataset.loaded = loaded ? '1' : '';
+  } catch { if (my === statusSeq) { el.hidden = false; el.className = 'chip status cold'; el.textContent = '⚠ injoignable'; el.dataset.loaded = ''; } }
+}
+async function preloadModel() {
+  const cur = modelById(S.modelId), R = S.remote, el = $('srvStatus');
+  if (!cur || cur.type !== 'remote' || !R || el.dataset.loaded) { refreshStatus(); return; }
+  el.disabled = true; el.textContent = '… chargement';
+  try {
+    await fetch(R.url + '/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key }, body: JSON.stringify({ model: cur.remoteName, prompt: '', keep_alive: '30m', options: { num_ctx: ctxFor(cur) } }) });
+  } catch { /* ignoré */ }
+  refreshStatus();
 }
 
 /* Le clavier iOS réduit le « visual viewport » sans réduire la page : on cale l'app dessus */
@@ -953,9 +1301,47 @@ function bindEvents() {
   $('btnLoad').onclick = () => { closeSheet(); loadModelUI(); };
   $('btnDelModel').onclick = deleteModelCache;
   $('btnRemoteTest').onclick = testRemote;
-  $('btnRemoteClear').onclick = clearRemote;
+  $('btnRemoteClear').onclick = () => clearRemote();
+  $('rAuth').onchange = syncAuthUI;
+  $('btnLogout').onclick = logoutHere;
+  $('btnLogoutAll').onclick = logoutAll;
+  $('personaSel').onchange = () => { S.persona = $('personaSel').value; saveS(); if (S.persona === 'custom') notice('info', 'Rôle personnalisé : modifiez son texte dans ⚙ › Prompt système personnalisé.', [{ label: 'Ouvrir', fn: openSheet }]); };
+  $('chipThink').onclick = () => { S.think = !(S.think !== false); saveS(); renderToolbar(); $('chkThink').checked = S.think; };
+  $('chipWeb').onclick = () => {
+    S.web = !S.web; saveS(); renderToolbar(); $('chkWeb').checked = S.web;
+    if (S.web) notice('info', 'Recherche web activée : le modèle peut faire chercher le serveur sur Internet (les termes recherchés quittent votre serveur).');
+  };
+  $('chkTools').onchange = () => { S.tools = $('chkTools').checked; saveS(); };
+  $('chkWeb').onchange = () => { S.web = $('chkWeb').checked; saveS(); renderToolbar(); };
+  $('selVision').onchange = () => { S.visionModel = $('selVision').value || null; saveS(); renderVisionSel(); };
+  $('srvStatus').onclick = preloadModel;
+  $('btnAttach').onclick = () => $('fileIn').click();
+  $('fileIn').accept = ACCEPT;
+  $('fileIn').onchange = () => { const f = [...$('fileIn').files]; $('fileIn').value = ''; addFiles(f); };
+  $('input').addEventListener('paste', (e) => { const f = [...((e.clipboardData && e.clipboardData.files) || [])]; if (f.length) { e.preventDefault(); addFiles(f); } });
+  const dz = $('app');
+  dz.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  dz.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
+  $('msgs').addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('.copy-code');
+    if (b) copyText(b.closest('.code').querySelector('code').textContent, b);
+  });
+  if (voice.dictationSupported) {
+    $('btnMic').hidden = false;
+    $('btnMic').onclick = () => {
+      if (voice.dictating()) { voice.stopDictation(); return; }
+      const base = $('input').value ? $('input').value.replace(/\s*$/, ' ') : '';
+      $('btnMic').classList.add('on');
+      voice.startDictation({
+        lang: 'fr-FR',
+        onText: (fin, interim) => { $('input').value = base + fin + interim; autosize(); },
+        onEnd: () => { $('btnMic').classList.remove('on'); },
+        onError: (m) => notice('warn', m),
+      });
+    };
+  }
   $('selCtxR').onchange = () => { S.ctxR = +$('selCtxR').value; saveS(); };
-  $('chkThink').onchange = () => { S.think = $('chkThink').checked; saveS(); };
+  $('chkThink').onchange = () => { S.think = $('chkThink').checked; saveS(); renderToolbar(); };
   $('chkHideLocal').onchange = () => {
     S.hideLocal = $('chkHideLocal').checked; saveS();
     const cur = modelById(S.modelId), first = remoteModels()[0];
@@ -990,15 +1376,24 @@ async function warmEngine() {
 async function boot() {
   syncViewport();
   bindEvents();
-  try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {}); } catch { /* ignoré */ }
+  try {
+    if ('serviceWorker' in navigator) {
+      const had = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.addEventListener('controllerchange', () => {   // nouvelle version de l'app installée
+        if (had && gen.phase === 'idle') notice('info', 'LL a été mis à jour.', [{ label: 'Recharger', fn: () => location.reload() }]);
+      });
+    }
+  } catch { /* ignoré */ }
   await detectWebGPU();
 
-  try { chat = (await idb('readonly', (s) => s.get('main'))) || chat; }
+  try { chat = (await idb('readonly', (s) => s.get('main'))) || chat; chat.docs = chat.docs || []; }
   catch (e) { console.error('[LocalLM] IndexedDB', e); notice('warn', 'Stockage local indisponible : la conversation ne sera pas conservée.'); }
 
   if (hideLocalOn() && !(modelById(S.modelId) || {}).type?.startsWith('remote')) { S.modelId = remoteModels()[0].id; saveS(); }
   if (!modelById(S.modelId) || !usable(modelById(S.modelId)).ok) { const d = pickDefault(); S.modelId = d ? d.id : null; saveS(); }
-  renderModelSel(); renderChat(); setSendMode();
+  renderModelSel(); renderToolbar(); renderChat(); setSendMode(); refreshStatus();
+  setInterval(() => { if (document.visibilityState === 'visible' && gen.phase === 'idle') refreshStatus(); }, 60000);
 
   const crashed = ls.get('locallm.loading', null);
   if (crashed) {
@@ -1015,6 +1410,11 @@ async function boot() {
     notice('info', 'Format f16 indisponible sur ce navigateur : les variantes q4f32 (un peu plus gourmandes) seront utilisées.');
   }
 
+  /* Astuce unique : sur iPhone, l'app installée sur l'écran d'accueil garde mieux ses données */
+  if (!crashed && /iPhone|iPad/.test(navigator.userAgent) && navigator.standalone === false && !ls.get('locallm.a2hs', false)) {
+    ls.set('locallm.a2hs', true);
+    notice('info', 'Astuce : Partager › « Sur l\'écran d\'accueil » pour utiliser LL comme une vraie app (plein écran, données mieux conservées).');
+  }
   requestPersist();
   (window.requestIdleCallback || ((f) => setTimeout(f, 1500)))(() => { warmEngine(); });
 }

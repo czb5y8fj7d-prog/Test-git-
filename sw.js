@@ -11,13 +11,13 @@
    fichiers déjà demandés par la page.
    ===================================================================== */
 
-const VERSION = 'v2';                      // à incrémenter à chaque mise à jour
+const VERSION = 'v3';                      // à incrémenter à chaque mise à jour
 const SHELL = 'locallm-shell-' + VERSION;    // fichiers de l'app
 const CDN = 'locallm-cdn-' + VERSION;        // code des moteurs
-const CDN_HOSTS = ['cdn.jsdelivr.net', 'esm.run', 'unpkg.com', 'fastly.jsdelivr.net'];
+const CDN_HOSTS = ['cdn.jsdelivr.net', 'esm.run', 'unpkg.com', 'fastly.jsdelivr.net', 'cdnjs.cloudflare.com'];   // cdnjs : lecteurs PDF / Excel / Word
 
 const SHELL_FILES = [
-  './', './index.html', './style.css', './app.js', './models.js', './manifest.json',
+  './', './index.html', './style.css', './app.js', './models.js', './md.js', './docs.js', './tools.js', './voice.js', './manifest.json',
   './icon-180.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png',
 ];
 
@@ -84,5 +84,5 @@ self.addEventListener('fetch', (event) => {
   } else if (CDN_HOSTS.includes(url.hostname)) {
     event.respondWith(cacheFirst(req));
   }
-  /* tout le reste (Hugging Face, etc.) passe directement au réseau */
+  /* tout le reste (Hugging Face, serveur Ollama, etc.) passe directement au réseau */
 });
