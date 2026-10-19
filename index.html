@@ -33,8 +33,16 @@
     <div class="p-sub" id="pSub"></div>
   </div>
 
+  <div id="ctxPanel" hidden>
+    <label for="ctxText">Contexte de cette conversation</label>
+    <p class="hint">Ces consignes ne valent que pour cette conversation : elles sont effacées avec « ＋ » (nouvelle conversation). Elles s'ajoutent au rôle choisi.</p>
+    <textarea id="ctxText" rows="6" placeholder="Ex. : Tu m'aides à préparer une analyse du marché des scooters électriques au Maroc. Réponds en français, avec des chiffres et leurs sources, et signale ce dont tu n'es pas sûr."></textarea>
+    <div class="ctx-row"><span id="ctxCount" class="hint"></span><span class="grow"></span><button type="button" id="ctxClear" class="ghost">Effacer</button><button type="button" id="ctxClose" class="ghost">Fermer</button><button type="button" id="ctxSave" class="primary">Enregistrer</button></div>
+  </div>
+
   <div id="toolbar">
     <select id="personaSel" aria-label="Rôle de l'assistant"></select>
+    <button type="button" id="chipCtx" class="chip" aria-pressed="false" aria-expanded="false" title="Contexte de cette conversation (consignes valables pour cette conversation seulement)">📌<span class="lbl"> Contexte</span></button>
     <button type="button" id="chipThink" class="chip" aria-pressed="false" title="Réflexion du modèle">🧠<span class="lbl"> Réflexion</span></button>
     <button type="button" id="chipWeb" class="chip" aria-pressed="false" title="Autoriser la recherche web">🌐<span class="lbl"> Web</span></button>
     <button type="button" id="chipImg" class="chip" aria-pressed="false" title="Mode image : votre message devient une image" hidden>🎨<span class="lbl"> Image</span></button>

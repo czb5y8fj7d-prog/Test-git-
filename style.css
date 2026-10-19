@@ -97,6 +97,13 @@ body.kb #composer { padding-bottom: 8px; }
 .att.busy { opacity: .6; }
 
 /* Barre d'outils au-dessus de la saisie */
+#ctxPanel { flex: none; margin: 0 12px 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--s2); }
+#ctxPanel label { font-weight: 600; font-size: 14px; }
+#ctxPanel textarea { display: block; width: 100%; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--txt); font-size: 16px; resize: vertical; max-height: 38vh; outline: none; }
+#ctxPanel .ctx-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+#ctxPanel .ctx-row .grow { flex: 1; }
+#ctxPanel .ctx-row .hint { margin: 0; white-space: nowrap; }
+#ctxPanel .ctx-row button { min-height: 40px; padding: 0 14px; border-radius: 12px; }
 #toolbar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px)); border-top: 1px solid var(--line); background: var(--bg); overflow-x: auto; scrollbar-width: none; }
 #toolbar::-webkit-scrollbar { display: none; }
 #personaSel { flex: 0 1 132px; min-width: 0; color-scheme: dark; height: 36px; padding: 0 6px; background: var(--s2); border: 1px solid var(--line); border-radius: 12px; font-size: 14px; }

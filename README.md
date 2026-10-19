@@ -8,6 +8,7 @@ Application statique, sans build : `index.html`, `app.js`, `style.css`, `models.
 
 - **Rôles** : généraliste, analyste marché, traducteur, relecteur, codeur, personnalisé (menu au-dessus de la saisie).
 - **Réflexion** de qwen3 : puce 🧠 (repliable dans la réponse). **Web** : puce 🌐 (recherche et lecture de pages par le serveur).
+- **Contexte de la conversation** 📌 : consignes (pré-prompt) valables pour la conversation en cours seulement, effacées avec « ＋ ».
 - **Markdown** complet (titres, listes, tableaux, code coloré avec bouton Copier).
 - **Pièces jointes** : texte, CSV, JSON, PDF, Excel, Word (lus dans le navigateur ; extraits pertinents si le document est long) et **photos** (modèle de vision du serveur, ex. `ollama pull qwen2.5vl:7b`).
 - **Outils** appelés par le modèle : calculatrice exacte, date/heure, documents joints, recherche web, lecture de page.

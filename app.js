@@ -80,7 +80,7 @@ function setCached(id, on) { if (on) cached.add(id); else cached.delete(id); ls.
 /* =====================================================================
    3. ÉTAT
    ===================================================================== */
-let chat = { id: 'main', messages: [], docs: [] };   // la conversation (docs : documents joints, texte extrait)
+let chat = { id: 'main', messages: [], docs: [], context: '' };   // la conversation (docs : documents joints, texte extrait)
 const caps = { image: false, chat: false };   // capacités du serveur (génération d'images installée ?)
 let imgMode = false;             // mode image : le message devient une image
 const pending = { docs: [], images: [], busy: 0 };   // pièces jointes du message en cours de rédaction
@@ -639,6 +639,7 @@ function toolList(m) {
 function systemText(m) {
   const p = persona();
   let t = (p.prompt === undefined ? S.system : (p.prompt || DEFAULT_SYSTEM)).trim();
+  if (chat.context && chat.context.trim()) t += '\n\nConsignes spécifiques à cette conversation (données par l\'utilisateur, à suivre pendant toute la conversation) :\n' + chat.context.trim();
   const d = new Date();
   t += '\n\nDate et heure actuelles : ' + d.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' }) + '.';
   if (toolList(m).length) t += '\nTu disposes d\'outils : utilise-les quand ils sont utiles (calcul exact, informations récentes, documents joints) et ne devine jamais un résultat que tu peux obtenir. Après un résultat d\'outil, réponds à l\'utilisateur.';
@@ -1243,9 +1244,9 @@ async function runGeneration(cont = false) {
 /* Nouvelle conversation (efface l'actuelle) */
 async function clearChat() {
   if (gen.phase !== 'idle') return;
-  if ((chat.messages.length || chat.docs.length) && !(await askConfirm('Effacer la conversation et en commencer une nouvelle ?', 'Effacer'))) return;
+  if ((chat.messages.length || chat.docs.length || chat.context) && !(await askConfirm('Effacer la conversation et en commencer une nouvelle ?', 'Effacer'))) return;
   for (const g of activeGens()) { try { imgApi('/' + g.id + '/cancel', { method: 'POST' }); } catch { /* ignoré */ } }
-  chat.messages = []; chat.docs = [];
+  chat.messages = []; chat.docs = []; chat.context = ''; closeCtxPanel(); renderToolbar();
   pending.docs = []; pending.images = []; renderAttach();
   voice.stopSpeaking(); speakingIdx = -1;
   hideNotice();
@@ -1485,6 +1486,25 @@ function closeSheet() {
 }
 
 /* ----- barre d'outils : rôle, réflexion, web, état du serveur ----- */
+/* Contexte de la conversation : consignes données une fois, valables pour cette conversation seulement
+   (effacées avec « nouvelle conversation »), en plus du rôle choisi. */
+const CTX_MAX = 6000;
+function openCtxPanel() {
+  $('ctxText').value = chat.context || '';
+  $('ctxText').maxLength = CTX_MAX;
+  $('ctxCount').textContent = $('ctxText').value.length + ' / ' + CTX_MAX;
+  $('ctxPanel').hidden = false;
+  $('chipCtx').setAttribute('aria-expanded', 'true');
+  $('ctxText').focus();
+}
+function closeCtxPanel() { $('ctxPanel').hidden = true; $('chipCtx').setAttribute('aria-expanded', 'false'); }
+async function saveCtx() {
+  chat.context = $('ctxText').value.trim().slice(0, CTX_MAX);
+  await persist();
+  renderToolbar(); closeCtxPanel();
+  notice('info', chat.context ? 'Contexte enregistré : il s\'applique à cette conversation seulement.' : 'Contexte effacé.');
+}
+
 function renderToolbar() {
   const sel = $('personaSel');
   if (!sel.options.length) for (const p of PERSONAS) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.append(o); }
@@ -1496,6 +1516,7 @@ function renderToolbar() {
   $('input').placeholder = imgMode ? 'Décrivez l\'image à créer…' : 'Écrire un message…';
   $('chipThink').setAttribute('aria-pressed', String(S.think !== false));
   $('chipWeb').setAttribute('aria-pressed', String(!!S.web));
+  $('chipCtx').setAttribute('aria-pressed', String(!!(chat.context && chat.context.trim())));
   if (!remote) $('srvStatus').hidden = true;
 }
 
@@ -1568,6 +1589,11 @@ function bindEvents() {
   $('btnLogout').onclick = logoutHere;
   $('btnLogoutAll').onclick = logoutAll;
   $('personaSel').onchange = () => { S.persona = $('personaSel').value; saveS(); if (S.persona === 'custom') notice('info', 'Rôle personnalisé : modifiez son texte dans ⚙ › Prompt système personnalisé.', [{ label: 'Ouvrir', fn: openSheet }]); };
+  $('chipCtx').onclick = () => { if (!$('ctxPanel').hidden) closeCtxPanel(); else openCtxPanel(); };
+  $('ctxSave').onclick = saveCtx;
+  $('ctxClear').onclick = () => { $('ctxText').value = ''; saveCtx(); };
+  $('ctxClose').onclick = closeCtxPanel;
+  $('ctxText').oninput = () => { $('ctxCount').textContent = $('ctxText').value.length + ' / ' + CTX_MAX; };
   $('chipThink').onclick = () => { S.think = !(S.think !== false); saveS(); renderToolbar(); $('chkThink').checked = S.think; };
   $('chipWeb').onclick = () => {
     S.web = !S.web; saveS(); renderToolbar(); $('chkWeb').checked = S.web;
@@ -1655,7 +1681,7 @@ async function boot() {
   } catch { /* ignoré */ }
   await detectWebGPU();
 
-  try { chat = (await idb('readonly', (s) => s.get('main'))) || chat; chat.docs = chat.docs || []; }
+  try { chat = (await idb('readonly', (s) => s.get('main'))) || chat; chat.docs = chat.docs || []; chat.context = chat.context || ''; }
   catch (e) { console.error('[LocalLM] IndexedDB', e); notice('warn', 'Stockage local indisponible : la conversation ne sera pas conservée.'); }
 
   if (hideLocalOn() && !(modelById(S.modelId) || {}).type?.startsWith('remote')) { S.modelId = remoteModels()[0].id; saveS(); }
