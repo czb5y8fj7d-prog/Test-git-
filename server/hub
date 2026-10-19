@@ -2,7 +2,7 @@
 # hub — gère les projets du site : un dossier + un chemin (/nom/) par projet.
 #
 #   hub sync [branche]    publie tous les sites statiques décrits dans projects.json (branche « sites »)
-#   hub add <nom> [--titre T] [--desc D] [--icone 🙂] [--categorie C] [--branche B] [--dossier D] [--depot URL]
+#   hub add <nom> [--titre T] [--desc D] [--icone 🙂] [--categorie C] [--rang N] [--branche B] [--dossier D] [--depot URL]
 #   hub update            met à jour le hub et tous les projets (git pull)
 #   hub list              liste les projets publiés
 #   hub remove <nom>      retire un projet du site (les fichiers sont conservés)
@@ -47,8 +47,8 @@ fetch_branch() { # dossier dépôt branche
 }
 
 # Publie un projet : routage Caddy + bouton sur l'accueil (ne recharge pas Caddy)
-publish() { # nom dossier-servi titre desc icône catégorie
-  local slug="$1" root="$2" title="$3" desc="$4" icon="$5" cat="$6"
+publish() { # nom dossier-servi titre desc icône catégorie [rang]
+  local slug="$1" root="$2" title="$3" desc="$4" icon="$5" cat="$6" rank="${7:-}"
   [ -f "$root/index.html" ] || [ -f "$root/index.php" ] || die "« $root » ne contient pas de index.html"
   $SUDO mkdir -p "$SNIP_DIR"
   local snip="$SNIP_DIR/$slug.caddy"
@@ -72,9 +72,9 @@ SNIP
   $SUDO rm -f "$snip.bak"
 
   $SUDO mkdir -p "$DATA_DIR"
-  $SUDO python3 - "$DATA_DIR/projects.json" "$slug" "$title" "$desc" "$icon" "$cat" <<'PY'
+  $SUDO python3 - "$DATA_DIR/projects.json" "$slug" "$title" "$desc" "$icon" "$cat" "$rank" <<'PY'
 import json, sys
-f, slug, title, desc, icon, cat = sys.argv[1:7]
+f, slug, title, desc, icon, cat, rank = sys.argv[1:8]
 try:
     data = json.load(open(f))
     if not isinstance(data, list):
@@ -90,10 +90,18 @@ entry = {
     "cat": cat or old.get("cat") or "Projets",
     "path": "/" + slug + "/",
 }
+try:
+    r = int(rank) if rank else old.get("order")
+except ValueError:
+    r = old.get("order")
+if r is not None:
+    entry["order"] = r
 if any(p.get("slug") == slug for p in data):
     data = [entry if p.get("slug") == slug else p for p in data]
 else:
     data.append(entry)
+# ordre d'affichage : « order » croissant, les projets sans rang à la suite (ordre d'ajout conservé)
+data = [p for _, p in sorted(enumerate(data), key=lambda t: (t[1].get("order", 10**6), t[0]))]
 with open(f, "w", encoding="utf-8") as out:
     json.dump(data, out, ensure_ascii=False, indent=2)
 PY
@@ -105,7 +113,7 @@ PY
 cmd_add() {
   [ -n "$1" ] || die "il manque le nom du projet. Exemple : hub add llm --titre \"LocalLM\""
   local slug="$1"; shift
-  local title="" desc="" icon="" cat="" branch="$slug" repo="$DEFAULT_REPO" sub=""
+  local title="" desc="" icon="" cat="" rank="" branch="$slug" repo="$DEFAULT_REPO" sub=""
   while [ $# -gt 0 ]; do
     [ $# -ge 2 ] || die "l'option $1 attend une valeur"
     case "$1" in
@@ -113,6 +121,7 @@ cmd_add() {
       --desc) desc="$2" ;;
       --icone) icon="$2" ;;
       --categorie) cat="$2" ;;
+      --rang) rank="$2" ;;
       --branche) branch="$2" ;;
       --dossier) sub="$2" ;;
       --depot) repo="$2" ;;
@@ -126,7 +135,7 @@ cmd_add() {
   echo "→ Projet « $slug » (branche $branch)…"
   fetch_branch "$dir" "$repo" "$branch"
   local root="$dir"; [ -z "$sub" ] || root="$dir/$sub"
-  publish "$slug" "$root" "$title" "$desc" "$icon" "$cat"
+  publish "$slug" "$root" "$title" "$desc" "$icon" "$cat" "$rank"
   $SUDO $CADDY_RELOAD
   echo "OK : le projet est en ligne sur /$slug/"
 }
@@ -145,12 +154,12 @@ for p in json.load(open(sys.argv[1])):
     d = p.get("dir") or slug
     if d.startswith("/") or ".." in d:
         sys.exit("dossier invalide pour %s : %r" % (slug, d))
-    print("\t".join([slug, d, p.get("title", ""), p.get("desc", ""), p.get("icon", ""), p.get("cat", "")]))
+    print("\t".join([slug, d, p.get("title", ""), p.get("desc", ""), p.get("icon", ""), p.get("cat", ""), str(p.get("order", ""))]))
 PY
-  local n=0 slug sub title desc icon cat
-  while IFS=$'\t' read -r -u 3 slug sub title desc icon cat; do
+  local n=0 slug sub title desc icon cat rank
+  while IFS=$'\t' read -r -u 3 slug sub title desc icon cat rank; do
     check_slug "$slug"
-    publish "$slug" "$dir/$sub" "$title" "$desc" "$icon" "$cat"
+    publish "$slug" "$dir/$sub" "$title" "$desc" "$icon" "$cat" "$rank"
     n=$((n + 1))
   done 3< "${TMPDIR:-/tmp}/hub-sync.$$"
   rm -f "${TMPDIR:-/tmp}/hub-sync.$$"

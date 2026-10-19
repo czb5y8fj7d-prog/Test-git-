@@ -113,7 +113,7 @@ $SUDO "$CADDY_BIN" validate --config "$CADDYFILE" --adapter caddyfile
 
 # 6. Premier projet : LocalLM (sans redémarrer Caddy ici, on le fait une fois à la fin)
 if [ -z "$NO_LLM" ]; then
-  CADDY_RELOAD=true "$HUB_DIR/server/hub" add llm --titre "LocalLM" --icone "💬" --categorie "IA" \
+  CADDY_RELOAD=true "$HUB_DIR/server/hub" add llm --titre "LL" --icone "💬" --categorie "IA" --rang 4 \
     --desc "Chat IA privé : sur l'iPhone ou sur le serveur" --branche locallm
 fi
 # Les sites statiques (branche « sites »), s'ils existent
@@ -128,12 +128,12 @@ if [ -z "$SKIP_RESTART" ]; then
   echo
   echo "=== TERMINÉ ==="
   echo "Accueil       : https://$HOST/"
-  echo "LocalLM       : https://$HOST/llm/"
-  echo "Adresse API   : https://$HOST   (à saisir dans LocalLM > ⚙ > Serveur distant)"
+  echo "LL            : https://$HOST/llm/"
+  echo "Adresse API   : https://$HOST   (à saisir dans LL > ⚙ > Serveur distant)"
   [ -z "$NEWKEY" ] || echo "Clé d'accès   : $KEY   (nouvelle : notez-la)"
   echo "Service Caddy : $($SUDO systemctl is-active caddy)"
   echo "Test accueil      (attendu 200) : $(curl -s -o /dev/null -w '%{http_code}' https://$HOST/)"
-  echo "Test LocalLM      (attendu 200) : $(curl -s -o /dev/null -w '%{http_code}' https://$HOST/llm/)"
+  echo "Test LL           (attendu 200) : $(curl -s -o /dev/null -w '%{http_code}' https://$HOST/llm/)"
   echo "Test API sans clé (attendu 401) : $(curl -s -o /dev/null -w '%{http_code}' https://$HOST/api/tags)"
   echo "Test API avec clé (attendu 200) : $(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $KEY" https://$HOST/api/tags)"
   echo

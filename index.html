@@ -44,6 +44,7 @@
     .card:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
     .ico { flex: none; width: 52px; height: 52px; display: grid; place-items: center; font-size: 26px; background: var(--s2); border: 1px solid var(--line); border-radius: 14px; }
     .txt { flex: 1; min-width: 0; }
+    .tag { display: block; margin-bottom: 2px; color: var(--acc); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
     .ttl { display: block; font-size: 17px; font-weight: 600; }
     .dsc { display: block; margin-top: 2px; color: var(--mut); font-size: 14px; }
     .go { flex: none; color: var(--mut); font-size: 22px; }
@@ -115,6 +116,12 @@
       txt.appendChild(d);
     }
 
+    if (typeof p.cat === 'string' && p.cat) {
+      var k = document.createElement('span');
+      k.className = 'tag'; k.textContent = p.cat;
+      txt.insertBefore(k, t);
+    }
+
     var go = document.createElement('span');
     go.className = 'go'; go.setAttribute('aria-hidden', 'true'); go.textContent = '›';
 
@@ -131,20 +138,12 @@
         return;
       }
       list.textContent = '';
-      var groups = {}, order = [], shown = 0;
+      var g = document.createElement('div'); g.className = 'grid'; var shown = 0;
       items.forEach(function (p) {
         var c = card(p); if (!c) return;
-        var name = (typeof p.cat === 'string' && p.cat) ? p.cat : 'Projets';
-        if (!groups[name]) { groups[name] = []; order.push(name); }
-        groups[name].push(c); shown++;
+        g.appendChild(c); shown++;
       });
-      order.forEach(function (name) {
-        var sec = document.createElement('section');
-        var h = document.createElement('h2'); h.className = 'cat'; h.textContent = name;
-        var g = document.createElement('div'); g.className = 'grid';
-        groups[name].forEach(function (c) { g.appendChild(c); });
-        sec.appendChild(h); sec.appendChild(g); list.appendChild(sec);
-      });
+      list.appendChild(g);
       document.getElementById('foot').textContent = shown + (shown > 1 ? ' projets' : ' projet');
     })
     .catch(function () { message('Impossible de charger la liste des projets. Réessayez dans un instant.', true); });
