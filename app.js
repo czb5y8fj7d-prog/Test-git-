@@ -81,7 +81,7 @@ function setCached(id, on) { if (on) cached.add(id); else cached.delete(id); ls.
    3. ÉTAT
    ===================================================================== */
 let chat = { id: 'main', messages: [], docs: [] };   // la conversation (docs : documents joints, texte extrait)
-const caps = { image: false };   // capacités du serveur (génération d'images installée ?)
+const caps = { image: false, chat: false };   // capacités du serveur (génération d'images installée ?)
 let imgMode = false;             // mode image : le message devient une image
 const pending = { docs: [], images: [], busy: 0 };   // pièces jointes du message en cours de rédaction
 const gen = { phase: 'idle', stick: true, stream: null, bubble: null, stopRequested: false };   // idle | loading | generating
@@ -384,18 +384,20 @@ async function loadModelUI() {
 const dget = (ch) => ch.choices && ch.choices[0] && ch.choices[0].delta && ch.choices[0].delta.content;
 
 /* Erreur HTTP du serveur distant → erreur typée */
-async function remoteHttpError(res) {
+function httpErrorFrom(status, text) {
   let detail = '';
-  try {
-    const t = await res.text();
-    try { const j = JSON.parse(t); detail = (j.error && (j.error.message || j.error)) || t; } catch { detail = t; }
-  } catch { /* ignoré */ }
-  detail = String(detail).slice(0, 200);
-  const typed = (kind, msg) => Object.assign(new Error(msg), { kind, status: res.status });
-  if (res.status === 401 || res.status === 403) return typed(S.remote && S.remote.auth === 'session' ? 'authsession' : 'auth', detail);
-  if (res.status === 404) return typed('remote404', detail);
+  try { const j = JSON.parse(text); detail = (j.error && (j.error.message || j.error)) || text; } catch { detail = text; }
+  detail = String(detail || '').slice(0, 200);
+  const typed = (kind, msg) => Object.assign(new Error(msg), { kind, status });
+  if (status === 401 || status === 403) return typed(S.remote && S.remote.auth === 'session' ? 'authsession' : 'auth', detail);
+  if (status === 404) return typed('remote404', detail);
   if (/memory/i.test(detail)) return typed('remotemem', detail);
-  return typed('servererr', 'HTTP ' + res.status + (detail ? ' — ' + detail : ''));
+  return typed('servererr', 'HTTP ' + status + (detail ? ' — ' + detail : ''));
+}
+async function remoteHttpError(res) {
+  let t = '';
+  try { t = await res.text(); } catch { /* ignoré */ }
+  return httpErrorFrom(res.status, t);
 }
 
 const noThink = new Set();   // modèles du serveur qui refusent le mode « réflexion »
@@ -405,12 +407,106 @@ const stripThink = (s) => String(s).replace(/<think>[\s\S]*?(<\/think>|$)/g, '')
 /* Génération via Ollama (API native /api/chat) : fixe le contexte réel (num_ctx) et reçoit la
    réflexion à part du texte. Le flux est une suite de lignes JSON. La réflexion est insérée dans
    le message entre <think>…</think> (affichée dans un bloc repliable, retirée de l'historique).
-   Renvoie { tps, toolCalls } : toolCalls = appels d'outils demandés par le modèle (le cas échéant). */
+   Renvoie { tps, toolCalls } : toolCalls = appels d'outils demandés par le modèle (le cas échéant).
+   Deux voies : « tâche serveur » (la réponse continue même si l'app passe en arrière-plan) quand le
+   serveur la propose, sinon flux direct. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const serverDown = (e) => Object.assign(new Error(String((e && e.message) || e)), { kind: 'server' });
+
+/* Flux direct : lignes JSON renvoyées par Ollama */
+async function* directLines(R, body, ac) {
+  let res;
+  try {
+    res = await fetch(R.url + '/api/chat', {
+      method: 'POST', signal: ac.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key },
+      body: JSON.stringify(body),
+    });
+  } catch (e) { if (ac.signal.aborted) return; throw serverDown(e); }
+  if (!res.ok) throw await remoteHttpError(res);
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) { yield buf.slice(0, i); buf = buf.slice(i + 1); }
+    }
+  } catch (e) { if (!ac.signal.aborted) throw serverDown(e); return; }
+  if (buf.trim()) yield buf;
+}
+
+/* Lecture d'une tâche du serveur par sondage long. Après une coupure (iPhone en veille, réseau),
+   on réessaie et on reprend au bon décalage : rien n'est perdu ni lu deux fois. */
+async function* pollLines(R, id, ac) {
+  let n = 0, since = 0;
+  for (;;) {
+    let j;
+    try {
+      const res = await fetch(R.url + '/_ll/chat/' + id + '?from=' + n + '&wait=20', { headers: { Authorization: 'Bearer ' + R.key }, signal: ac.signal, cache: 'no-store' });
+      if (res.status === 404 || res.status === 401 || res.status === 403) throw Object.assign(await remoteHttpError(res), { fatal: true, kind: res.status === 404 ? 'server' : undefined });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      j = await res.json();
+      since = 0;
+    } catch (e) {
+      if (ac.signal.aborted) return;
+      if (e && e.fatal) { if (e.kind === 'server') e.message = 'La réponse n\'est plus disponible sur le serveur (redémarrage ?).'; throw e; }
+      since = since || Date.now();
+      if (Date.now() - since > 180000) throw serverDown(e);
+      await sleep(document.visibilityState === 'visible' ? 800 : 3000);
+      continue;
+    }
+    for (const l of j.lines || []) yield l;
+    n = j.next;
+    if (j.state === 'http') throw httpErrorFrom((j.http && j.http.status) || 502, (j.http && j.http.body) || '');
+    if (j.state === 'cut') throw serverDown(new Error('flux interrompu côté serveur'));
+    if (j.state === 'done' || j.state === 'cancel') return;
+  }
+}
+
+/* Crée la tâche (le serveur appelle Ollama) puis la lit. « link » reçoit l'identifiant, pour pouvoir la retrouver. */
+async function* jobLines(R, body, ac, link) {
+  let res;
+  try {
+    res = await fetch(R.url + '/_ll/chat', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key }, body: JSON.stringify(body) });
+  } catch (e) { if (ac.signal.aborted) return; throw serverDown(e); }
+  if (res.status === 404) { caps.chat = false; yield* directLines(R, body, ac); return; }   // serveur ancien : flux direct
+  if (!res.ok) throw await remoteHttpError(res);
+  const { id } = await res.json();
+  link(id);
+  yield* pollLines(R, id, ac);
+}
+
+/* Décodage des lignes JSON d'Ollama vers le texte du message */
+function makeFeeder(onToken) {
+  const st = { n: 0, t1: 0, inThink: false, tps: null, toolCalls: [] };
+  const tick = () => { if (!st.n) st.t1 = performance.now(); st.n++; };
+  st.feed = (line) => {
+    line = String(line).trim();
+    if (!line) return;
+    let j; try { j = JSON.parse(line); } catch { return; }
+    if (j.error) throw Object.assign(new Error(String(j.error)), { kind: /memory/i.test(String(j.error)) ? 'remotemem' : 'servererr' });
+    const msg = j.message || {};
+    if (msg.thinking) { if (!st.inThink) { st.inThink = true; onToken('<think>'); } tick(); onToken(msg.thinking); }
+    if (msg.content) { if (st.inThink) { st.inThink = false; onToken('</think>'); } tick(); onToken(msg.content); }
+    if (Array.isArray(msg.tool_calls)) for (const c of msg.tool_calls) if (c && c.function && c.function.name) st.toolCalls.push({ name: c.function.name, args: c.function.arguments });
+    if (j.done && j.eval_count && j.eval_duration) st.tps = j.eval_count / (j.eval_duration / 1e9);
+  };
+  st.end = () => {
+    if (st.inThink) { st.inThink = false; onToken('</think>'); }   // réflexion jamais suivie d'une réponse : on referme le bloc
+    if (st.tps == null && st.n > 1) { const dt = (performance.now() - st.t1) / 1000; if (dt > 0.2) st.tps = (st.n - 1) / dt; }
+    return { tps: st.tps, toolCalls: st.toolCalls };
+  };
+  return st;
+}
+
 async function generateRemote(m, messages, maxGen, onToken, tools) {
   const R = S.remote || {};
   const ac = E.ac || new AbortController();
   E.ac = ac;
-  const serverDown = (e) => Object.assign(new Error(String((e && e.message) || e)), { kind: 'server' });
   for (let attempt = 0; attempt < 3; attempt++) {
     const body = {
       model: m.remoteName, messages, stream: true, keep_alive: '30m',
@@ -418,57 +514,57 @@ async function generateRemote(m, messages, maxGen, onToken, tools) {
     };
     if (!noThink.has(m.remoteName)) body.think = S.think !== false;
     if (tools && tools.length && !noTools.has(m.remoteName)) body.tools = tools;
-    let res;
-    try {
-      res = await fetch(R.url + '/api/chat', {
-        method: 'POST', signal: ac.signal,
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key },
-        body: JSON.stringify(body),
-      });
-    } catch (e) {
-      if (ac.signal.aborted) return { tps: null };
-      throw serverDown(e);
-    }
-    if (!res.ok) {
-      const err = await remoteHttpError(res);
-      if (err.status === 400 && /think/i.test(err.message) && 'think' in body) { noThink.add(m.remoteName); continue; }   // modèle sans mode réflexion : on réessaie sans
-      if (err.status === 400 && /tool/i.test(err.message) && 'tools' in body) { noTools.add(m.remoteName); continue; }   // modèle sans outils
-      throw err;
-    }
 
-    let n = 0, t1 = 0, inThink = false, tps = null, buf = '';
-    const toolCalls = [];
-    const tick = () => { if (!n) t1 = performance.now(); n++; };
-    const feed = (line) => {
-      line = line.trim();
-      if (!line) return;
-      let j; try { j = JSON.parse(line); } catch { return; }
-      if (j.error) throw Object.assign(new Error(String(j.error)), { kind: /memory/i.test(String(j.error)) ? 'remotemem' : 'servererr' });
-      const msg = j.message || {};
-      if (msg.thinking) { if (!inThink) { inThink = true; onToken('<think>'); } tick(); onToken(msg.thinking); }
-      if (msg.content) { if (inThink) { inThink = false; onToken('</think>'); } tick(); onToken(msg.content); }
-      if (Array.isArray(msg.tool_calls)) for (const c of msg.tool_calls) if (c && c.function && c.function.name) toolCalls.push({ name: c.function.name, args: c.function.arguments });
-      if (j.done && j.eval_count && j.eval_duration) tps = j.eval_count / (j.eval_duration / 1e9);
-    };
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
+    const msg = gen.stream;
+    const link = (id) => { if (msg) { msg.job = { id, base: msg.content.length }; persist(); } };
+    const lines = caps.chat ? jobLines(R, body, ac, link) : directLines(R, body, ac);
+    const fx = makeFeeder(onToken);
     try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let i;
-        while ((i = buf.indexOf('\n')) >= 0) { feed(buf.slice(0, i)); buf = buf.slice(i + 1); }
-      }
-      feed(buf);
+      for await (const line of lines) fx.feed(line);
     } catch (e) {
-      if (!ac.signal.aborted) throw (e && e.kind ? e : serverDown(e));   // coupure en cours de route
+      if (!ac.signal.aborted) {
+        if (!fx.n && e.status === 400 && /think/i.test(e.message) && 'think' in body) { noThink.add(m.remoteName); continue; }   // modèle sans mode réflexion : on réessaie sans
+        if (!fx.n && e.status === 400 && /tool/i.test(e.message) && 'tools' in body) { noTools.add(m.remoteName); continue; }   // modèle sans outils
+        throw e.kind ? e : serverDown(e);
+      }
     }
-    if (inThink) onToken('</think>');   // réflexion jamais suivie d'une réponse : on referme le bloc
-    if (tps == null && n > 1) { const dt = (performance.now() - t1) / 1000; if (dt > 0.2) tps = (n - 1) / dt; }
-    return { tps, toolCalls };
+    return fx.end();
   }
   return { tps: null };
+}
+
+/* Après un rechargement de la page (iOS a fermé l'app en arrière-plan) : on retrouve la réponse
+   que le serveur a continué d'écrire et on la remet dans la conversation. */
+async function resumePendingJob() {
+  const msg = chat.messages[chat.messages.length - 1];
+  const R = S.remote;
+  if (!msg || msg.role !== 'assistant' || !msg.job || !R || gen.phase !== 'idle') return;
+  const job = msg.job;
+  gen.phase = 'generating'; gen.stopRequested = false; gen.stream = msg; gen.stick = true;
+  const ac = new AbortController(); E.ac = ac;
+  keepAwake(true); setSendMode();
+  msg.content = msg.content.slice(0, job.base);
+  renderChat();
+  let err = null, res = null;
+  const fx = makeFeeder((d) => { msg.content += d; scheduleStreamRender(); });
+  try { for await (const line of pollLines(R, job.id, ac)) fx.feed(line); res = fx.end(); }
+  catch (e) { err = e; }
+  keepAwake(false); E.ac = null;
+  gen.phase = 'idle'; gen.stream = null; gen.bubble = null;
+  delete msg.job;
+  if (err) {
+    msg.stopped = true;
+    if (stripThink(msg.content)) { msg.interrupted = true; msg.content = closeThink(msg.content); }
+    else if (!(msg.steps && msg.steps.length)) chat.messages.pop();
+    reportError(err, modelById(S.modelId), msg.interrupted ? [{ label: 'Reprendre', fn: continueGeneration }] : null);
+  } else if (res && res.toolCalls.length) {
+    msg.interrupted = true; msg.content = closeThink(msg.content);
+    notice('warn', 'La réponse s\'est arrêtée sur une demande d\'outil pendant que l\'app était fermée.', [{ label: 'Reprendre', fn: continueGeneration }]);
+  } else if (!msg.content.trim()) {
+    chat.messages.pop();
+  } else { msg.stats = { tps: res && res.tps }; }
+  await persist();
+  setSendMode(); renderChat(); refreshStatus();
 }
 
 async function generate(messages, maxGen, onToken, tools) {
@@ -516,8 +612,13 @@ async function demoGenerate(messages, onToken) {
   return { tps: null };
 }
 
+function cancelChatJob(job) {
+  const R = S.remote;
+  if (job && R) { try { fetch(R.url + '/_ll/chat/' + job.id + '/cancel', { method: 'POST', headers: { Authorization: 'Bearer ' + R.key }, keepalive: true }).catch(() => {}); } catch { /* ignoré */ } }
+}
 function stopGeneration() {
   gen.stopRequested = true;
+  if (gen.stream && gen.stream.job) cancelChatJob(gen.stream.job);
   try { if (E.kind === 'mlc') E.inst && E.inst.interruptGenerate(); else if (E.ac) E.ac.abort(); }
   catch (e) { console.warn('[LocalLM] stop', e); }
 }
@@ -763,8 +864,9 @@ async function submitImage(text) {
 async function fetchCaps() {
   const R = S.remote;
   caps.image = false;
+  if (!(R && R.url && R.key)) caps.chat = false;
   if (R && R.url && R.key) {
-    try { const r = await fetch(R.url + '/_ll/capabilities', { headers: { Authorization: 'Bearer ' + R.key } }); if (r.ok) caps.image = !!(await r.json()).image; } catch { /* serveur ancien ou injoignable */ }
+    try { const r = await fetch(R.url + '/_ll/capabilities', { headers: { Authorization: 'Bearer ' + R.key } }); if (r.ok) { const c = await r.json(); caps.image = !!c.image; caps.chat = !!c.chat; } else caps.chat = false; } catch { /* serveur ancien ou injoignable */ }
   }
   if (!caps.image) imgMode = false;
   renderToolbar(); renderImgSettings();
@@ -1117,6 +1219,7 @@ async function runGeneration(cont = false) {
     }
   } finally { keepAwake(false); E.ac = null; }
 
+  delete msg.job;
   gen.phase = 'idle'; gen.stream = null; gen.bubble = null;
   if (err) {
     const kind = classify(err);
@@ -1557,7 +1660,7 @@ async function boot() {
 
   if (hideLocalOn() && !(modelById(S.modelId) || {}).type?.startsWith('remote')) { S.modelId = remoteModels()[0].id; saveS(); }
   if (!modelById(S.modelId) || !usable(modelById(S.modelId)).ok) { const d = pickDefault(); S.modelId = d ? d.id : null; saveS(); }
-  renderModelSel(); renderToolbar(); renderChat(); setSendMode(); refreshStatus(); fetchCaps(); pollGens();
+  renderModelSel(); renderToolbar(); renderChat(); setSendMode(); refreshStatus(); fetchCaps().then(() => resumePendingJob()); pollGens();
   setInterval(() => { if (document.visibilityState === 'visible' && gen.phase === 'idle') refreshStatus(); }, 60000);
 
   const crashed = ls.get('locallm.loading', null);

@@ -11,7 +11,7 @@
    fichiers déjà demandés par la page.
    ===================================================================== */
 
-const VERSION = 'v3';                      // à incrémenter à chaque mise à jour
+const VERSION = 'v4';                      // à incrémenter à chaque mise à jour
 const SHELL = 'locallm-shell-' + VERSION;    // fichiers de l'app
 const CDN = 'locallm-cdn-' + VERSION;        // code des moteurs
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'esm.run', 'unpkg.com', 'fastly.jsdelivr.net', 'cdnjs.cloudflare.com'];   // cdnjs : lecteurs PDF / Excel / Word
@@ -79,6 +79,8 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
+  /* API du serveur (même origine) : jamais interceptée (sondage long, résultats d'images, recherche…) */
+  if (/^\/(_ll|api|v1)\//.test(url.pathname)) return;
   if (url.origin === self.location.origin) {
     event.respondWith(networkFirst(req));
   } else if (CDN_HOSTS.includes(url.hostname)) {
