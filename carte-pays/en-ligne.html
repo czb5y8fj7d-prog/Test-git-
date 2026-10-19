@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carte des pays — visualiseur Excel</title>
+<style>
+:root{
+  color-scheme: light;
+  --surface:#fcfcfb; --page:#f9f9f7;
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
+  --nodata:#efeeea; --stroke:#fcfcfb;
+  --accent:#2a78d6;
+  --cat1:#2a78d6; --cat2:#eb6834; --cat3:#1baf7a; --cat4:#eda100;
+  --cat5:#e87ba4; --cat6:#008300; --cat7:#4a3aa7; --cat8:#e34948;
+  --seq1:#cde2fb; --seq2:#9ec5f4; --seq3:#6da7ec; --seq4:#3987e5;
+  --seq5:#256abf; --seq6:#184f95; --seq7:#0d366b;
+  --other:#898781;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --surface:#1a1a19; --page:#0d0d0d;
+    --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --nodata:#262624; --stroke:#1a1a19;
+    --accent:#3987e5;
+    --cat1:#3987e5; --cat2:#d95926; --cat3:#199e70; --cat4:#c98500;
+    --cat5:#d55181; --cat6:#008300; --cat7:#9085e9; --cat8:#e66767;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:var(--page); color:var(--ink); font-size:14px;
+  display:flex; flex-direction:column;
+}
+header{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:10px 16px; background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+header h1{font-size:15px; font-weight:650; margin-right:4px}
+header .sub{color:var(--muted); font-size:12px}
+.spacer{flex:1}
+button, select, input[type=number], input[type=search]{
+  font:inherit; color:var(--ink); background:var(--surface);
+  border:1px solid var(--baseline); border-radius:8px; padding:6px 10px;
+}
+button{cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+button:disabled{opacity:.45; cursor:default}
+label.field{display:flex; align-items:center; gap:6px; color:var(--ink2); font-size:13px}
+input[type=number]{width:70px}
+main{flex:1; display:grid; grid-template-columns:290px 1fr 300px; min-height:0}
+@media (max-width: 980px){ main{grid-template-columns:1fr; overflow:auto} aside,#valuesPanel{max-height:300px} }
+aside{
+  border-right:1px solid var(--border); background:var(--surface);
+  display:flex; flex-direction:column; min-height:0;
+}
+aside .search{padding:10px; border-bottom:1px solid var(--border)}
+aside .search input{width:100%}
+#itemList{overflow-y:auto; flex:1}
+.item-row{
+  display:flex; align-items:baseline; gap:8px; width:100%; text-align:left;
+  padding:7px 12px; border:0; border-radius:0; background:none; cursor:pointer;
+  border-bottom:1px solid var(--grid);
+}
+.item-row:hover{background:var(--page)}
+.item-row.active{background:var(--accent); color:#fff}
+.item-row.active .rownum, .item-row.active .badge{color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.4)}
+.item-row .rownum{color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; min-width:34px}
+.item-row .lbl{flex:1; line-height:1.3}
+.badge{font-size:10px; color:var(--muted); border:1px solid var(--baseline); border-radius:20px; padding:1px 7px; white-space:nowrap}
+#mapArea{position:relative; display:flex; flex-direction:column; min-width:0; min-height:0}
+#mapWrap{flex:1; position:relative; min-height:280px; overflow:hidden}
+#mapWrap svg{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab}
+#mapWrap svg:active{cursor:grabbing}
+.country{fill:var(--nodata); stroke:var(--stroke); stroke-width:.5; vector-effect:non-scaling-stroke}
+.country.dim{opacity:.15}
+.country:hover{stroke:var(--ink); stroke-width:1.1}
+#zoomCtl{position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:6px}
+#zoomCtl button{width:34px; height:34px; padding:0; font-size:17px; line-height:1; box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#tooltip{
+  position:fixed; pointer-events:none; z-index:50; display:none; max-width:280px;
+  background:var(--surface); color:var(--ink); border:1px solid var(--border);
+  border-radius:8px; padding:8px 10px; font-size:13px;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+}
+#tooltip .tt-name{font-weight:650}
+#tooltip .tt-code{color:var(--muted); font-size:11px; margin-left:4px}
+#tooltip .tt-val{margin-top:3px; color:var(--ink2)}
+#legend{
+  padding:9px 14px; border-top:1px solid var(--border); background:var(--surface);
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--ink2);
+  min-height:40px;
+}
+.lg-item{display:flex; align-items:center; gap:6px}
+.swatch{width:13px; height:13px; border-radius:3.5px; border:1px solid var(--border); flex:none}
+#valuesPanel{
+  border-left:1px solid var(--border); background:var(--surface);
+  display:flex; flex-direction:column; min-height:0;
+}
+#valuesPanel .vp-head{padding:11px 14px 8px; border-bottom:1px solid var(--border)}
+#valuesPanel .vp-head h2{font-size:13px; font-weight:650}
+#valuesPanel .vp-head .sub{color:var(--muted); font-size:11.5px; margin-top:3px; line-height:1.35}
+#valueList{overflow-y:auto; flex:1}
+.val-row{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  padding:6px 14px; background:none; border:0; border-bottom:1px solid var(--grid); cursor:pointer;
+}
+.val-row:hover{background:var(--page)}
+.val-row.active{outline:2px solid var(--accent); outline-offset:-2px}
+.val-row .v{flex:1; line-height:1.3; overflow-wrap:anywhere}
+.val-row .n{color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums}
+#dropOverlay{
+  position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+  background:color-mix(in srgb, var(--page) 82%, transparent);
+}
+#dropOverlay .box{
+  text-align:center; border:2px dashed var(--baseline); border-radius:14px;
+  padding:42px 48px; background:var(--surface); max-width:430px;
+}
+#dropOverlay .box h2{font-size:17px; margin-bottom:8px}
+#dropOverlay .box p{color:var(--ink2); margin-bottom:16px; line-height:1.45}
+#warn{display:none; padding:7px 14px; font-size:12px; color:var(--ink2); background:var(--surface); border-top:1px solid var(--border)}
+#warn b{color:var(--ink)}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌍 Carte des pays</h1>
+  <span class="sub" id="fileName">aucun fichier chargé</span>
+  <span class="spacer"></span>
+  <label class="field hidden" id="sheetField">Feuille <select id="sheetSel"></select></label>
+  <label class="field hidden" id="hdrField">Ligne des codes ISO <input type="number" id="hdrRow" min="1"></label>
+  <button id="exportBtn" class="hidden">⬇ Récapitulatif des valeurs (CSV)</button>
+  <button class="primary" id="loadBtn">Charger un fichier Excel</button>
+  <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv" hidden>
+</header>
+<main>
+  <aside class="hidden" id="sidebar">
+    <div class="search"><input type="search" id="itemSearch" placeholder="Rechercher un item…"></div>
+    <div id="itemList" role="listbox"></div>
+  </aside>
+  <section id="mapArea">
+    <div id="mapWrap"></div>
+    <div id="zoomCtl" class="hidden">
+      <button id="zin" title="Zoom avant">+</button>
+      <button id="zout" title="Zoom arrière">−</button>
+      <button id="zreset" title="Réinitialiser" style="font-size:13px">⟲</button>
+    </div>
+    <div id="legend" class="hidden"></div>
+    <div id="warn"></div>
+    <div id="dropOverlay">
+      <div class="box">
+        <h2>Chargez votre fichier Excel</h2>
+        <p id="mapStatus">Glissez-déposez votre fichier <b>.xlsx</b> ici, ou cliquez sur le bouton.<br>
+        L’outil détecte la ligne des codes pays ISO&nbsp;3 (ligne&nbsp;36 par défaut), liste vos items
+        et colore la carte selon les valeurs de l’item sélectionné.<br>
+        <span style="font-size:12px;color:var(--muted)">Vos données restent dans votre navigateur — une connexion internet
+        est seulement nécessaire pour charger la carte et la bibliothèque à l’ouverture.</span></p>
+        <button class="primary" id="loadBtn2">Choisir un fichier…</button>
+      </div>
+    </div>
+  </section>
+  <section id="valuesPanel" class="hidden">
+    <div class="vp-head">
+      <h2 id="vpTitle">Valeurs</h2>
+      <div class="sub" id="vpSub"></div>
+    </div>
+    <div id="valueList"></div>
+  </section>
+</main>
+<div id="tooltip"></div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const CAT_VARS = ['--cat1','--cat2','--cat3','--cat4','--cat5','--cat6','--cat7','--cat8'];
+const SEQ_VARS = ['--seq1','--seq2','--seq3','--seq4','--seq5','--seq6','--seq7'];
+const GEOJSON_URL = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_0_countries.geojson';
+const ISO_ON_MAP = new Set();
+// alias fréquents → code utilisé par la carte
+const ALIAS = {XKX:'KOS', ROM:'ROU', ZAR:'COD', TMP:'TLS', BUR:'MMR', ADO:'AND', GER:'DEU', UK:'GBR'};
+
+let MAP_W = 1000, MAP_H = 432;
+let rows = [], headerRow = -1, colIso = [];   // colIso[c] = code ISO de la colonne c
+let items = [], filtered = [], current = null, highlightKey = null;
+let workbook = null;
+const paths = {};   // iso -> élément <path>
+
+/* ---------- projection Natural Earth I ---------- */
+const D2R = Math.PI / 180;
+function projRaw(lon, lat){
+  const l = lat * D2R, p2 = l * l, p4 = p2 * p2;
+  const x = lon * D2R * (0.8707 - 0.131979 * p2 - 0.013791 * p4 + p4 * p4 * p2 * (0.003971 - 0.001529 * p2));
+  const y = l * (1.007226 + p2 * (0.015085 + p4 * (-0.044475 + 0.028874 * p2 - 0.005916 * p4)));
+  return [x, -y];
+}
+
+/* ---------- chargement + construction de la carte ---------- */
+const mapReady = (async function buildMap(){
+  let gj;
+  try{
+    const resp = await fetch(GEOJSON_URL);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    gj = await resp.json();
+  }catch(err){
+    $('#mapStatus').innerHTML = '⚠ Impossible de télécharger la carte du monde (' +
+      err.message + ').<br>Vérifiez votre connexion internet puis rechargez la page.';
+    throw err;
+  }
+
+  // étendue du monde projeté (sans l'Antarctique)
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  for (let lon = -180; lon <= 180; lon += 2) for (let lat = -56; lat <= 84; lat += 2){
+    const [x, y] = projRaw(lon, lat);
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  const S = MAP_W / (maxX - minX);
+  MAP_H = Math.ceil((maxY - minY) * S);
+  const proj = (lon, lat) => {
+    const [x, y] = projRaw(lon, lat);
+    return [(x - minX) * S, (y - minY) * S];
+  };
+  const ringPath = ring => {
+    let d = '', px = null, py = null, n = 0;
+    for (const pt of ring){
+      const [x, y] = proj(pt[0], pt[1]);
+      const rx = Math.round(x * 10) / 10, ry = Math.round(y * 10) / 10;
+      if (rx === px && ry === py) continue;
+      d += (n === 0 ? 'M' : 'L') + rx + ' ' + ry;
+      px = rx; py = ry; n++;
+    }
+    return n >= 3 ? d + 'Z' : '';
+  };
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${MAP_W} ${MAP_H}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  for (const f of gj.features){
+    const p = f.properties;
+    const iso = p.ISO_A3 && p.ISO_A3 !== '-99' ? p.ISO_A3 : (p.ADM0_A3 || '');
+    if (!iso || iso === 'ATA') continue;           // Antarctique exclu
+    const name = p.NAME_FR || p.NAME || p.ADMIN || iso;
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    let d = '';
+    for (const poly of polys) for (const ring of poly) d += ringPath(ring);
+    if (!d) continue;
+    const el = document.createElementNS('http://www.w3.org/2000/svg','path');
+    el.setAttribute('d', d);
+    el.setAttribute('class','country');
+    el.dataset.iso = iso; el.dataset.name = name;
+    svg.appendChild(el);
+    paths[iso] = el;
+    ISO_ON_MAP.add(iso);
+  }
+  $('#mapWrap').appendChild(svg);
+
+  // infobulle
+  const tt = $('#tooltip');
+  svg.addEventListener('pointermove', e => {
+    const t = e.target;
+    if (!t.dataset || !t.dataset.iso){ tt.style.display='none'; return; }
+    const iso = t.dataset.iso;
+    let val = '';
+    if (current){
+      const v = current.vals[iso];
+      val = v === undefined ? '<i>pas de donnée</i>' : escapeHtml(fmtVal(v));
+    }
+    tt.innerHTML = `<span class="tt-name">${escapeHtml(t.dataset.name)}</span><span class="tt-code">${iso}</span>` +
+                   (current ? `<div class="tt-val">${escapeHtml(current.label)} : ${val}</div>` : '');
+    tt.style.display='block';
+    const x = Math.min(e.clientX + 14, innerWidth - tt.offsetWidth - 8);
+    const y = Math.min(e.clientY + 14, innerHeight - tt.offsetHeight - 8);
+    tt.style.left = x + 'px'; tt.style.top = y + 'px';
+  });
+  svg.addEventListener('pointerleave', () => tt.style.display='none');
+
+  // zoom / déplacement
+  let vb = {x:0, y:0, w:MAP_W, h:MAP_H};
+  const apply = () => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  function zoomAt(f, cx, cy){ // f<1 = zoom avant ; (cx,cy) en coordonnées viewBox
+    const nw = Math.min(MAP_W*4, Math.max(MAP_W/40, vb.w*f));
+    const nh = nw * MAP_H / MAP_W;
+    vb.x = cx - (cx - vb.x) * nw / vb.w;
+    vb.y = cy - (cy - vb.y) * nh / vb.h;
+    vb.w = nw; vb.h = nh; apply();
+  }
+  function clientToVb(e){
+    const r = svg.getBoundingClientRect();
+    // preserveAspectRatio meet : facteur unique
+    const s = Math.min(r.width / vb.w, r.height / vb.h);
+    const ox = (r.width - vb.w*s)/2, oy = (r.height - vb.h*s)/2;
+    return [vb.x + (e.clientX - r.left - ox)/s, vb.y + (e.clientY - r.top - oy)/s, s];
+  }
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const [cx, cy] = clientToVb(e);
+    zoomAt(e.deltaY > 0 ? 1.25 : 0.8, cx, cy);
+  }, {passive:false});
+  let drag = null;
+  svg.addEventListener('pointerdown', e => {
+    drag = {x:e.clientX, y:e.clientY, vx:vb.x, vy:vb.y, s:clientToVb(e)[2]};
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) return;
+    vb.x = drag.vx - (e.clientX - drag.x)/drag.s;
+    vb.y = drag.vy - (e.clientY - drag.y)/drag.s;
+    apply();
+  });
+  svg.addEventListener('pointerup', () => drag = null);
+  $('#zin').onclick  = () => zoomAt(0.8,  vb.x+vb.w/2, vb.y+vb.h/2);
+  $('#zout').onclick = () => zoomAt(1.25, vb.x+vb.w/2, vb.y+vb.h/2);
+  $('#zreset').onclick = () => { vb = {x:0,y:0,w:MAP_W,h:MAP_H}; apply(); };
+})();
+
+/* ---------- chargement du fichier ---------- */
+$('#loadBtn').onclick = $('#loadBtn2').onclick = () => $('#fileInput').click();
+$('#fileInput').addEventListener('change', e => { if (e.target.files[0]) readFile(e.target.files[0]); });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) readFile(f);
+});
+
+async function readFile(f){
+  await mapReady;
+  try{
+    const buf = await f.arrayBuffer();
+    workbook = XLSX.read(buf, {type:'array', cellDates:true});
+  }catch(err){
+    alert('Impossible de lire ce fichier : ' + err.message);
+    return;
+  }
+  $('#fileName').textContent = f.name;
+  const sel = $('#sheetSel');
+  sel.innerHTML = workbook.SheetNames.map(n => `<option>${escapeHtml(n)}</option>`).join('');
+  $('#sheetField').classList.toggle('hidden', workbook.SheetNames.length < 2);
+  sel.onchange = () => loadSheet(sel.value);
+  loadSheet(workbook.SheetNames[0]);
+  $('#dropOverlay').classList.add('hidden');
+  for (const id of ['sidebar','valuesPanel','exportBtn','hdrField','zoomCtl','legend'])
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function loadSheet(name){
+  rows = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header:1, raw:true, defval:null});
+  headerRow = detectHeaderRow();
+  $('#hdrRow').value = headerRow + 1;
+  rebuild();
+}
+
+$('#hdrRow').addEventListener('change', () => {
+  const v = parseInt($('#hdrRow').value, 10);
+  if (v >= 1 && v <= rows.length){ headerRow = v - 1; rebuild(); }
+});
+
+function normIso(v){
+  if (v == null) return null;
+  let s = String(v).trim().toUpperCase();
+  if (ALIAS[s]) s = ALIAS[s];
+  return /^[A-Z]{3}$/.test(s) ? s : null;
+}
+
+function detectHeaderRow(){
+  let best = -1, bestScore = 0;
+  for (let r = 0; r < rows.length; r++){
+    let score = 0;
+    for (let c = 1; c < (rows[r] || []).length; c++){
+      const s = normIso(rows[r][c]);
+      if (s && ISO_ON_MAP.has(s)) score++;
+    }
+    if (score > bestScore){ bestScore = score; best = r; }
+  }
+  if (bestScore >= 3) return best;
+  return Math.min(35, Math.max(0, rows.length - 1));   // repli : ligne 36
+}
+
+function rebuild(){
+  // colonnes → ISO
+  colIso = []; const unknown = [];
+  const hdr = rows[headerRow] || [];
+  for (let c = 1; c < hdr.length; c++){
+    const s = normIso(hdr[c]);
+    colIso[c] = s;
+    if (s && !ISO_ON_MAP.has(s)) unknown.push(s);
+  }
+  const nCols = colIso.filter(Boolean).length;
+
+  // items = toutes les autres lignes ayant au moins une valeur
+  items = [];
+  for (let r = 0; r < rows.length; r++){
+    if (r === headerRow) continue;
+    const row = rows[r] || [];
+    const vals = {}; let count = 0;
+    for (let c = 1; c < row.length; c++){
+      if (!colIso[c]) continue;
+      const v = row[c];
+      if (v === null || v === '') continue;
+      vals[colIso[c]] = v; count++;
+    }
+    if (!count) continue;
+    const label = (row[0] !== null && String(row[0]).trim() !== '') ? String(row[0]).trim() : 'Ligne ' + (r + 1);
+    items.push(analyzeItem({row:r, label, vals, count}));
+  }
+
+  const w = $('#warn');
+  if (unknown.length){
+    w.style.display = 'block';
+    w.innerHTML = `⚠ Codes non reconnus sur la carte (colonnes ignorées pour l’affichage) : <b>${unknown.join(', ')}</b>`;
+  } else w.style.display = 'none';
+
+  $('#itemSearch').value = '';
+  renderItemList();
+  $('#vpSub').textContent = `${nCols} pays détectés en ligne ${headerRow + 1} — ${items.length} items`;
+  if (items.length) selectItem(items[0]); else { current = null; paintAll(); renderLegend(); }
+}
+
+/* ---------- analyse d'un item ---------- */
+function toNum(v){
+  if (typeof v === 'number') return v;
+  if (v instanceof Date) return null;
+  const s = String(v).trim().replace(/ |\s/g, '').replace(',', '.');
+  if (s === '' || !/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?%?$/.test(s)) return null;
+  return parseFloat(s);
+}
+function fmtVal(v){
+  if (v instanceof Date) return v.toLocaleDateString('fr-FR');
+  if (typeof v === 'number') return v.toLocaleString('fr-FR', {maximumFractionDigits: 4});
+  return String(v);
+}
+function fmtNum(n){ return n.toLocaleString('fr-FR', {maximumFractionDigits: 2}); }
+
+function analyzeItem(it){
+  const values = Object.values(it.vals);
+  const nums = values.map(toNum);
+  it.numeric = values.length > 0 && nums.every(n => n !== null);
+  // valeurs distinctes (clé = représentation texte)
+  const dist = new Map();
+  for (const [iso, v] of Object.entries(it.vals)){
+    const k = it.numeric ? String(toNum(v)) : String(v instanceof Date ? fmtVal(v) : String(v).trim());
+    if (!dist.has(k)) dist.set(k, {key:k, label: it.numeric ? fmtNum(toNum(v)) : (v instanceof Date ? fmtVal(v) : String(v).trim()), num: it.numeric ? toNum(v) : null, count:0, isos:[]});
+    const d = dist.get(k); d.count++; d.isos.push(iso);
+  }
+  it.distinct = [...dist.values()];
+  if (it.numeric){
+    it.distinct.sort((a,b) => a.num - b.num);
+    it.min = Math.min(...nums); it.max = Math.max(...nums);
+  } else {
+    it.distinct.sort((a,b) => b.count - a.count || a.label.localeCompare(b.label, 'fr'));
+  }
+  return it;
+}
+
+/* ---------- échelle de couleurs ----------
+   numérique, > 7 valeurs distinctes  → 7 classes d'intervalles égaux (rampe séquentielle)
+   numérique, ≤ 7 valeurs distinctes  → une teinte de la rampe par valeur (croissant)
+   catégoriel ≤ 8 valeurs             → palette catégorielle fixe
+   catégoriel > 8 valeurs             → 7 premières (par fréquence) + « Autres » */
+function buildScale(it){
+  if (it.numeric && it.distinct.length > 7){
+    const span = it.max - it.min || 1;
+    const bins = SEQ_VARS.map((v, i) => ({
+      cssVar: v,
+      from: it.min + span * i / 7,
+      to:   it.min + span * (i + 1) / 7,
+    }));
+    return {
+      type: 'bins', bins,
+      colorOf: iso => {
+        const n = toNum(it.vals[iso]);
+        if (n === null) return null;
+        let i = Math.floor((n - it.min) / span * 7);
+        if (i > 6) i = 6; if (i < 0) i = 0;
+        return SEQ_VARS[i];
+      },
+      keyOf: iso => {
+        const n = toNum(it.vals[iso]);
+        return n === null ? null : String(n);
+      },
+    };
+  }
+  if (it.numeric){
+    const k = it.distinct.length;
+    // sous-ensemble de la rampe, réparti du clair au foncé (ordinal : à partir de --seq2)
+    const map = {};
+    it.distinct.forEach((d, i) => {
+      const idx = k <= 1 ? 3 : Math.round(1 + 5 * i / (k - 1));
+      map[d.key] = SEQ_VARS[idx];
+    });
+    return catScale(it, map, null);
+  }
+  const map = {}; let other = null;
+  if (it.distinct.length <= 8){
+    it.distinct.forEach((d, i) => map[d.key] = CAT_VARS[i]);
+  } else {
+    it.distinct.slice(0, 7).forEach((d, i) => map[d.key] = CAT_VARS[i]);
+    other = '--other';
+  }
+  return catScale(it, map, other);
+}
+function catScale(it, map, other){
+  const keyFn = iso => {
+    const v = it.vals[iso];
+    if (v === undefined) return null;
+    return it.numeric ? String(toNum(v)) : String(v instanceof Date ? fmtVal(v) : String(v).trim());
+  };
+  return {
+    type: 'cat', map, other,
+    colorOf: iso => { const k = keyFn(iso); return k === null ? null : (map[k] || other); },
+    keyOf: keyFn,
+  };
+}
+
+/* ---------- sélection & rendu ---------- */
+function selectItem(it){
+  current = it;
+  current.scale = buildScale(it);
+  highlightKey = null;
+  document.querySelectorAll('.item-row').forEach(el =>
+    el.classList.toggle('active', +el.dataset.row === it.row));
+  paintAll();
+  renderLegend();
+  renderValues();
+}
+
+function paintAll(){
+  for (const [iso, p] of Object.entries(paths)){
+    let cssVar = null, key = null;
+    if (current){ cssVar = current.scale.colorOf(iso); key = current.scale.keyOf(iso); }
+    p.style.fill = cssVar ? `var(${cssVar})` : '';
+    p.classList.toggle('dim', highlightKey !== null && key !== highlightKey);
+  }
+}
+
+function renderLegend(){
+  const lg = $('#legend');
+  if (!current){ lg.innerHTML = ''; return; }
+  const s = current.scale;
+  let html = `<b style="color:var(--ink)">${escapeHtml(current.label)}</b>`;
+  if (s.type === 'bins'){
+    html += s.bins.map(b =>
+      `<span class="lg-item"><span class="swatch" style="background:var(${b.cssVar})"></span>${fmtNum(b.from)} – ${fmtNum(b.to)}</span>`).join('');
+  } else {
+    const shown = current.distinct.filter(d => s.map[d.key]).slice(0, 8);
+    html += shown.map(d =>
+      `<span class="lg-item"><span class="swatch" style="background:var(${s.map[d.key]})"></span>${escapeHtml(d.label)}</span>`).join('');
+    if (s.other) html += `<span class="lg-item"><span class="swatch" style="background:var(--other)"></span>Autres</span>`;
+  }
+  html += `<span class="lg-item"><span class="swatch" style="background:var(--nodata)"></span>pas de donnée</span>`;
+  lg.innerHTML = html;
+}
+
+function renderValues(){
+  $('#vpTitle').textContent = 'Valeurs — ' + current.label;
+  const s = current.scale;
+  const list = $('#valueList');
+  list.innerHTML = current.distinct.map(d => {
+    const cssVar = s.type === 'bins'
+      ? SEQ_VARS[Math.min(6, Math.max(0, Math.floor((d.num - current.min) / ((current.max - current.min) || 1) * 7)))]
+      : (s.map[d.key] || s.other || '--nodata');
+    return `<button class="val-row" data-key="${escapeHtml(d.key)}">
+      <span class="swatch" style="background:var(${cssVar})"></span>
+      <span class="v">${escapeHtml(d.label)}</span>
+      <span class="n">${d.count} pays</span></button>`;
+  }).join('');
+  $('#vpSub').textContent = `${current.distinct.length} valeur${current.distinct.length>1?'s':''} distincte${current.distinct.length>1?'s':''} · ${current.count} pays renseignés (ligne ${current.row + 1})`;
+  list.querySelectorAll('.val-row').forEach(el => el.onclick = () => {
+    const k = el.dataset.key;
+    highlightKey = (highlightKey === k) ? null : k;
+    list.querySelectorAll('.val-row').forEach(x => x.classList.toggle('active', x.dataset.key === highlightKey));
+    paintAll();
+  });
+}
+
+/* ---------- liste des items ---------- */
+function renderItemList(){
+  const q = $('#itemSearch').value.trim().toLowerCase();
+  filtered = q ? items.filter(it => it.label.toLowerCase().includes(q) || String(it.row + 1) === q) : items;
+  $('#itemList').innerHTML = filtered.map(it =>
+    `<button class="item-row${current && current.row === it.row ? ' active' : ''}" data-row="${it.row}">
+      <span class="rownum">L${it.row + 1}</span>
+      <span class="lbl">${escapeHtml(it.label)}</span>
+      <span class="badge">${it.numeric ? 'num' : 'cat'} · ${it.distinct.length}</span>
+    </button>`).join('');
+  $('#itemList').querySelectorAll('.item-row').forEach(el =>
+    el.onclick = () => selectItem(items.find(it => it.row === +el.dataset.row)));
+}
+$('#itemSearch').addEventListener('input', renderItemList);
+
+/* ---------- export CSV du récapitulatif ---------- */
+$('#exportBtn').onclick = () => {
+  const esc = s => '"' + String(s).replace(/"/g, '""') + '"';
+  const lines = ['ligne;item;type;pays renseignés;valeurs distinctes;détail des valeurs (valeur = nb pays)'];
+  for (const it of items){
+    const detail = it.distinct.map(d => `${d.label} = ${d.count}`).join(' | ');
+    lines.push([it.row + 1, esc(it.label), it.numeric ? 'numérique' : 'catégoriel', it.count, it.distinct.length, esc(detail)].join(';'));
+  }
+  const blob = new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'recapitulatif-valeurs.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>

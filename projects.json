@@ -1,0 +1,50 @@
+[
+  {
+    "slug": "lumea",
+    "dir": "lumea",
+    "title": "LUMÉA",
+    "desc": "Site vitrine de compléments alimentaires : produits, quiz et bilan bien-être",
+    "icon": "🌿",
+    "cat": "Sites vitrines"
+  },
+  {
+    "slug": "maison-lambert",
+    "dir": "maison-lambert",
+    "title": "Maison Lambert",
+    "desc": "Site vitrine d'une boucherie-charcuterie-traiteur",
+    "icon": "🥩",
+    "cat": "Sites vitrines"
+  },
+  {
+    "slug": "nutriglow",
+    "dir": "nutriglow",
+    "title": "NutriGlow — Perte de poids",
+    "desc": "Assistant de perte de poids",
+    "icon": "🥗",
+    "cat": "Applications"
+  },
+  {
+    "slug": "nutriglow-adaptive",
+    "dir": "nutriglow-adaptive",
+    "title": "NutriGlow Adaptive",
+    "desc": "Planificateur de repas pour mobile, tiré du classeur Excel",
+    "icon": "📱",
+    "cat": "Applications"
+  },
+  {
+    "slug": "ebook",
+    "dir": "ebook",
+    "title": "Éditeur d'ebook",
+    "desc": "Écrire un ebook et l'exporter en PDF",
+    "icon": "📖",
+    "cat": "Outils"
+  },
+  {
+    "slug": "carte-pays",
+    "dir": "carte-pays",
+    "title": "Carte des pays",
+    "desc": "Colorier une carte du monde depuis un fichier Excel (codes pays ISO 3)",
+    "icon": "🗺️",
+    "cat": "Outils"
+  }
+]

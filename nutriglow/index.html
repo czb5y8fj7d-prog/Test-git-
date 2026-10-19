@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NutriGlow — Assistant Perte de Poids™</title>
+<meta name="description" content="NutriGlow Assistant Perte de Poids™ : votre repère protéines du jour calculé automatiquement, des suggestions de repas, un planning de semaine et une liste de courses générée toute seule. Sans compter les calories." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🌸</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#00007A;
+  --teal:#0E8F79;
+  --teal-dark:#0a6e5d;
+  --mint:#E9FBF6;
+  --mint-2:#DFF6EE;
+  --yellow:#F8D848;
+  --yellow-dark:#E8BE1A;
+  --bg-soft:#F4F6FB;
+  --cream:#FFF8E1;
+  --muted:#8C93AD;
+  --white:#FFFFFF;
+  --line:#E4E8F2;
+  --danger:#E0655A;
+  --radius-lg:22px;
+  --radius-md:16px;
+  --radius-sm:10px;
+  --shadow-soft:0 10px 30px -12px rgba(0,0,122,0.14);
+  --shadow-card:0 4px 18px -6px rgba(0,0,122,0.10);
+  font-size:16px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;overflow-x:hidden;}
+body{
+  margin:0;
+  font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  color:var(--navy);
+  background:var(--bg-soft);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  width:100%;
+}
+h1,h2,h3,h4,.brand,.ng-nav-btn{font-family:'Quicksand',sans-serif;}
+h1,h2,h3,h4{margin:0 0 .4em;color:var(--navy);}
+p{line-height:1.6;margin:0 0 1em;}
+a{color:inherit;}
+button{font-family:inherit;cursor:pointer;}
+.container{max-width:1180px;margin:0 auto;padding:0 20px;}
+.emoji{font-style:normal;}
+
+/* ---------- Header / Nav ---------- */
+.ng-header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,0.92);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.ng-header-inner{
+  max-width:1240px;margin:0 auto;padding:12px 20px;
+  display:flex;align-items:center;gap:18px;
+}
+.ng-logo{
+  display:flex;align-items:center;gap:8px;
+  font-weight:700;font-size:1.25rem;color:var(--navy);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
+}
+.ng-logo sup{font-size:.6em;color:var(--teal);}
+.ng-nav{
+  display:flex;gap:4px;flex-wrap:wrap;flex:1;justify-content:flex-end;
+}
+.ng-nav-btn{
+  border:none;background:transparent;color:var(--navy);
+  padding:9px 13px;border-radius:999px;font-size:.88rem;font-weight:600;
+  display:flex;align-items:center;gap:6px;transition:background .15s, color .15s;
+  white-space:nowrap;
+}
+.ng-nav-btn:hover{background:var(--mint);}
+.ng-nav-btn.active{background:var(--teal);color:#fff;}
+.ng-burger{display:none;border:none;background:var(--mint);color:var(--navy);border-radius:10px;padding:8px 12px;font-size:1.1rem;}
+
+@media (max-width:980px){
+  .ng-nav{
+    position:fixed;top:64px;left:0;right:0;width:100%;height:calc(100vh - 64px);
+    background:#fff;flex:none;flex-direction:column;
+    padding:14px 20px 30px;gap:2px;justify-content:flex-start;
+    transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;
+  }
+  .ng-nav.open{transform:translateX(0);box-shadow:-10px 0 30px rgba(0,0,0,.08);}
+  .ng-nav-btn{justify-content:flex-start;padding:13px 14px;font-size:1rem;}
+  .ng-burger{display:block;}
+}
+
+/* ---------- Panels ---------- */
+.ng-panel{display:none;padding:36px 0 70px;animation:fadeIn .35s ease;}
+.ng-panel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+.eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--mint);color:var(--teal-dark);font-weight:700;font-size:.78rem;
+  letter-spacing:.06em;text-transform:uppercase;padding:6px 14px;border-radius:999px;
+}
+.panel-head{margin-bottom:28px;}
+.panel-head h2{font-size:1.9rem;}
+.panel-head p{color:var(--muted);max-width:640px;}
+
+.card{
+  background:#fff;border-radius:var(--radius-lg);padding:24px;
+  box-shadow:var(--shadow-card);border:1px solid var(--line);
+}
+.card-soft{background:var(--mint);border:1px solid #cdeee4;}
+.card-cream{background:var(--cream);border:1px solid #f5e6ad;}
+
+.grid{display:grid;gap:20px;}
+.grid-2{grid-template-columns:1fr 1fr;}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+label{display:block;font-weight:700;font-size:.85rem;color:var(--navy);margin-bottom:6px;}
+select,input[type=text],input[type=number],textarea{
+  width:100%;padding:11px 13px;border-radius:var(--radius-sm);border:1.5px solid var(--line);
+  background:var(--mint);color:var(--navy);font-size:.95rem;font-family:inherit;font-weight:600;
+  transition:border-color .15s;
+}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--teal);}
+textarea{resize:vertical;min-height:60px;font-weight:500;}
+.field{margin-bottom:16px;}
+.field small{display:block;color:var(--muted);font-weight:500;margin-top:5px;font-size:.8rem;}
+
+.btn{
+  display:inline-flex;align-items:center;gap:8px;border:none;border-radius:999px;
+  padding:12px 22px;font-weight:700;font-size:.92rem;transition:transform .15s, box-shadow .15s;
+}
+.btn:hover{transform:translateY(-1px);}
+.btn-primary{background:var(--teal);color:#fff;box-shadow:0 8px 20px -8px rgba(14,143,121,.6);}
+.btn-yellow{background:var(--yellow);color:var(--navy);box-shadow:0 8px 20px -8px rgba(232,190,26,.6);}
+.btn-ghost{background:var(--mint);color:var(--teal-dark);}
+.btn-outline{background:#fff;color:var(--navy);border:1.5px solid var(--line);}
+.btn-sm{padding:7px 14px;font-size:.8rem;}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:.72rem;font-weight:800;letter-spacing:.02em;}
+.badge-mint{background:var(--mint);color:var(--teal-dark);}
+.badge-yellow{background:#FFF3C4;color:#8a6d00;}
+.badge-navy{background:#E7E7FA;color:var(--navy);}
+.badge-soft{background:var(--bg-soft);color:var(--muted);}
+
+/* ---------- Hero (Accueil) ---------- */
+.hero{
+  position:relative;overflow:hidden;border-radius:28px;
+  background:linear-gradient(135deg,#F4F6FB 0%,#E9FBF6 55%,#FFF8E1 100%);
+  padding:56px 40px;margin-bottom:40px;
+}
+.hero-blob{position:absolute;border-radius:50%;filter:blur(40px);opacity:.55;z-index:0;}
+.hb1{width:260px;height:260px;background:var(--teal);top:-80px;right:-60px;}
+.hb2{width:200px;height:200px;background:var(--yellow);bottom:-70px;left:-40px;}
+.hero-inner{position:relative;z-index:1;text-align:center;max-width:760px;margin:0 auto;}
+.hero-inner h1{font-size:2.5rem;line-height:1.15;margin:14px 0 10px;}
+.hero-inner .lead{font-size:1.15rem;color:var(--teal-dark);font-weight:700;margin-bottom:14px;}
+.hero-inner .desc{color:#444a63;font-size:1.02rem;max-width:600px;margin:0 auto 24px;}
+.hero-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+
+.ring-wrap{display:flex;justify-content:center;margin:30px 0 6px;position:relative;z-index:1;}
+.ring{position:relative;width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg);}
+.ring-label{position:relative;text-align:center;}
+.ring-label .num{font-size:1.7rem;font-weight:800;color:var(--navy);display:block;}
+.ring-label .txt{font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+
+.sommaire-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:34px 0;}
+@media(max-width:900px){.sommaire-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.sommaire-grid{grid-template-columns:1fr;}}
+.sommaire-card{
+  background:#fff;border-radius:var(--radius-md);padding:18px;text-align:left;
+  border:1px solid var(--line);transition:transform .15s, box-shadow .15s;box-shadow:var(--shadow-card);
+}
+.sommaire-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-soft);}
+.sommaire-card .ic{font-size:1.6rem;}
+.sommaire-card h4{font-size:1rem;margin:8px 0 4px;}
+.sommaire-card p{font-size:.82rem;color:var(--muted);margin:0;}
+
+.steps{display:flex;gap:18px;margin:34px 0;flex-wrap:wrap;}
+.step{flex:1;min-width:200px;background:#fff;border-radius:var(--radius-md);padding:20px;border:1px solid var(--line);box-shadow:var(--shadow-card);}
+.step .n{width:32px;height:32px;border-radius:50%;background:var(--yellow);color:var(--navy);font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.step h4{margin:0 0 4px;font-size:1rem;}
+.step p{font-size:.85rem;color:var(--muted);margin:0;}
+
+.callout{background:var(--mint);border-radius:var(--radius-lg);padding:26px;margin:34px 0;}
+.callout h3{color:var(--teal-dark);}
+.callout ul{margin:0;padding-left:20px;}
+.callout li{margin-bottom:8px;font-size:.94rem;}
+
+/* ---------- Aujourd'hui ---------- */
+.filters-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:8px;}
+@media(max-width:800px){.filters-row{grid-template-columns:1fr 1fr;}}
+.hint-box{
+  background:var(--cream);border-radius:var(--radius-sm);padding:12px 14px;font-size:.82rem;color:#6b5900;
+  margin:14px 0 30px;
+}
+.sugg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:36px;}
+@media(max-width:900px){.sugg-grid{grid-template-columns:1fr;}}
+.sugg-card{
+  background:#fff;border-radius:var(--radius-lg);padding:20px;border:2px solid var(--mint-2);
+  box-shadow:var(--shadow-card);position:relative;
+}
+.sugg-card .tag{position:absolute;top:-11px;left:18px;background:var(--teal);color:#fff;font-size:.68rem;font-weight:800;padding:4px 12px;border-radius:999px;}
+.sugg-card h4{font-size:1.08rem;margin:10px 0 6px;}
+.sugg-card .meta{font-size:.83rem;color:var(--teal-dark);font-weight:700;margin-bottom:8px;}
+.sugg-card .ing{font-size:.82rem;color:var(--muted);margin-bottom:8px;}
+.sugg-card .tip{font-size:.8rem;color:#8a6d00;background:var(--cream);padding:8px 10px;border-radius:var(--radius-sm);}
+.sugg-empty{color:var(--muted);font-style:italic;font-size:.88rem;}
+
+.journal-table{width:100%;border-collapse:separate;border-spacing:0 10px;}
+.journal-table td{padding:6px 8px;vertical-align:middle;}
+.journal-table td:first-child{font-weight:700;width:150px;color:var(--navy);}
+.journal-table select{margin:0;}
+.prot-pill{display:inline-block;min-width:56px;text-align:center;background:var(--mint);color:var(--teal-dark);font-weight:800;padding:8px 10px;border-radius:var(--radius-sm);font-size:.85rem;}
+
+.progress-wrap{display:flex;gap:26px;align-items:center;flex-wrap:wrap;margin:22px 0;}
+.bar-outer{flex:1;min-width:220px;height:16px;background:var(--bg-soft);border-radius:999px;overflow:hidden;border:1px solid var(--line);}
+.bar-inner{height:100%;background:linear-gradient(90deg,var(--teal),#3fc7a6);border-radius:999px;transition:width .4s ease;}
+.stat-trio{display:flex;gap:14px;flex-wrap:wrap;}
+.stat-chip{background:var(--bg-soft);border-radius:var(--radius-sm);padding:10px 16px;text-align:center;min-width:100px;}
+.stat-chip .v{font-size:1.25rem;font-weight:800;color:var(--navy);}
+.stat-chip .l{font-size:.7rem;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.03em;}
+.msg-box{background:var(--mint);border-radius:var(--radius-md);padding:16px 18px;font-weight:700;color:var(--teal-dark);margin-top:16px;}
+
+.tip-card{
+  display:flex;gap:14px;align-items:flex-start;background:var(--cream);border-radius:var(--radius-lg);
+  padding:20px 22px;margin-top:30px;border:1px solid #f5e6ad;
+}
+.tip-card .ic{font-size:1.8rem;}
+.tip-card h4{margin:0 0 4px;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:#8a6d00;}
+.tip-card p{margin:0;color:#5c4c00;font-weight:600;}
+
+/* ---------- Bibliothèque ---------- */
+.lib-toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px;align-items:center;}
+.lib-toolbar input[type=text]{max-width:280px;}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;}
+.chip{
+  border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;
+  padding:7px 14px;font-size:.82rem;font-weight:700;transition:all .15s;
+}
+.chip.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+.lib-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:960px){.lib-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){.lib-grid{grid-template-columns:1fr;}}
+.meal-card{background:#fff;border-radius:var(--radius-md);padding:16px;border:1px solid var(--line);box-shadow:var(--shadow-card);}
+.meal-card h4{font-size:.98rem;margin:0 0 6px;}
+.meal-card .badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.meal-card .ing{font-size:.8rem;color:var(--muted);margin-bottom:8px;}
+.meal-card .tip{font-size:.78rem;color:#666;border-top:1px dashed var(--line);padding-top:8px;}
+.lib-empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 0;}
+
+/* ---------- Planning ---------- */
+.plan-table-wrap{overflow-x:auto;}
+table.plan-table{width:100%;border-collapse:collapse;min-width:820px;}
+table.plan-table th{text-align:left;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:0 8px 10px;}
+table.plan-table td{padding:6px 8px;vertical-align:middle;}
+table.plan-table tr.day-row td:first-child{font-weight:800;color:var(--navy);white-space:nowrap;}
+table.plan-table select{font-size:.83rem;padding:8px 9px;}
+.day-total{font-weight:800;color:var(--teal-dark);background:var(--mint);border-radius:var(--radius-sm);padding:8px 10px;text-align:center;min-width:70px;}
+.plan-summary{display:flex;gap:16px;flex-wrap:wrap;margin-top:24px;}
+
+/* ---------- Courses ---------- */
+.courses-layout{display:grid;grid-template-columns:1.1fr 1fr;gap:24px;}
+@media(max-width:900px){.courses-layout{grid-template-columns:1fr;}}
+.rayon-block{margin-bottom:22px;}
+.rayon-block h4{font-size:.95rem;color:var(--teal-dark);text-transform:uppercase;letter-spacing:.03em;font-size:.78rem;margin-bottom:10px;}
+.ingredient-row{
+  display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);font-weight:600;font-size:.92rem;
+  cursor:pointer;user-select:none;
+}
+.ingredient-row input{width:19px;height:19px;accent-color:var(--teal);cursor:pointer;}
+.ingredient-row.checked span{text-decoration:line-through;color:var(--muted);}
+.day-meal-block{margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed var(--line);}
+.day-meal-block:last-child{border-bottom:none;}
+.day-meal-block .d{font-weight:800;font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+.day-meal-block .m{font-weight:700;margin:2px 0 2px;}
+.day-meal-block .i{font-size:.8rem;color:var(--muted);}
+
+/* ---------- Suivi ---------- */
+table.suivi-table{width:100%;border-collapse:collapse;min-width:760px;}
+table.suivi-table th{text-align:left;font-size:.75rem;color:var(--muted);text-transform:uppercase;padding:0 8px 10px;}
+table.suivi-table td{padding:6px 8px;}
+table.suivi-table tr td:first-child{font-weight:800;white-space:nowrap;}
+table.suivi-table select,table.suivi-table input{font-size:.85rem;padding:8px;}
+
+/* ---------- Dashboard ---------- */
+.dash-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
+@media(max-width:900px){.dash-cards{grid-template-columns:1fr 1fr;}}
+@media(max-width:560px){.dash-cards{grid-template-columns:1fr;}}
+.dash-card{background:#fff;border-radius:var(--radius-md);padding:18px;border:1px solid var(--line);box-shadow:var(--shadow-card);}
+.dash-card .l{font-size:.72rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.03em;}
+.dash-card .v{font-size:1.7rem;font-weight:800;color:var(--navy);margin:6px 0 2px;}
+.dash-card .s{font-size:.78rem;color:var(--muted);}
+.chart-card{padding:24px;}
+.chart-svg-wrap{position:relative;}
+.bar-tooltip{
+  position:absolute;pointer-events:none;background:var(--navy);color:#fff;font-size:.78rem;font-weight:700;
+  padding:6px 10px;border-radius:8px;transform:translate(-50%,-115%);opacity:0;transition:opacity .12s;white-space:nowrap;z-index:5;
+}
+.bar-tooltip.show{opacity:1;}
+
+/* ---------- Aide ---------- */
+.aide-item{display:flex;gap:16px;padding:18px 0;border-bottom:1px solid var(--line);}
+.aide-item:last-child{border-bottom:none;}
+.aide-item .ic{font-size:1.5rem;flex-shrink:0;width:40px;text-align:center;}
+.aide-item h4{margin:0 0 4px;font-size:1.02rem;}
+.aide-item p{margin:0;color:var(--muted);font-size:.92rem;}
+
+.footer-note{
+  text-align:center;color:var(--muted);font-size:.82rem;padding:26px 0 40px;
+}
+.reset-link{background:none;border:none;color:var(--danger);font-weight:700;text-decoration:underline;font-size:.82rem;cursor:pointer;}
+.section-tools{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+</style>
+</head>
+<body>
+
+<header class="ng-header">
+  <div class="ng-header-inner">
+    <div class="ng-logo" data-tab="accueil">🌸 <span>NutriGlow<sup>™</sup></span></div>
+    <button class="ng-burger" id="ngBurger" aria-label="Ouvrir le menu">☰</button>
+    <nav class="ng-nav" id="ngNav">
+      <button class="ng-nav-btn" data-tab="accueil">🏡 Accueil</button>
+      <button class="ng-nav-btn" data-tab="profil">🌸 Profil</button>
+      <button class="ng-nav-btn" data-tab="aujourdhui">🌿 Aujourd'hui</button>
+      <button class="ng-nav-btn" data-tab="bibliotheque">📚 Bibliothèque</button>
+      <button class="ng-nav-btn" data-tab="planning">🗓️ Planning</button>
+      <button class="ng-nav-btn" data-tab="courses">🛒 Courses</button>
+      <button class="ng-nav-btn" data-tab="suivi">📝 Suivi</button>
+      <button class="ng-nav-btn" data-tab="dashboard">📊 Tableau de bord</button>
+      <button class="ng-nav-btn" data-tab="aide">✨ Mode d'emploi</button>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ============ ACCUEIL ============ -->
+  <section class="ng-panel" data-panel="accueil">
+    <div class="hero">
+      <div class="hero-blob hb1"></div>
+      <div class="hero-blob hb2"></div>
+      <div class="hero-inner">
+        <span class="eyebrow">🌸 NutriGlow Assistant Perte de Poids™</span>
+        <h1>Perdez du poids sans compter les calories.</h1>
+        <p class="lead">Une seule décision par jour — et c'est nous qui la prenons pour vous.</p>
+        <p class="desc">Des repas riches en protéines, rassasiants et faciles à préparer. « Qu'est-ce que je mange aujourd'hui ? » — c'est la question qui revient chaque jour, et qui fatigue plus qu'on ne le pense. Cet assistant y répond à votre place, sans calcul de calories ni culpabilité.</p>
+        <div class="hero-cta">
+          <button class="btn btn-primary" data-tab="profil">Commencer par mon profil →</button>
+          <button class="btn btn-outline" data-tab="aujourdhui">Voir mes suggestions du jour 🌿</button>
+        </div>
+        <div class="ring-wrap">
+          <div class="ring">
+            <svg viewBox="0 0 120 120" width="150" height="150">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="#e4e8f2" stroke-width="12"/>
+              <circle id="heroRing" cx="60" cy="60" r="52" fill="none" stroke="#0E8F79" stroke-width="12" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+            </svg>
+            <div class="ring-label">
+              <span class="num" id="heroRingNum">0 g</span>
+              <span class="txt">objectif du jour</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="text-align:center;">Sommaire</h2>
+    <div class="sommaire-grid">
+      <div class="sommaire-card" data-tab="profil"><span class="ic">🌸</span><h4>Profil & Objectifs</h4><p>À remplir en premier, une seule fois</p></div>
+      <div class="sommaire-card" data-tab="aujourdhui"><span class="ic">🌿</span><h4>Aujourd'hui</h4><p>Vos suggestions + votre journal du jour</p></div>
+      <div class="sommaire-card" data-tab="dashboard"><span class="ic">📊</span><h4>Tableau de bord</h4><p>Votre semaine en un coup d'œil</p></div>
+      <div class="sommaire-card" data-tab="bibliotheque"><span class="ic">📚</span><h4>Bibliothèque de repas</h4><p>Toutes vos recettes, personnalisables</p></div>
+      <div class="sommaire-card" data-tab="planning"><span class="ic">🗓️</span><h4>Planning semaine</h4><p>Organisez vos 7 jours en un clin d'œil</p></div>
+      <div class="sommaire-card" data-tab="courses"><span class="ic">🛒</span><h4>Liste de courses</h4><p>Générée automatiquement, par rayon</p></div>
+      <div class="sommaire-card" data-tab="suivi"><span class="ic">📝</span><h4>Suivi hebdo</h4><p>Votre énergie, jour après jour</p></div>
+      <div class="sommaire-card" data-tab="aide"><span class="ic">✨</span><h4>Mode d'emploi</h4><p>Toutes les explications en détail</p></div>
+    </div>
+
+    <h2 style="text-align:center;">Démarrage en 3 étapes</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h4>Remplissez votre Profil</h4><p>2 minutes, une seule fois</p></div>
+      <div class="step"><div class="n">2</div><h4>Ouvrez « Aujourd'hui »</h4><p>et choisissez votre envie du moment</p></div>
+      <div class="step"><div class="n">3</div><h4>Suivez la suggestion</h4><p>ou choisissez librement dans votre bibliothèque</p></div>
+    </div>
+
+    <div class="callout">
+      <h3>✨ Pensé pour vous, même sans expérience</h3>
+      <ul>
+        <li>Vous ne remplissez presque rien : chaque champ se choisit dans un petit menu, comme sur un formulaire en ligne.</li>
+        <li>Tout est sauvegardé automatiquement dans votre navigateur : fermez la page, revenez demain, rien n'est perdu.</li>
+        <li>Pas un seul chiffre à calculer de votre côté : votre objectif protéines apparaît tout seul dès que vous avez rempli votre Profil.</li>
+        <li>Les protéines restent un repère, jamais une règle : vous gardez toujours la main sur ce que vous mangez.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ PROFIL ============ -->
+  <section class="ng-panel" data-panel="profil">
+    <div class="panel-head">
+      <span class="eyebrow">🌸 Profil & Objectifs</span>
+      <h2>À remplir une fois : cela sert de repère, jamais de règle.</h2>
+      <p>Renseignez votre poids, votre niveau d'activité et votre objectif — l'assistant en déduit vos protéines du jour et met à jour tout le reste, automatiquement.</p>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Vos informations</h3>
+        <div class="field">
+          <label for="fPrenom">Prénom</label>
+          <input type="text" id="fPrenom" placeholder="Ex : Claire" />
+        </div>
+        <div class="field">
+          <label for="fObjectif">Objectif principal</label>
+          <select id="fObjectif">
+            <option>Énergie & vitalité</option>
+            <option>Confiance en soi</option>
+            <option>Habitudes plus stables</option>
+            <option>Perte de poids en douceur</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fActivite">Niveau d'activité</label>
+          <select id="fActivite">
+            <option>Sédentaire</option>
+            <option>Modéré</option>
+            <option>Actif</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fRegime">Préférence alimentaire</label>
+          <select id="fRegime">
+            <option>Omnivore</option>
+            <option>Végétarien</option>
+            <option>Végan</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fPoids">Poids (kg) — <span id="fPoidsVal">65</span> kg</label>
+          <input type="range" id="fPoids" min="40" max="130" step="1" value="65" style="accent-color:var(--teal);width:100%;" />
+        </div>
+        <div class="field">
+          <label for="fManuel">Ajuster manuellement ?</label>
+          <select id="fManuel">
+            <option>Automatique (recommandé)</option>
+            <option value="manuel">Ajuster manuellement</option>
+          </select>
+        </div>
+        <div class="field" id="fManuelValWrap" style="display:none;">
+          <label for="fManuelVal">Objectif protéines choisi (g)</label>
+          <select id="fManuelVal"></select>
+        </div>
+        <p style="font-size:.82rem;color:var(--muted);">Vous n'avez aucun calcul à faire : ces réponses suffisent, l'assistant déduit vos protéines du jour et met à jour tout le reste.</p>
+      </div>
+
+      <div>
+        <div class="card card-soft" style="text-align:center;margin-bottom:20px;">
+          <h3 style="color:var(--teal-dark);">Votre objectif protéines</h3>
+          <div class="ring-wrap" style="margin:14px 0;">
+            <div class="ring">
+              <svg viewBox="0 0 120 120" width="150" height="150">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="#ffffff" stroke-width="12"/>
+                <circle id="profilRing" cx="60" cy="60" r="52" fill="none" stroke="#0E8F79" stroke-width="12" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/>
+              </svg>
+              <div class="ring-label">
+                <span class="num" id="profilRingNum">0</span>
+                <span class="txt">grammes / jour</span>
+              </div>
+            </div>
+          </div>
+          <p id="profilExplication" style="font-weight:700;color:var(--teal-dark);"></p>
+        </div>
+        <div class="card">
+          <h4>💡 Notre philosophie</h4>
+          <p style="font-size:.9rem;">Cet outil ne compte pas les calories : l'objectif est de vous simplifier la décision du repas, pas de vous faire calculer.</p>
+          <p style="font-size:.9rem;">Le suivi des protéines reste un repère libre, pas une règle stricte ; vous choisissez toujours quoi manger dans votre bibliothèque, dans l'ordre qui vous convient.</p>
+          <p style="font-size:.9rem;margin:0;">Pas de balance, pas de score, pas de culpabilité. Juste des repas qui rassasient.</p>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:30px;">
+      <button class="btn btn-primary" data-tab="aujourdhui">Étape suivante → Aujourd'hui</button>
+    </div>
+  </section>
+
+  <!-- ============ AUJOURD'HUI ============ -->
+  <section class="ng-panel" data-panel="aujourdhui">
+    <div class="panel-head">
+      <span class="eyebrow">🌿 Aujourd'hui</span>
+      <h2>Dites-nous ce que vous cherchez, on s'occupe du reste.</h2>
+    </div>
+
+    <h3>① Vos envies du moment</h3>
+    <div class="filters-row">
+      <div class="field" style="margin-bottom:0;">
+        <label>Type de repas</label>
+        <select id="filType">
+          <option>Peu importe</option><option>Petit-déjeuner</option><option>Déjeuner</option><option>Dîner</option><option>Collation</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Rapide (≤ 15 min) ?</label>
+        <select id="filRapide"><option>Peu importe</option><option>Oui</option><option>Non</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Régime <button class="chip" id="useProfilRegime" style="margin-left:6px;padding:2px 9px;font-size:.68rem;">utiliser mon profil</button></label>
+        <select id="filRegime"><option>Peu importe</option><option>Omnivore</option><option>Végétarien</option><option>Végan</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Envie du moment</label>
+        <select id="filEnvie"><option>Peu importe</option><option>Léger</option><option>Protéiné</option><option>Réconfortant</option><option>Sucré</option></select>
+      </div>
+    </div>
+    <div class="hint-box">💡 Laissez « Peu importe » partout et gardez seulement « Rapide » sur Oui : vous obtenez votre repas de secours en 2 minutes. Aucun filtre n'est obligatoire : les suggestions se recalculent à chaque choix.</div>
+
+    <h3>② Vos 3 suggestions</h3>
+    <div class="sugg-grid" id="suggGrid"></div>
+
+    <h3>③ Journal du jour</h3>
+    <p style="color:var(--muted);">Choisissez librement ce que vous mangez réellement : les suggestions ne sont que des idées.</p>
+    <div class="grid grid-2">
+      <div class="card">
+        <table class="journal-table">
+          <tr><td>Petit-déjeuner</td><td><select id="jPetitdej"></select></td><td><span class="prot-pill" id="jPetitdejProt">— g</span></td></tr>
+          <tr><td>Déjeuner</td><td><select id="jDejeuner"></select></td><td><span class="prot-pill" id="jDejeunerProt">— g</span></td></tr>
+          <tr><td>Dîner</td><td><select id="jDiner"></select></td><td><span class="prot-pill" id="jDinerProt">— g</span></td></tr>
+          <tr><td>Collation</td><td><select id="jCollation"></select></td><td><span class="prot-pill" id="jCollationProt">— g</span></td></tr>
+        </table>
+        <div class="progress-wrap">
+          <div class="bar-outer"><div class="bar-inner" id="jBar" style="width:0%;"></div></div>
+        </div>
+        <div class="stat-trio">
+          <div class="stat-chip"><div class="v" id="jTotal">0 g</div><div class="l">Total aujourd'hui</div></div>
+          <div class="stat-chip"><div class="v" id="jObjectif">0 g</div><div class="l">Objectif du jour</div></div>
+          <div class="stat-chip"><div class="v" id="jReste">0 g</div><div class="l">Il vous reste</div></div>
+        </div>
+        <div class="msg-box" id="jMessage"></div>
+      </div>
+      <div class="card">
+        <h4>Pourquoi seulement les protéines ?</h4>
+        <p style="font-size:.9rem;">Parce qu'elles rassasient, protègent la masse musculaire et rendent la perte de poids durable, sans compter une seule calorie.</p>
+        <p style="font-size:.9rem;margin:0;">Ce chiffre est un repère, pas une note. Une journée en dessous n'annule rien : revenez simplement demain.</p>
+      </div>
+    </div>
+
+    <div class="tip-card">
+      <span class="ic">💬</span>
+      <div><h4>Conseil du jour</h4><p id="tipToday"></p></div>
+    </div>
+
+    <div style="text-align:center;margin-top:30px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-outline" data-tab="bibliotheque">📚 Voir la bibliothèque</button>
+      <button class="btn btn-primary" data-tab="planning">Étape suivante → Planning de la semaine</button>
+      <button class="btn btn-outline" data-tab="dashboard">📊 Tableau de bord</button>
+    </div>
+  </section>
+
+  <!-- ============ BIBLIOTHÈQUE ============ -->
+  <section class="ng-panel" data-panel="bibliotheque">
+    <div class="panel-head">
+      <span class="eyebrow">📚 Bibliothèque de repas</span>
+      <h2>La base qui alimente vos suggestions</h2>
+      <p>42 repas prêts à l'emploi. Satiété et Effort se calculent seuls à partir du temps de préparation et des protéines. Les protéines sont une estimation par portion, volontairement arrondie : un repère, pas une pesée.</p>
+    </div>
+    <div class="lib-toolbar">
+      <input type="text" id="libSearch" placeholder="🔎 Rechercher un repas ou un ingrédient…" />
+      <div class="chip-row" id="libTypeChips"></div>
+      <div class="chip-row" id="libRegimeChips"></div>
+    </div>
+    <div class="lib-grid" id="libGrid"></div>
+  </section>
+
+  <!-- ============ PLANNING ============ -->
+  <section class="ng-panel" data-panel="planning">
+    <div class="panel-head">
+      <span class="eyebrow">🗓️ Planning de la semaine</span>
+      <h2>Choisissez un repas de votre bibliothèque pour chaque case</h2>
+      <p>La liste de courses se génère seule à partir de vos choix ici. Une case vide n'est pas un échec : laissez-la libre.</p>
+    </div>
+    <div class="card plan-table-wrap">
+      <table class="plan-table">
+        <thead><tr><th>Jour</th><th>Petit-déjeuner</th><th>Déjeuner</th><th>Dîner</th><th>Collation</th><th>Protéines / jour</th></tr></thead>
+        <tbody id="planBody"></tbody>
+      </table>
+    </div>
+    <div class="plan-summary">
+      <div class="stat-chip"><div class="v" id="planFilled">0 / 28</div><div class="l">Repas planifiés</div></div>
+      <div class="stat-chip"><div class="v" id="planTotal">0 g</div><div class="l">Total protéines semaine</div></div>
+    </div>
+    <p style="font-size:.85rem;color:var(--muted);margin-top:10px;">Astuce : planifiez d'abord vos dîners, le reste suit tout seul.</p>
+    <div style="text-align:center;margin-top:20px;">
+      <button class="btn btn-primary" data-tab="courses">Étape suivante → Liste de courses</button>
+    </div>
+  </section>
+
+  <!-- ============ COURSES ============ -->
+  <section class="ng-panel" data-panel="courses">
+    <div class="panel-head">
+      <span class="eyebrow">🛒 Liste de courses</span>
+      <h2>Générée automatiquement à partir de votre planning</h2>
+      <p>Regroupée par rayon, prête à cocher. <strong id="coursesCount">0 / 0 ingrédients cochés</strong></p>
+    </div>
+    <div class="courses-layout">
+      <div class="card" id="coursesList"></div>
+      <div class="card">
+        <h4>Vos repas de la semaine</h4>
+        <div id="coursesMeals"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SUIVI ============ -->
+  <section class="ng-panel" data-panel="suivi">
+    <div class="panel-head">
+      <span class="eyebrow">📝 Suivi hebdo</span>
+      <h2>Pas de balance ici : juste votre énergie et votre ressenti</h2>
+    </div>
+    <div class="card" style="overflow-x:auto;">
+      <table class="suivi-table">
+        <thead><tr><th>Jour</th><th>Énergie (1-5)</th><th>Sommeil (h)</th><th>Eau (verres)</th><th>Repas suivis</th><th>Note</th></tr></thead>
+        <tbody id="suiviBody"></tbody>
+        <tfoot>
+          <tr style="border-top:2px solid var(--line);">
+            <td style="font-weight:800;padding-top:14px;">Moyennes</td>
+            <td id="suiviAvgEnergie" style="font-weight:800;padding-top:14px;"></td>
+            <td id="suiviAvgSommeil" style="font-weight:800;padding-top:14px;"></td>
+            <td id="suiviAvgEau" style="font-weight:800;padding-top:14px;"></td>
+            <td id="suiviCountSuivi" style="font-weight:800;padding-top:14px;"></td>
+            <td style="padding-top:14px;font-size:.8rem;color:var(--muted);">Une semaine « moyenne » suivie vaut mieux qu'une semaine parfaite abandonnée.</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div style="text-align:center;margin-top:20px;">
+      <button class="btn btn-primary" data-tab="dashboard">Voir → Tableau de bord</button>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="ng-panel" data-panel="dashboard">
+    <div class="panel-head">
+      <span class="eyebrow">📊 Tableau de bord</span>
+      <h2>Votre semaine en un coup d'œil : sans balance, sans calories.</h2>
+    </div>
+
+    <h3>Aujourd'hui</h3>
+    <div class="dash-cards">
+      <div class="dash-card"><div class="l">Protéines du jour</div><div class="v" id="dProt">0 g</div><div class="s">estimation issue de votre journal</div></div>
+      <div class="dash-card"><div class="l">Il vous reste</div><div class="v" id="dReste">0 g</div><div class="s">avant votre repère quotidien</div></div>
+      <div class="dash-card"><div class="l">Progression</div><div class="v" id="dProg">0 %</div><div class="s">de votre repère du jour</div></div>
+    </div>
+
+    <h3>Votre semaine</h3>
+    <div class="dash-cards">
+      <div class="dash-card"><div class="l">Repas planifiés</div><div class="v" id="dPlanned">0 / 28</div><div class="s">cases remplies sur votre planning</div></div>
+      <div class="dash-card"><div class="l">Protéines / jour (moy.)</div><div class="v" id="dAvgDay">0 g</div><div class="s">moyenne des journées planifiées</div></div>
+      <div class="dash-card"><div class="l">Total de la semaine</div><div class="v" id="dWeekTot">0 g</div><div class="s">protéines estimées au planning</div></div>
+    </div>
+
+    <div class="dash-cards">
+      <div class="dash-card"><div class="l">Énergie moyenne</div><div class="v" id="dEnergie">—</div><div class="s">votre ressenti, jour après jour</div></div>
+      <div class="dash-card"><div class="l">Hydratation</div><div class="v" id="dEau">0</div><div class="s">verres d'eau notés cette semaine</div></div>
+      <div class="dash-card"><div class="l">Repas suivis</div><div class="v" id="dSuivi">0 / 7</div><div class="s">journées suivies comme prévu</div></div>
+    </div>
+
+    <div class="card chart-card">
+      <h3>Protéines par jour (planning)</h3>
+      <div class="chart-svg-wrap" id="chartWrap"></div>
+    </div>
+
+    <div class="tip-card">
+      <span class="ic">💬</span>
+      <div><h4>Conseil du jour</h4><p id="tipDash"></p></div>
+    </div>
+  </section>
+
+  <!-- ============ AIDE ============ -->
+  <section class="ng-panel" data-panel="aide">
+    <div class="panel-head">
+      <span class="eyebrow">✨ Mode d'emploi</span>
+      <h2>NutriGlow Assistant Perte de Poids™ : comment ça marche</h2>
+    </div>
+    <div class="card">
+      <div class="aide-item"><span class="ic">🌸</span><div><h4>Profil & Objectifs</h4><p>Sélectionnez votre prénom, votre objectif, votre niveau d'activité, votre régime et votre poids. Votre objectif protéines du jour est déduit automatiquement de ces réponses : vous n'avez aucun calcul à faire. Une option « Ajuster manuellement » reste disponible si un professionnel de santé vous a recommandé un chiffre précis.</p></div></div>
+      <div class="aide-item"><span class="ic">🌿</span><div><h4>Aujourd'hui</h4><p>Choisissez ce que vous cherchez (type de repas, rapide ou non, régime, envie) : 3 suggestions apparaissent instantanément, tirées de votre bibliothèque.</p></div></div>
+      <div class="aide-item"><span class="ic">🍽️</span><div><h4>Journal du jour</h4><p>Notez ce que vous mangez réellement en le choisissant librement dans la bibliothèque (pas obligé de suivre les suggestions) : le total de protéines et ce qu'il vous reste se calculent seuls.</p></div></div>
+      <div class="aide-item"><span class="ic">📚</span><div><h4>Bibliothèque de repas</h4><p>La base qui alimente tout l'outil : 42 recettes prêtes à l'emploi. Satiété et Effort se calculent automatiquement.</p></div></div>
+      <div class="aide-item"><span class="ic">🗓️</span><div><h4>Planning semaine</h4><p>Choisissez un repas par case dans les listes déroulantes. Les protéines par jour et le total de la semaine s'affichent à droite.</p></div></div>
+      <div class="aide-item"><span class="ic">🛒</span><div><h4>Liste de courses</h4><p>Elle se remplit toute seule à partir de votre planning, regroupe les ingrédients par rayon et se coche d'un clic.</p></div></div>
+      <div class="aide-item"><span class="ic">📝</span><div><h4>Suivi hebdo</h4><p>Notez votre énergie, votre sommeil, votre hydratation et votre ressenti : pas de pesée, juste votre corps qui parle.</p></div></div>
+      <div class="aide-item"><span class="ic">📊</span><div><h4>Tableau de bord</h4><p>Tous vos repères réunis : protéines du jour, semaine planifiée, énergie, hydratation, régularité. Aucune calorie, nulle part.</p></div></div>
+      <div class="aide-item"><span class="ic">💾</span><div><h4>Vos données restent chez vous</h4><p>Tout est sauvegardé automatiquement dans le stockage local de votre navigateur (localStorage). Rien n'est envoyé à un serveur. Si vous videz le cache de votre navigateur ou changez d'appareil, vos données ne suivront pas.</p></div></div>
+    </div>
+    <div class="callout" style="margin-top:24px;">
+      <p style="margin:0;"><strong>Important :</strong> cet outil ne compte que les protéines, pas les calories ; l'objectif reste de réduire la charge mentale du « qu'est-ce que je mange », pas de tout recalculer. L'objectif protéines est un repère général, pas une prescription médicale ; pour un besoin de santé précis, l'avis d'un professionnel de santé reste la meilleure ressource.</p>
+    </div>
+    <div style="text-align:center;margin-top:24px;">
+      <button class="reset-link" id="resetBtn">Réinitialiser toutes mes données</button>
+    </div>
+  </section>
+
+</main>
+
+<div class="footer-note">NutriGlow Assistant Perte de Poids™ — conçu pour simplifier votre décision du repas, pas pour la compliquer. 🌸</div>
+
+<script>
+/* ============================================================
+   DONNÉES (issues du classeur NutriGlow_Perte_de_Poids_FINAL.xlsx)
+   ============================================================ */
+const MEALS = [{"n": "Porridge banane-cannelle", "t": "Petit-déjeuner", "m": 8, "r": "Végan", "e": "Sucré", "i": "Flocons d'avoine, lait végétal, banane, cannelle", "p": 10, "a": "Préparez-le la veille au frigo, façon overnight oats."}, {"n": "Omelette aux légumes", "t": "Petit-déjeuner", "m": 12, "r": "Végétarien", "e": "Protéiné", "i": "Œufs, poivron, épinards, fromage râpé", "p": 20, "a": "Ajoutez les légumes déjà cuits pour aller plus vite."}, {"n": "Bol yaourt grec, fruits, granola", "t": "Petit-déjeuner", "m": 5, "r": "Végétarien", "e": "Léger", "i": "Yaourt grec, fruits de saison, granola, miel", "p": 15, "a": "Idéal si vous manquez de temps le matin."}, {"n": "Tartines avocat-œuf poché", "t": "Petit-déjeuner", "m": 15, "r": "Végétarien", "e": "Protéiné", "i": "Pain complet, avocat, œuf, citron", "p": 14, "a": "Écrasez l'avocat avec du citron pour éviter qu'il noircisse."}, {"n": "Salade de quinoa, poulet, légumes", "t": "Déjeuner", "m": 20, "r": "Omnivore", "e": "Protéiné", "i": "Quinoa, poulet, concombre, tomates, feta", "p": 35, "a": "Se prépare très bien à l'avance pour le lendemain."}, {"n": "Wrap au houmous et falafels", "t": "Déjeuner", "m": 15, "r": "Végan", "e": "Léger", "i": "Tortilla, houmous, falafels, crudités", "p": 14, "a": "Bon aussi froid, parfait pour un lunch box."}, {"n": "Poke bowl saumon", "t": "Déjeuner", "m": 18, "r": "Omnivore", "e": "Protéiné", "i": "Riz, saumon, avocat, edamame, sauce soja", "p": 30, "a": "Remplacez le saumon par du tofu fumé en version végé."}, {"n": "Soupe de lentilles corail", "t": "Déjeuner", "m": 25, "r": "Végan", "e": "Réconfortant", "i": "Lentilles corail, carotte, oignon, lait de coco", "p": 18, "a": "Se congèle très bien en portions individuelles."}, {"n": "Pâtes complètes, brocolis, parmesan", "t": "Déjeuner", "m": 15, "r": "Végétarien", "e": "Réconfortant", "i": "Pâtes complètes, brocolis, ail, parmesan", "p": 16, "a": "Cuisson des pâtes et brocolis en même temps, une casserole."}, {"n": "Curry de pois chiches", "t": "Dîner", "m": 25, "r": "Végan", "e": "Réconfortant", "i": "Pois chiches, lait de coco, épices, riz", "p": 15, "a": "Encore meilleur réchauffé le lendemain."}, {"n": "Saumon rôti, légumes verts", "t": "Dîner", "m": 22, "r": "Omnivore", "e": "Protéiné", "i": "Saumon, brocolis, courgettes, citron", "p": 32, "a": "Une seule plaque de cuisson, peu de vaisselle."}, {"n": "Soupe miso, tofu, légumes", "t": "Dîner", "m": 15, "r": "Végan", "e": "Léger", "i": "Bouillon miso, tofu, algues, champignons", "p": 12, "a": "Parfait les soirs où vous voulez manger léger."}, {"n": "Chili sin carne", "t": "Dîner", "m": 30, "r": "Végan", "e": "Réconfortant", "i": "Haricots rouges, tomates, maïs, épices", "p": 20, "a": "Préparez une grande quantité, ça se congèle bien."}, {"n": "Poulet rôti, patates douces", "t": "Dîner", "m": 35, "r": "Omnivore", "e": "Réconfortant", "i": "Poulet, patates douces, romarin, huile d'olive", "p": 38, "a": "Idéal pour un repas du dimanche, restes pour la semaine."}, {"n": "Salade caprese", "t": "Dîner", "m": 10, "r": "Végétarien", "e": "Léger", "i": "Tomates, mozzarella, basilic, huile d'olive", "p": 16, "a": "Un dîner d'été sans cuisson."}, {"n": "Houmous et bâtonnets de légumes", "t": "Collation", "m": 5, "r": "Végan", "e": "Léger", "i": "Houmous, carotte, concombre, céleri", "p": 6, "a": "À préparer en portions dès le début de semaine."}, {"n": "Poignée d'amandes et fruit", "t": "Collation", "m": 2, "r": "Végan", "e": "Léger", "i": "Amandes, pomme ou banane", "p": 6, "a": "Le réflexe simple quand vous manquez de temps."}, {"n": "Yaourt grec, miel, noix", "t": "Collation", "m": 3, "r": "Végétarien", "e": "Sucré", "i": "Yaourt grec, miel, noix concassées", "p": 12, "a": "Bon équilibre entre plaisir et satiété."}, {"n": "Toast au beurre de cacahuète", "t": "Collation", "m": 4, "r": "Végétarien", "e": "Sucré", "i": "Pain complet, beurre de cacahuète, banane", "p": 10, "a": "Une collation qui cale bien avant le sport."}, {"n": "Chocolat noir et fruits secs", "t": "Collation", "m": 1, "r": "Végan", "e": "Sucré", "i": "Carré de chocolat noir, abricots secs", "p": 3, "a": "Pour l'envie sucrée du goûter, sans culpabiliser."}, {"n": "Pancakes flocons d'avoine, myrtilles", "t": "Petit-déjeuner", "m": 15, "r": "Végétarien", "e": "Sucré", "i": "Flocons d'avoine, œuf, lait, myrtilles", "p": 16, "a": "Préparez la pâte la veille pour gagner du temps le matin."}, {"n": "Buddha bowl falafels, houmous", "t": "Déjeuner", "m": 20, "r": "Végan", "e": "Léger", "i": "Riz complet, falafels, houmous, crudités variées", "p": 16, "a": "Composez-le avec les restes de légumes de la semaine."}, {"n": "Dahl de lentilles, riz basmati", "t": "Dîner", "m": 28, "r": "Végan", "e": "Réconfortant", "i": "Lentilles corail, tomates, épices, riz basmati", "p": 17, "a": "Un classique réconfortant, très bon réchauffé."}, {"n": "Bowl cottage cheese, fruits rouges", "t": "Collation", "m": 3, "r": "Végétarien", "e": "Protéiné", "i": "Cottage cheese, fruits rouges, un filet de miel", "p": 18, "a": "Bonne option protéinée pour l'après-sport."}, {"n": "Tofu grillé, riz, brocolis", "t": "Dîner", "m": 20, "r": "Végan", "e": "Protéiné", "i": "Tofu, riz, brocolis, sauce soja, gingembre", "p": 22, "a": "Pressez bien le tofu avant cuisson pour qu'il dore mieux."}, {"n": "Smoothie protéiné banane-cacahuète", "t": "Petit-déjeuner", "m": 5, "r": "Végan", "e": "Sucré", "i": "Banane, lait végétal, beurre de cacahuète, flocons d'avoine", "p": 15, "a": "Congelez les bananes trop mûres : le smoothie devient onctueux sans glaçons."}, {"n": "Tartine avocat, graines de courge", "t": "Petit-déjeuner", "m": 6, "r": "Végan", "e": "Léger", "i": "Pain complet, avocat, graines de courge, citron", "p": 10, "a": "Les graines apportent le croquant et un peu de protéines en plus."}, {"n": "Tofu brouillé aux épinards", "t": "Petit-déjeuner", "m": 18, "r": "Végan", "e": "Protéiné", "i": "Tofu ferme, épinards, curcuma, oignon", "p": 20, "a": "Le curcuma lui donne la couleur des œufs brouillés."}, {"n": "Pancakes végans banane-avoine", "t": "Petit-déjeuner", "m": 20, "r": "Végan", "e": "Sucré", "i": "Flocons d'avoine, banane, lait végétal, levure", "p": 12, "a": "Mixez la pâte la veille, elle n'en sera que meilleure."}, {"n": "Œufs brouillés au saumon fumé", "t": "Petit-déjeuner", "m": 10, "r": "Omnivore", "e": "Protéiné", "i": "Œufs, saumon fumé, ciboulette, pain complet", "p": 26, "a": "Feu doux et hors du feu à la fin : c'est le secret du moelleux."}, {"n": "Shakshuka express", "t": "Petit-déjeuner", "m": 20, "r": "Végétarien", "e": "Réconfortant", "i": "Œufs, tomates concassées, poivron, cumin", "p": 18, "a": "Une seule poêle, et le pain complet pour saucer."}, {"n": "Salade pois chiches, concombre, menthe", "t": "Déjeuner", "m": 10, "r": "Végan", "e": "Léger", "i": "Pois chiches, concombre, menthe, citron, huile d'olive", "p": 14, "a": "Meilleure après 10 minutes de repos : les saveurs se mélangent."}, {"n": "Wrap tofu grillé, crudités", "t": "Déjeuner", "m": 12, "r": "Végan", "e": "Protéiné", "i": "Tortilla, tofu fumé, carotte, salade, houmous", "p": 18, "a": "Le tofu fumé ne demande aucune marinade."}, {"n": "Salade thon, haricots blancs", "t": "Déjeuner", "m": 8, "r": "Omnivore", "e": "Protéiné", "i": "Thon, haricots blancs, tomates, oignon rouge", "p": 30, "a": "Le déjeuner de secours par excellence : tout vient du placard."}, {"n": "Poêlée tempeh, brocolis, cacahuète", "t": "Dîner", "m": 15, "r": "Végan", "e": "Protéiné", "i": "Tempeh, brocolis, sauce soja, beurre de cacahuète", "p": 24, "a": "Précuisez le tempeh 3 minutes à l'eau : il sera moins amer."}, {"n": "Energy balls dattes-amandes", "t": "Collation", "m": 20, "r": "Végan", "e": "Sucré", "i": "Dattes, amandes, cacao, noix de coco", "p": 8, "a": "Faites-en 15 d'un coup : elles se gardent 2 semaines au frigo."}, {"n": "Houmous maison, bâtonnets", "t": "Collation", "m": 18, "r": "Végan", "e": "Léger", "i": "Pois chiches, tahini, citron, ail, carotte", "p": 10, "a": "Un glaçon dans le mixeur et le houmous devient aérien."}, {"n": "Muffins protéinés myrtilles", "t": "Collation", "m": 25, "r": "Végétarien", "e": "Sucré", "i": "Flocons d'avoine, yaourt grec, œuf, myrtilles", "p": 12, "a": "Congelez-les à l'unité, sortez-en un la veille au soir."}, {"n": "Porridge cuit pomme-cannelle-amandes", "t": "Petit-déjeuner", "m": 18, "r": "Végan", "e": "Réconfortant", "i": "Flocons d'avoine, pomme, cannelle, amandes, lait végétal", "p": 12, "a": "Râpez la pomme : elle fond dans le porridge et sucre naturellement."}, {"n": "Curry de lentilles et épinards", "t": "Déjeuner", "m": 22, "r": "Végan", "e": "Réconfortant", "i": "Lentilles vertes, épinards, lait de coco, curry, riz", "p": 20, "a": "Doublez les quantités : c'est encore meilleur le lendemain."}, {"n": "Nouilles sautées tofu, légumes croquants", "t": "Dîner", "m": 14, "r": "Végan", "e": "Protéiné", "i": "Nouilles, tofu, poivron, carotte, sauce soja, sésame", "p": 22, "a": "Feu vif et légumes coupés fin : tout est prêt en un quart d'heure."}, {"n": "Barres avoine-cacahuète maison", "t": "Collation", "m": 22, "r": "Végan", "e": "Sucré", "i": "Flocons d'avoine, beurre de cacahuète, sirop d'érable, graines", "p": 9, "a": "Coupez-les tièdes, elles se tiendront mieux."}];
+
+const INGREDIENTS = [["ail", "Fruits & légumes", "Ail"], ["avocat", "Fruits & légumes", "Avocat"], ["banane", "Fruits & légumes", "Banane"], ["basilic", "Fruits & légumes", "Basilic"], ["brocolis", "Fruits & légumes", "Brocolis"], ["carotte", "Fruits & légumes", "Carotte"], ["champignons", "Fruits & légumes", "Champignons"], ["citron", "Fruits & légumes", "Citron"], ["concombre", "Fruits & légumes", "Concombre"], ["courgettes", "Fruits & légumes", "Courgettes"], ["crudités", "Fruits & légumes", "Crudités"], ["crudités variées", "Fruits & légumes", "Crudités variées"], ["céleri", "Fruits & légumes", "Céleri"], ["edamame", "Fruits & légumes", "Edamame"], ["fruits de saison", "Fruits & légumes", "Fruits de saison"], ["fruits rouges", "Fruits & légumes", "Fruits rouges"], ["gingembre", "Fruits & légumes", "Gingembre"], ["myrtilles", "Fruits & légumes", "Myrtilles"], ["oignon", "Fruits & légumes", "Oignon"], ["patates douces", "Fruits & légumes", "Patates douces"], ["poivron", "Fruits & légumes", "Poivron"], ["pomme ou banane", "Fruits & légumes", "Pomme ou banane"], ["romarin", "Fruits & légumes", "Romarin"], ["tomates", "Fruits & légumes", "Tomates"], ["épinards", "Fruits & légumes", "Épinards"], ["poulet", "Boucherie & poisson", "Poulet"], ["saumon", "Boucherie & poisson", "Saumon"], ["cottage cheese", "Crèmerie & traiteur", "Cottage cheese"], ["falafels", "Crèmerie & traiteur", "Falafels"], ["feta", "Crèmerie & traiteur", "Feta"], ["fromage râpé", "Crèmerie & traiteur", "Fromage râpé"], ["houmous", "Crèmerie & traiteur", "Houmous"], ["lait", "Crèmerie & traiteur", "Lait"], ["mozzarella", "Crèmerie & traiteur", "Mozzarella"], ["parmesan", "Crèmerie & traiteur", "Parmesan"], ["tofu", "Crèmerie & traiteur", "Tofu"], ["yaourt grec", "Crèmerie & traiteur", "Yaourt grec"], ["œuf", "Crèmerie & traiteur", "Œufs"], ["pain complet", "Boulangerie", "Pain complet"], ["tortilla", "Boulangerie", "Tortillas"], ["abricots secs", "Épicerie", "Abricots secs"], ["algues", "Épicerie", "Algues"], ["amandes", "Épicerie", "Amandes"], ["beurre de cacahuète", "Épicerie", "Beurre de cacahuète"], ["bouillon miso", "Épicerie", "Bouillon miso"], ["carré de chocolat noir", "Épicerie", "Chocolat noir"], ["flocons d'avoine", "Épicerie", "Flocons d'avoine"], ["granola", "Épicerie", "Granola"], ["haricots rouges", "Épicerie", "Haricots rouges"], ["lait de coco", "Épicerie", "Lait de coco"], ["lait végétal", "Épicerie", "Lait végétal"], ["lentilles corail", "Épicerie", "Lentilles corail"], ["maïs", "Épicerie", "Maïs"], ["miel", "Épicerie", "Miel"], ["noix concassées", "Épicerie", "Noix concassées"], ["pois chiches", "Épicerie", "Pois chiches"], ["pâtes complètes", "Épicerie", "Pâtes complètes"], ["quinoa", "Épicerie", "Quinoa"], ["riz", "Épicerie", "Riz"], ["riz basmati", "Épicerie", "Riz basmati"], ["riz complet", "Épicerie", "Riz complet"], ["cannelle", "Épices & condiments", "Cannelle"], ["huile d'olive", "Épices & condiments", "Huile d'olive"], ["sauce soja", "Épices & condiments", "Sauce soja"], ["épices", "Épices & condiments", "Épices"], ["pomme", "Fruits & légumes", "Pomme"], ["menthe", "Fruits & légumes", "Menthe"], ["salade", "Fruits & légumes", "Salade"], ["ciboulette", "Fruits & légumes", "Ciboulette"], ["dattes", "Fruits & légumes", "Dattes"], ["thon", "Boucherie & poisson", "Thon"], ["saumon fumé", "Boucherie & poisson", "Saumon fumé"], ["tempeh", "Crèmerie & traiteur", "Tempeh"], ["nouilles", "Épicerie", "Nouilles"], ["haricots blancs", "Épicerie", "Haricots blancs"], ["lentilles vertes", "Épicerie", "Lentilles vertes"], ["noix de coco", "Épicerie", "Noix de coco râpée"], ["cacao", "Épicerie", "Cacao en poudre"], ["tahini", "Épicerie", "Tahini"], ["levure", "Épicerie", "Levure"], ["graines de courge", "Épicerie", "Graines de courge"], ["graines", "Épicerie", "Graines (mélange)"], ["sésame", "Épicerie", "Graines de sésame"], ["sirop d'érable", "Épicerie", "Sirop d'érable"], ["curcuma", "Épices & condiments", "Curcuma"], ["cumin", "Épices & condiments", "Cumin"], ["curry", "Épices & condiments", "Curry"]];
+
+const TIPS = ["Vous n'avez pas besoin de motivation pour commencer, juste d'un premier petit geste.", "Chaque repas choisi ici est une décision en moins à prendre seul·e aujourd'hui.", "La régularité bat la perfection, à chaque fois.", "Vous progressez même les jours où vous ne le sentez pas.", "Un jour ordinaire bien suivi vaut mieux qu'un jour parfait imaginé.", "Ce n'est pas la volonté qui manque : c'est la décision qui coûte cher. On l'a enlevée.", "Revenir après une pause n'efface rien de ce que vous avez déjà construit.", "Le corps répond à la constance, pas à l'intensité ponctuelle.", "Vous n'avez pas à être parfait·e aujourd'hui pour être sur la bonne voie.", "Le simple fait d'ouvrir ce fichier aujourd'hui compte.", "Objectif atteint : rien à ajouter, rien à optimiser. Profitez de votre soirée.", "Belle journée. Le corps a eu ce qu'il fallait pour se réparer et avancer.", "Vous avez fait exactement ce qu'il fallait. Pas plus, pas moins.", "C'est ce genre de journée, répétée, qui fait la différence sur la durée.", "Rien à rattraper demain. Vous repartez de zéro, comme chaque jour.", "Il reste de la marge : une collation protéinée suffit à combler l'écart.", "Un yaourt grec ou une poignée d'amandes referme facilement cet écart.", "Pas de panique : quelques grammes de moins ne défont rien de votre semaine.", "Le prochain repas peut facilement compenser, filtrez sur « Protéiné ».", "Une soirée un peu légère en protéines n'annule jamais une semaine réussie.", "Pensez œufs, tofu ou légumineuses pour votre prochain repas : ça referme vite l'écart.", "Le corps ne juge pas un seul repas, il répond à la moyenne de la semaine.", "Une case vide n'est pas un échec, c'est juste une case vide.", "Vous n'avez rien à justifier : notez ce que vous voulez, quand vous voulez.", "Le journal n'est pas un contrôle. Remplissez-le à votre rythme.", "Un repas non noté ne veut pas dire un repas raté, juste un repas non noté.", "Reprenez au prochain repas, sans chercher à rattraper le précédent.", "Votre planning est complet : la semaine qui vient est déjà plus légère mentalement.", "7 jours planifiés, c'est 7 fois où vous n'aurez pas à vous demander quoi manger.", "Une semaine préparée à l'avance réduit presque toujours les écarts impulsifs.", "Vous avez fait le travail difficile en amont, le reste de la semaine sera facile.", "Ce dimanche investi vous fait gagner du temps chaque soir de la semaine.", "Même un planning à moitié rempli vaut mieux qu'un planning vide.", "Trois jours planifiés, c'est déjà trois décisions en moins à prendre cette semaine.", "Vous pouvez compléter le planning au fil de l'eau, rien n'oblige à tout faire d'un coup.", "Planifiez juste vos dîners : le reste de la semaine suit souvent tout seul.", "Ajoutez une poignée de crudités à votre prochain repas, ça compte, même petit.", "Un légume ajouté à un plat déjà prévu suffit à rééquilibrer la journée.", "Les légumes surgelés font aussi bien l'affaire qu'en frais, sans y penser.", "Pas besoin d'un repas entier de légumes, juste un peu, souvent.", "Comparé à la semaine dernière, votre régularité s'améliore, c'est ce qui compte.", "Chaque semaine suivie construit une habitude un peu plus solide que la précédente.", "Vous n'avez pas besoin de voir de résultat immédiat pour que le changement opère.", "La progression n'est pas toujours visible sur le moment, elle l'est sur la durée.", "Ce que vous faites cette semaine compte plus que ce que vous avez fait la semaine dernière.", "Un dimanche de 10 minutes économise une semaine de décisions répétées.", "Doublez vos portions un soir : le lendemain devient un repas déjà prêt.", "Un frigo un minimum préparé rend chaque décision plus rapide.", "La liste de courses cochée au fur et à mesure évite les oublis de dernière minute.", "Un planning imparfait mais rempli reste plus utile qu'un planning parfait mais vide.", "Ce n'est pas un jour qui fait une habitude, c'est sa répétition tranquille.", "Trois semaines suivies valent mieux qu'une semaine parfaite isolée.", "La régularité se construit doucement, sans qu'on la remarque sur le moment.", "Ce que vous répétez cette semaine devient plus facile la semaine suivante.", "Vous êtes ici, vous avez ouvert le fichier : c'est déjà un choix qui compte.", "Personne ne fait ça parfaitement. L'idée, c'est de continuer à essayer.", "Prendre soin de soi ne demande pas d'être extrême, juste d'être régulier·ère.", "Vous avancez à votre rythme, et c'est le seul rythme qui compte vraiment.", "Le simple fait de vous poser la question « qu'est-ce que je mange ? » est déjà un progrès.", "Une énergie basse peut aussi venir du sommeil ou du stress, pas seulement de l'alimentation.", "Les jours de fatigue, un repas simple et rapide vaut mieux qu'un repas complexe abandonné.", "Filtrez sur « Rapide » les jours où l'énergie manque : ce n'est pas un compromis, c'est intelligent.", "Le corps fatigué a surtout besoin de régularité, pas de performance.", "Un verre d'eau avant chaque repas aide souvent à mieux ressentir la satiété.", "La fatigue ressemble parfois à de la faim, un verre d'eau peut clarifier les choses.", "Garder une bouteille visible sur le bureau aide à boire sans y penser.", "Un sommeil réparateur influence autant votre énergie qu'un bon repas.", "Les fringales du soir sont parfois liées au manque de sommeil, pas à la faim réelle.", "Une routine de coucher régulière aide autant que la régularité des repas.", "Un repas plaisir ne défait rien : il fait partie d'une alimentation durable.", "Pas besoin de compenser un écart, la journée suivante reprend simplement son cours normal.", "Manger avec plaisir de temps en temps rend la régularité plus facile à tenir dans la durée.", "Un dîner au restaurant n'a pas besoin d'être « rattrapé » le lendemain.", "La première semaine sert surtout à découvrir vos repas préférés dans la bibliothèque.", "Ne cherchez pas la routine parfaite dès le premier jour, elle se construit avec le temps.", "Testez plusieurs suggestions cette semaine pour trouver vos favoris récurrents.", "La première semaine compte pour l'essai, pas pour le résultat.", "Un an de repas simples et réguliers change plus de choses qu'un mois de rigueur intense.", "La meilleure méthode reste celle que vous suivez encore dans six mois.", "Les petites habitudes tenues sur la durée dépassent presque toujours les grands efforts ponctuels.", "Cuisiner simple n'est pas cuisiner moins bien, c'est cuisiner de façon durable.", "Une recette maîtrisée trois fois devient un réflexe, pas une corvée.", "Le batch cooking n'a pas besoin d'être parfait pour faire gagner du temps.", "Un plat raté n'annule pas les dix précédents réussis.", "Les légumineuses restent parmi les sources de protéines les plus économiques.", "Un planning à l'avance limite souvent les achats impulsifs coûteux.", "Les surgelés permettent de manger équilibré sans gaspillage.", "Manger équilibré n'empêche pas de partager un repas convivial avec d'autres.", "Adapter une recette pour la famille ne veut pas dire abandonner votre objectif.", "Expliquer votre démarche simplement suffit, pas besoin de convaincre personne.", "Une semaine sans suivi n'efface pas les précédentes, vous repartez d'où vous étiez, pas de zéro.", "Reprendre doucement vaut mieux que reprendre trop fort et abandonner à nouveau.", "Le retour compte plus que l'absence : vous êtes de nouveau ici, c'est l'essentiel.", "Ce chiffre de protéines est un repère pour vous aider, jamais une note sur votre journée.", "Le but n'est pas d'être irréprochable, mais d'être régulier·ère la plupart du temps.", "Un déséquilibre ponctuel se corrige naturellement sur la semaine, sans effort supplémentaire.", "Votre relation à la nourriture compte autant que son contenu, soyez indulgent·e avec vous-même.", "Ce n'est pas parce qu'un jour est imparfait que la semaine l'est aussi.", "Le meilleur objectif est celui que vous pouvez tenir sans y penser en permanence.", "Prendre soin de soi n'a pas besoin d'être spectaculaire pour être efficace."];
+
+const DAYS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const SLOTS = [['petitdej','Petit-déjeuner'],['dejeuner','Déjeuner'],['diner','Dîner'],['collation','Collation']];
+const RAYON_ORDER = ['Fruits & légumes','Boucherie & poisson','Crèmerie & traiteur','Boulangerie','Épicerie','Épices & condiments'];
+const ACTIVITE_FACTOR = {'Sédentaire':1.2,'Modéré':1.4,'Actif':1.6};
+
+/* ============================================================
+   ÉTAT (persisté dans localStorage — équivalent à "sauvegarder le classeur")
+   ============================================================ */
+const STORAGE_KEY = 'nutriglow_state_v1';
+
+function emptySlots(){ return {petitdej:'',dejeuner:'',diner:'',collation:''}; }
+function emptySuiviDay(){ return {energie:'',sommeil:'',eau:'',suivi:'',note:''}; }
+
+function defaultState(){
+  const planning = {};
+  DAYS.forEach(d=>planning[d]=emptySlots());
+  planning.Lundi = {petitdej:"Porridge banane-cannelle", dejeuner:"Salade de quinoa, poulet, légumes", diner:"Curry de pois chiches", collation:"Poignée d'amandes et fruit"};
+  planning.Mardi = {petitdej:"Omelette aux légumes", dejeuner:"Wrap au houmous et falafels", diner:"Saumon rôti, légumes verts", collation:"Yaourt grec, miel, noix"};
+  const suivi = {};
+  DAYS.forEach(d=>suivi[d]=emptySuiviDay());
+  return {
+    profil:{prenom:'', objectif:'Perte de poids en douceur', activite:'Modéré', regime:'Omnivore', poids:65, manuel:'Automatique (recommandé)', manuelValeur:60},
+    filtres:{type:'Peu importe', rapide:'Peu importe', regime:'Peu importe', envie:'Peu importe'},
+    journal:{petitdej:'', dejeuner:'', diner:'', collation:''},
+    planning,
+    courses:{checked:{}},
+    suivi,
+    lib:{search:'', type:'Tous', regime:'Tous'}
+  };
+}
+
+function mergeDeep(base, override){
+  if(!override || typeof override!=='object') return base;
+  Object.keys(base).forEach(k=>{
+    if(base[k] && typeof base[k]==='object' && !Array.isArray(base[k])){
+      base[k] = mergeDeep(base[k], override[k]);
+    } else if(override[k]!==undefined){
+      base[k]=override[k];
+    }
+  });
+  return base;
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return mergeDeep(defaultState(), JSON.parse(raw));
+  }catch(e){ /* stockage indisponible ou corrompu : on repart de zéro */ }
+  return defaultState();
+}
+
+let state = loadState();
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  renderAll();
+}
+
+/* ============================================================
+   LOGIQUE MÉTIER (reproduit fidèlement les formules du classeur)
+   ============================================================ */
+function computeAuto(profil){
+  const poids = Number(profil.poids)||0;
+  const factor = (ACTIVITE_FACTOR[profil.activite] ?? 1.4) + (profil.objectif==='Perte de poids en douceur' ? 0.2 : 0);
+  return Math.round(poids*factor/5)*5;
+}
+function computeObjectifProteines(profil){
+  if(profil.manuel==='Automatique (recommandé)') return computeAuto(profil);
+  return Number(profil.manuelValeur) || computeAuto(profil);
+}
+function explicationCalcul(profil){
+  const factor = (ACTIVITE_FACTOR[profil.activite] ?? 1.4) + (profil.objectif==='Perte de poids en douceur' ? 0.2 : 0);
+  const factorStr = factor.toFixed(1).replace('.',',');
+  let txt = `Calculé pour vous : ${profil.poids} kg × ${factorStr} g/kg`;
+  if(profil.objectif==='Perte de poids en douceur') txt += ' (dont +0,2 pour préserver vos muscles)';
+  return txt;
+}
+function mealByName(name){ return MEALS.find(m=>m.n===name); }
+function regimeLevel(r){ return r==='Végan'?1:(r==='Végétarien'?2:3); }
+function rapideOuiNon(temps){ return temps<=15 ? 'Oui' : 'Non'; }
+function satieteOf(p){ return p>=25?'Élevée':(p>=15?'Bonne':'Légère'); }
+function effortOf(t){ return t<=5?'Express':(t<=15?'Facile':'Cuisine'); }
+
+function filteredMeals(filtres){
+  const lvl = filtres.regime==='Peu importe' ? 3 : regimeLevel(filtres.regime);
+  return MEALS.filter(m=>{
+    if(filtres.type!=='Peu importe' && m.t!==filtres.type) return false;
+    if(filtres.rapide!=='Peu importe' && rapideOuiNon(m.m)!==filtres.rapide) return false;
+    if(regimeLevel(m.r) > lvl) return false;
+    if(filtres.envie!=='Peu importe' && m.e!==filtres.envie) return false;
+    return true;
+  });
+}
+
+function excelSerial(d){ return Math.floor(d.getTime()/86400000) + 25569; }
+function tipOfDay(offset){
+  const idx = ((excelSerial(new Date()) + (offset||0)) % 100 + 100) % 100;
+  return TIPS[idx];
+}
+
+function journalTotal(){
+  return SLOTS.reduce((s,[k])=>{
+    const meal = mealByName(state.journal[k]);
+    return s + (meal ? meal.p : 0);
+  },0);
+}
+function journalMessage(total, objectif){
+  const reste = Math.max(objectif-total,0);
+  const prog = objectif>0 ? Math.min(total/objectif,1) : 0;
+  if(total===0) return "Choisissez vos repas ci-dessus : l'assistant suit vos protéines pour vous.";
+  if(total>=objectif) return `✅ Objectif atteint (${total} g). Belle journée, rien à rattraper.`;
+  if(prog>=0.75) return `👏 Presque : il ne vous manque que ${reste} g. Une collation protéinée suffit.`;
+  if(prog>=0.4) return `🙂 Vous êtes à mi-chemin (${reste} g restants). Pensez protéines au prochain repas.`;
+  return `💡 Il reste ${reste} g : filtrez sur « Protéiné » ci-dessus pour une idée adaptée.`;
+}
+
+function dayProtein(day){
+  return SLOTS.reduce((s,[k])=>{
+    const meal = mealByName(state.planning[day][k]);
+    return s + (meal?meal.p:0);
+  },0);
+}
+function weekTotal(){ return DAYS.reduce((s,d)=>s+dayProtein(d),0); }
+function filledCount(){
+  return DAYS.reduce((s,d)=>s+SLOTS.reduce((s2,[k])=>s2+(state.planning[d][k]?1:0),0),0);
+}
+
+function plannedIngredientLists(){
+  const lists=[];
+  DAYS.forEach(d=>SLOTS.forEach(([k])=>{
+    const meal = mealByName(state.planning[d][k]);
+    if(meal) lists.push(", "+meal.i.toLowerCase()+", ");
+  }));
+  return lists;
+}
+function shoppingList(){
+  const lists = plannedIngredientLists();
+  const grouped = {};
+  RAYON_ORDER.forEach(r=>grouped[r]=[]);
+  INGREDIENTS.forEach(([token,rayon,affichage])=>{
+    const needle = ", "+token.toLowerCase()+", ";
+    const present = lists.some(s=>s.includes(needle));
+    if(present) (grouped[rayon] ||= []).push(affichage);
+  });
+  return grouped;
+}
+
+function suiviAvg(field){
+  const vals = DAYS.map(d=>state.suivi[d][field]).filter(v=>v!=='' && v!=null).map(Number);
+  if(!vals.length) return null;
+  return Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10;
+}
+function suiviSuiviCount(){ return DAYS.filter(d=>state.suivi[d].suivi==='Oui').length; }
+function suiviEauTotal(){ return DAYS.reduce((s,d)=>s+(Number(state.suivi[d].eau)||0),0); }
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function showTab(tab){
+  document.querySelectorAll('.ng-panel').forEach(p=>p.classList.toggle('active', p.dataset.panel===tab));
+  document.querySelectorAll('.ng-nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.getElementById('ngNav').classList.remove('open');
+  window.scrollTo({top:0,behavior:'smooth'});
+  history.replaceState(null,'','#'+tab);
+}
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-tab]');
+  if(el){ showTab(el.dataset.tab); }
+});
+document.getElementById('ngBurger').addEventListener('click', ()=>{
+  document.getElementById('ngNav').classList.toggle('open');
+});
+
+/* ============================================================
+   RENDER : PROFIL
+   ============================================================ */
+function optionsFor(select, values, current){
+  select.innerHTML = values.map(v=>`<option value="${v}"${v===current?' selected':''}>${v}</option>`).join('');
+}
+function fillManuelOptions(){
+  const sel = document.getElementById('fManuelVal');
+  const opts=[];
+  for(let v=50; v<=200; v+=5) opts.push(v);
+  sel.innerHTML = opts.map(v=>`<option value="${v}"${v===Number(state.profil.manuelValeur)?' selected':''}>${v}</option>`).join('');
+}
+function ringDashoffset(ratio){
+  const C = 2*Math.PI*52;
+  return (C*(1-Math.max(0,Math.min(1,ratio)))).toFixed(1);
+}
+function renderProfil(){
+  document.getElementById('fPrenom').value = state.profil.prenom;
+  document.getElementById('fObjectif').value = state.profil.objectif;
+  document.getElementById('fActivite').value = state.profil.activite;
+  document.getElementById('fRegime').value = state.profil.regime;
+  document.getElementById('fPoids').value = state.profil.poids;
+  document.getElementById('fPoidsVal').textContent = state.profil.poids;
+  document.getElementById('fManuel').value = state.profil.manuel==='Automatique (recommandé)' ? 'Automatique (recommandé)' : 'manuel';
+  document.getElementById('fManuelValWrap').style.display = state.profil.manuel==='Automatique (recommandé)' ? 'none':'block';
+  fillManuelOptions();
+
+  const objectif = computeObjectifProteines(state.profil);
+  document.getElementById('profilRingNum').textContent = objectif;
+  document.getElementById('profilExplication').textContent = state.profil.manuel==='Automatique (recommandé)'
+    ? explicationCalcul(state.profil)
+    : `Ajusté manuellement à ${objectif} g/jour.`;
+  document.getElementById('profilRing').setAttribute('stroke-dashoffset', ringDashoffset(1));
+
+  document.getElementById('heroRingNum').textContent = objectif+' g';
+  document.getElementById('heroRing').setAttribute('stroke-dashoffset', ringDashoffset(1));
+}
+
+/* ============================================================
+   RENDER : AUJOURD'HUI
+   ============================================================ */
+function mealOptionsHTML(selected){
+  const byType = {};
+  MEALS.forEach(m=>{ (byType[m.t] ||= []).push(m); });
+  let html = `<option value=""${selected? '':' selected'}>— choisir un repas —</option>`;
+  Object.keys(byType).forEach(t=>{
+    html += `<optgroup label="${t}">`;
+    byType[t].forEach(m=>{
+      html += `<option value="${m.n.replace(/"/g,'&quot;')}"${m.n===selected?' selected':''}>${m.n} (${m.p} g)</option>`;
+    });
+    html += `</optgroup>`;
+  });
+  return html;
+}
+
+function renderAujourdhui(){
+  document.getElementById('filType').value = state.filtres.type;
+  document.getElementById('filRapide').value = state.filtres.rapide;
+  document.getElementById('filRegime').value = state.filtres.regime;
+  document.getElementById('filEnvie').value = state.filtres.envie;
+
+  const matches = filteredMeals(state.filtres).slice(0,3);
+  const grid = document.getElementById('suggGrid');
+  if(!matches.length){
+    grid.innerHTML = `<div class="sugg-empty">Aucune suggestion avec ces filtres — élargissez vos critères ci-dessus.</div>`;
+  } else {
+    grid.innerHTML = matches.map((m,i)=>`
+      <div class="sugg-card">
+        <span class="tag">Suggestion ${i+1}</span>
+        <h4>${m.n}</h4>
+        <div class="meta">⏱ ${m.m} min &nbsp;·&nbsp; 💪 ${m.p} g de protéines</div>
+        <div class="ing">${m.i}</div>
+        <div class="tip">✨ ${m.a}</div>
+      </div>`).join('');
+  }
+
+  ['petitdej','dejeuner','diner','collation'].forEach(k=>{
+    const sel = document.getElementById('j'+k[0].toUpperCase()+k.slice(1));
+    const wasFocused = document.activeElement===sel;
+    if(!wasFocused) sel.innerHTML = mealOptionsHTML(state.journal[k]);
+    const meal = mealByName(state.journal[k]);
+    document.getElementById('j'+k[0].toUpperCase()+k.slice(1)+'Prot').textContent = meal ? meal.p+' g' : '— g';
+  });
+
+  const total = journalTotal();
+  const objectif = computeObjectifProteines(state.profil);
+  const reste = Math.max(objectif-total,0);
+  const prog = objectif>0 ? Math.min(total/objectif,1) : 0;
+  document.getElementById('jTotal').textContent = total+' g';
+  document.getElementById('jObjectif').textContent = objectif+' g';
+  document.getElementById('jReste').textContent = reste+' g';
+  document.getElementById('jBar').style.width = (prog*100)+'%';
+  document.getElementById('jMessage').textContent = journalMessage(total, objectif);
+
+  document.getElementById('tipToday').textContent = tipOfDay(0);
+}
+
+/* ============================================================
+   RENDER : BIBLIOTHÈQUE
+   ============================================================ */
+function renderLibChips(){
+  const types = ['Tous','Petit-déjeuner','Déjeuner','Dîner','Collation'];
+  const regimes = ['Tous','Omnivore','Végétarien','Végan'];
+  document.getElementById('libTypeChips').innerHTML = types.map(t=>
+    `<button class="chip ${state.lib.type===t?'active':''}" data-libtype="${t}">${t}</button>`).join('');
+  document.getElementById('libRegimeChips').innerHTML = regimes.map(r=>
+    `<button class="chip ${state.lib.regime===r?'active':''}" data-libregime="${r}">${r}</button>`).join('');
+}
+function renderLibGrid(){
+  document.getElementById('libSearch').value = state.lib.search;
+  const q = state.lib.search.trim().toLowerCase();
+  const list = MEALS.filter(m=>{
+    if(state.lib.type!=='Tous' && m.t!==state.lib.type) return false;
+    if(state.lib.regime!=='Tous' && m.r!==state.lib.regime) return false;
+    if(q && !(m.n.toLowerCase().includes(q) || m.i.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const grid = document.getElementById('libGrid');
+  if(!list.length){ grid.innerHTML = `<div class="lib-empty">Aucun repas ne correspond à votre recherche.</div>`; return; }
+  grid.innerHTML = list.map(m=>`
+    <div class="meal-card">
+      <h4>${m.n}</h4>
+      <div class="badges">
+        <span class="badge badge-navy">${m.t}</span>
+        <span class="badge badge-mint">⏱ ${m.m} min</span>
+        <span class="badge badge-yellow">💪 ${m.p} g</span>
+        <span class="badge badge-soft">Satiété : ${satieteOf(m.p)}</span>
+        <span class="badge badge-soft">${effortOf(m.m)}</span>
+      </div>
+      <div class="ing">${m.i}</div>
+      <div class="tip">💡 ${m.a}</div>
+    </div>`).join('');
+}
+document.getElementById('libSearch').addEventListener('input', e=>{ state.lib.search = e.target.value; save(); });
+document.addEventListener('click', e=>{
+  const t = e.target.closest('[data-libtype]');
+  if(t){ state.lib.type = t.dataset.libtype; save(); }
+  const r = e.target.closest('[data-libregime]');
+  if(r){ state.lib.regime = r.dataset.libregime; save(); }
+});
+
+/* ============================================================
+   RENDER : PLANNING
+   ============================================================ */
+function renderPlanning(){
+  const body = document.getElementById('planBody');
+  body.innerHTML = DAYS.map(day=>{
+    const cells = SLOTS.map(([k])=>{
+      const sel = state.planning[day][k];
+      return `<td><select data-day="${day}" data-slot="${k}">${mealOptionsHTML(sel)}</select></td>`;
+    }).join('');
+    return `<tr class="day-row"><td>${day}</td>${cells}<td><div class="day-total">${dayProtein(day)} g</div></td></tr>`;
+  }).join('');
+  document.getElementById('planFilled').textContent = filledCount()+' / 28';
+  document.getElementById('planTotal').textContent = weekTotal()+' g';
+}
+document.getElementById('planBody').addEventListener('change', e=>{
+  const sel = e.target.closest('select[data-day]');
+  if(!sel) return;
+  state.planning[sel.dataset.day][sel.dataset.slot] = sel.value;
+  save();
+});
+
+/* ============================================================
+   RENDER : COURSES
+   ============================================================ */
+function renderCourses(){
+  const grouped = shoppingList();
+  let totalPresent = 0, totalChecked = 0;
+  const listEl = document.getElementById('coursesList');
+  let html='';
+  RAYON_ORDER.forEach(rayon=>{
+    const items = grouped[rayon];
+    if(!items || !items.length) return;
+    html += `<div class="rayon-block"><h4>${rayon}</h4>`;
+    items.forEach(item=>{
+      totalPresent++;
+      const checked = !!state.courses.checked[item];
+      if(checked) totalChecked++;
+      html += `<label class="ingredient-row ${checked?'checked':''}">
+        <input type="checkbox" data-ing="${item.replace(/"/g,'&quot;')}" ${checked?'checked':''}/>
+        <span>${item}</span>
+      </label>`;
+    });
+    html += `</div>`;
+  });
+  listEl.innerHTML = html || `<p style="color:var(--muted);">Planifiez des repas dans l'onglet <strong>Planning</strong> pour générer votre liste de courses.</p>`;
+  document.getElementById('coursesCount').textContent = `${totalChecked} / ${totalPresent} ingrédients cochés`;
+
+  const mealsEl = document.getElementById('coursesMeals');
+  let mhtml='';
+  DAYS.forEach(day=>{
+    SLOTS.forEach(([k,label])=>{
+      const name = state.planning[day][k];
+      const meal = mealByName(name);
+      if(meal){
+        mhtml += `<div class="day-meal-block">
+          <div class="d">${day} · ${label}</div>
+          <div class="m">${meal.n}</div>
+          <div class="i">${meal.i}</div>
+        </div>`;
+      }
+    });
+  });
+  mealsEl.innerHTML = mhtml || `<p style="color:var(--muted);font-size:.9rem;">Rien de planifié pour l'instant.</p>`;
+}
+document.getElementById('coursesList').addEventListener('change', e=>{
+  const cb = e.target.closest('input[data-ing]');
+  if(!cb) return;
+  state.courses.checked[cb.dataset.ing] = cb.checked;
+  save();
+});
+
+/* ============================================================
+   RENDER : SUIVI
+   ============================================================ */
+function selOptions(values, current){
+  return values.map(v=>`<option value="${v}"${String(v)===String(current)?' selected':''}>${v}</option>`).join('');
+}
+function renderSuivi(){
+  const energieVals=[1,2,3,4,5];
+  const sommeilVals=[4,5,6,7,8,9,10,11];
+  const eauVals=[0,1,2,3,4,5,6,7,8,9,10,11,12];
+  const suiviVals=['Oui','Partiellement','Non'];
+  const body = document.getElementById('suiviBody');
+  body.innerHTML = DAYS.map(day=>{
+    const d = state.suivi[day];
+    return `<tr>
+      <td>${day}</td>
+      <td><select data-day="${day}" data-field="energie"><option value=""${d.energie===''?' selected':''}>—</option>${selOptions(energieVals,d.energie)}</select></td>
+      <td><select data-day="${day}" data-field="sommeil"><option value=""${d.sommeil===''?' selected':''}>—</option>${selOptions(sommeilVals,d.sommeil)}</select></td>
+      <td><select data-day="${day}" data-field="eau"><option value=""${d.eau===''?' selected':''}>—</option>${selOptions(eauVals,d.eau)}</select></td>
+      <td><select data-day="${day}" data-field="suivi"><option value=""${d.suivi===''?' selected':''}>—</option>${selOptions(suiviVals,d.suivi)}</select></td>
+      <td><input type="text" data-day="${day}" data-field="note" value="${(d.note||'').replace(/"/g,'&quot;')}" placeholder="…"/></td>
+    </tr>`;
+  }).join('');
+
+  const avgE = suiviAvg('energie'); const avgS = suiviAvg('sommeil'); const avgEau = suiviAvg('eau');
+  document.getElementById('suiviAvgEnergie').textContent = avgE!==null ? avgE+' / 5' : '—';
+  document.getElementById('suiviAvgSommeil').textContent = avgS!==null ? avgS+' h' : '—';
+  document.getElementById('suiviAvgEau').textContent = avgEau!==null ? avgEau+' / jour' : '—';
+  document.getElementById('suiviCountSuivi').textContent = suiviSuiviCount()+' / 7';
+}
+document.getElementById('suiviBody').addEventListener('change', e=>{
+  const el = e.target.closest('[data-day][data-field]');
+  if(!el) return;
+  state.suivi[el.dataset.day][el.dataset.field] = el.value;
+  save();
+});
+document.getElementById('suiviBody').addEventListener('input', e=>{
+  const el = e.target.closest('input[data-field="note"]');
+  if(!el) return;
+  state.suivi[el.dataset.day].note = el.value;
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(err){}
+});
+
+/* ============================================================
+   RENDER : DASHBOARD (avec graphique — 1 teinte teal, barres fines,
+   coins arrondis, ligne de repère objectif, infobulle au survol)
+   ============================================================ */
+function renderDashboard(){
+  const objectif = computeObjectifProteines(state.profil);
+  const total = journalTotal();
+  const reste = Math.max(objectif-total,0);
+  const prog = objectif>0 ? Math.min(total/objectif,1) : 0;
+
+  document.getElementById('dProt').textContent = total+' g';
+  document.getElementById('dReste').textContent = reste+' g';
+  document.getElementById('dProg').textContent = Math.round(prog*100)+' %';
+
+  document.getElementById('dPlanned').textContent = filledCount()+' / 28';
+  const perDay = DAYS.map(d=>dayProtein(d));
+  const active = perDay.filter(v=>v>0);
+  const avgDay = active.length ? Math.round(active.reduce((a,b)=>a+b,0)/active.length) : 0;
+  document.getElementById('dAvgDay').textContent = avgDay+' g';
+  document.getElementById('dWeekTot').textContent = weekTotal()+' g';
+
+  const avgE = suiviAvg('energie');
+  document.getElementById('dEnergie').textContent = avgE!==null ? avgE+' / 5' : '—';
+  document.getElementById('dEau').textContent = suiviEauTotal();
+  document.getElementById('dSuivi').textContent = suiviSuiviCount()+' / 7';
+
+  renderChart(perDay, objectif);
+  document.getElementById('tipDash').textContent = tipOfDay(3);
+}
+
+function renderChart(values, target){
+  const wrap = document.getElementById('chartWrap');
+  const W = 640, H = 220, padL = 34, padB = 28, padT = 14, padR = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(target*1.15, ...values, 10);
+  const barGap = 14;
+  const barW = (plotW - barGap*(values.length-1)) / values.length;
+  const dayLabels = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+  const targetY = padT + plotH - (target/maxVal)*plotH;
+
+  let bars = '';
+  values.forEach((v,i)=>{
+    const x = padL + i*(barW+barGap);
+    const h = (v/maxVal)*plotH;
+    const y = padT + plotH - h;
+    const r = Math.min(4, barW/2, h/2);
+    bars += `<rect class="chart-bar" data-i="${i}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(h,1).toFixed(1)}" rx="${r.toFixed(1)}" fill="#0E8F79" opacity="${v>0?1:0.25}"></rect>`;
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="11" fill="#8C93AD" font-family="Nunito,sans-serif" font-weight="700">${dayLabels[i]}</text>`;
+  });
+
+  const svg = `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;margin:0 auto;">
+      <line x1="${padL}" y1="${targetY.toFixed(1)}" x2="${W-padR}" y2="${targetY.toFixed(1)}" stroke="#F8D848" stroke-width="2" stroke-dasharray="5,4"/>
+      <text x="${W-padR}" y="${(targetY-6).toFixed(1)}" text-anchor="end" font-size="10.5" fill="#8a6d00" font-family="Nunito,sans-serif" font-weight="800">Objectif ${target} g</text>
+      <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="#E4E8F2" stroke-width="1.5"/>
+      ${bars}
+    </svg>
+    <div class="bar-tooltip" id="chartTooltip"></div>
+  `;
+  wrap.innerHTML = svg;
+
+  const tooltip = document.getElementById('chartTooltip');
+  wrap.querySelectorAll('.chart-bar').forEach(rect=>{
+    rect.addEventListener('mouseenter', ()=>{
+      const i = Number(rect.dataset.i);
+      tooltip.textContent = `${dayLabels[i]} : ${values[i]} g`;
+      tooltip.classList.add('show');
+    });
+    rect.addEventListener('mousemove', ev=>{
+      const wrapRect = wrap.getBoundingClientRect();
+      tooltip.style.left = (ev.clientX - wrapRect.left)+'px';
+      tooltip.style.top = (ev.clientY - wrapRect.top)+'px';
+    });
+    rect.addEventListener('mouseleave', ()=>tooltip.classList.remove('show'));
+  });
+}
+
+/* ============================================================
+   WIRING : formulaires
+   ============================================================ */
+document.getElementById('fPrenom').addEventListener('input', e=>{ state.profil.prenom = e.target.value; try{localStorage.setItem(STORAGE_KEY, JSON.stringify(state));}catch(err){} });
+document.getElementById('fObjectif').addEventListener('change', e=>{ state.profil.objectif = e.target.value; save(); });
+document.getElementById('fActivite').addEventListener('change', e=>{ state.profil.activite = e.target.value; save(); });
+document.getElementById('fRegime').addEventListener('change', e=>{ state.profil.regime = e.target.value; save(); });
+document.getElementById('fPoids').addEventListener('input', e=>{ state.profil.poids = Number(e.target.value); save(); });
+document.getElementById('fManuel').addEventListener('change', e=>{
+  state.profil.manuel = e.target.value==='manuel' ? 'manuel' : 'Automatique (recommandé)';
+  save();
+});
+document.getElementById('fManuelVal').addEventListener('change', e=>{ state.profil.manuelValeur = Number(e.target.value); save(); });
+
+document.getElementById('filType').addEventListener('change', e=>{ state.filtres.type = e.target.value; save(); });
+document.getElementById('filRapide').addEventListener('change', e=>{ state.filtres.rapide = e.target.value; save(); });
+document.getElementById('filRegime').addEventListener('change', e=>{ state.filtres.regime = e.target.value; save(); });
+document.getElementById('filEnvie').addEventListener('change', e=>{ state.filtres.envie = e.target.value; save(); });
+document.getElementById('useProfilRegime').addEventListener('click', ()=>{ state.filtres.regime = state.profil.regime; save(); });
+
+['petitdej','dejeuner','diner','collation'].forEach(k=>{
+  const id = 'j'+k[0].toUpperCase()+k.slice(1);
+  document.getElementById(id).addEventListener('change', e=>{ state.journal[k] = e.target.value; save(); });
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(confirm('Réinitialiser toutes vos données NutriGlow sur cet appareil ? Cette action est irréversible.')){
+    localStorage.removeItem(STORAGE_KEY);
+    state = defaultState();
+    save();
+  }
+});
+
+/* ============================================================
+   RENDER ALL + INIT
+   ============================================================ */
+function renderAll(){
+  renderProfil();
+  renderAujourdhui();
+  renderLibChips();
+  renderLibGrid();
+  renderPlanning();
+  renderCourses();
+  renderSuivi();
+  renderDashboard();
+}
+
+(function init(){
+  const hash = location.hash.replace('#','');
+  const validTabs = ['accueil','profil','aujourdhui','bibliotheque','planning','courses','suivi','dashboard','aide'];
+  showTab(validTabs.includes(hash) ? hash : 'accueil');
+  renderAll();
+})();
+</script>
+</body>
+</html>

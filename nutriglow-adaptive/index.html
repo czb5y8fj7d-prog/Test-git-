@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="color-scheme" content="light" />
+<title>NutriGlow Adaptive — L'assistant repas qui pense à votre place</title>
+<meta name="description" content="NutriGlow Adaptive : suggestions de repas, journal de protéines, planning de la semaine et liste de courses générée automatiquement — sans calcul de calories, sans culpabilité." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🌿</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOP HEADER ============ -->
+  <header class="site-top">
+    <div class="site-top-inner">
+      <div class="brand" data-open-welcome>
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21c-4-2-7-6-7-11a7 7 0 0 1 14 0c0 5-3 9-7 11Z"/><path d="M12 21V9"/><path d="M12 12c-2-2-5-2-7-1"/><path d="M12 9c2-2 5-2 7-1"/></svg>
+        </div>
+        <div class="brand-text">
+          <strong>NutriGlow Adaptive</strong>
+          <span>Inside &amp; Out</span>
+        </div>
+      </div>
+      <button class="icon-btn" data-open-help aria-label="Mode d'emploi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 4.7 1.2c0 1.6-2.2 1.8-2.2 3.3"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ============ AUJOURD'HUI ============ -->
+    <section class="view active" id="view-today">
+      <div class="hero-panel">
+        <span class="hero-eyebrow">🌿 Aujourd'hui</span>
+        <h1>Qu'est-ce que je mange aujourd'hui ?</h1>
+        <p>Dites-nous ce que vous cherchez, on s'occupe du reste — sans calcul de calories, sans culpabilité.</p>
+      </div>
+
+      <div class="section">
+        <div class="card">
+          <div class="section-head">
+            <span class="section-eyebrow">Filtres</span>
+            <h3 class="section-title" style="font-size:1.1rem">Qu'est-ce que vous cherchez ?</h3>
+          </div>
+          <div class="field">
+            <label for="f-type">Type de repas</label>
+            <select class="control" id="f-type"></select>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="f-quick">Rapide (≤15 min) ?</label>
+              <select class="control" id="f-quick"></select>
+            </div>
+            <div class="field">
+              <label for="f-diet">Régime</label>
+              <select class="control" id="f-diet"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-craving">Envie du moment</label>
+            <select class="control" id="f-craving"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-eyebrow">✨ Pour vous</span>
+          <h3 class="section-title" style="font-size:1.1rem">Vos 3 suggestions</h3>
+        </div>
+        <div class="stack" id="suggestions-list"></div>
+        <p class="muted" style="margin-top:12px">💡 Astuce : mettez tous les filtres sur « Peu importe » et gardez juste « Rapide » sur Oui pour un repas de secours en 2 minutes.</p>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-eyebrow">🍽️ Journal</span>
+          <h3 class="section-title" style="font-size:1.1rem">Journal du jour</h3>
+          <p class="section-desc">Choisissez librement ce que vous mangez réellement — les suggestions ne sont que des idées.</p>
+        </div>
+        <div class="card">
+          <div id="journal-rows"></div>
+          <div class="progress-wrap">
+            <div class="progress-numbers">
+              <strong id="journal-total">0 g</strong>
+              <span id="journal-remaining">objectif 0 g</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" id="journal-progress-fill" style="width:0%"></div></div>
+            <p class="progress-caption">Le suivi des protéines reste un repère libre, pas une règle stricte.</p>
+          </div>
+          <div class="form-actions">
+            <button class="tag-remove-btn" id="btn-reset-journal" style="flex:1">Nouveau jour · réinitialiser</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BIBLIOTHÈQUE DE REPAS ============ -->
+    <section class="view" id="view-library">
+      <div class="section" style="padding-top:22px">
+        <div class="section-head">
+          <span class="section-eyebrow">📚 Recettes</span>
+          <h2 class="section-title">Bibliothèque de repas</h2>
+          <p class="section-desc">La base qui alimente vos suggestions — ajoutez les vôtres librement.</p>
+        </div>
+
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="control" type="search" id="lib-search" placeholder="Chercher une recette ou un ingrédient…" />
+        </div>
+
+        <div class="filter-scroll" id="lib-type-filters"></div>
+        <div class="filter-scroll" id="lib-diet-filters"></div>
+
+        <div class="recipe-grid" id="recipe-list"></div>
+      </div>
+    </section>
+
+    <!-- ============ PLANNING SEMAINE ============ -->
+    <section class="view" id="view-planning">
+      <div class="section" style="padding-top:22px">
+        <div class="section-head">
+          <span class="section-eyebrow">🗓️ Semaine</span>
+          <h2 class="section-title">Planning de la semaine</h2>
+          <p class="section-desc">Choisissez un repas de votre bibliothèque pour chaque case — la liste de courses se génère seule.</p>
+        </div>
+        <div id="planning-days"></div>
+      </div>
+    </section>
+
+    <!-- ============ LISTE DE COURSES ============ -->
+    <section class="view" id="view-shopping">
+      <div class="section" style="padding-top:22px">
+        <div class="section-head">
+          <span class="section-eyebrow">🛒 Courses</span>
+          <h2 class="section-title">Liste de courses</h2>
+          <p class="section-desc">Générée automatiquement à partir de votre planning de la semaine.</p>
+        </div>
+        <div class="card" id="shopping-card">
+          <div id="shopping-list"></div>
+        </div>
+        <details class="detail-panel" id="shopping-detail-wrap">
+          <summary>Détail par jour et par repas ▾</summary>
+          <div id="shopping-detail"></div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============ PROFIL (+ SUIVI HEBDO) ============ -->
+    <section class="view" id="view-profile">
+      <div class="section" style="padding-top:22px">
+        <div class="section-head">
+          <span class="section-eyebrow">🌸 Profil</span>
+          <h2 class="section-title">Profil &amp; Objectifs</h2>
+          <p class="section-desc">À remplir une fois — sert de repère, pas de règle.</p>
+        </div>
+
+        <div class="card">
+          <div class="profile-avatar" id="profile-avatar">?</div>
+          <div class="field">
+            <label for="p-name">Prénom</label>
+            <input class="control" type="text" id="p-name" placeholder="Ex : Claire" />
+          </div>
+          <div class="field">
+            <label for="p-goal">Objectif principal</label>
+            <select class="control" id="p-goal"></select>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="p-activity">Niveau d'activité</label>
+              <select class="control" id="p-activity"></select>
+            </div>
+            <div class="field">
+              <label for="p-diet">Préférence alimentaire</label>
+              <select class="control" id="p-diet"></select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="p-weight">Poids (kg)</label>
+              <input class="control" type="number" id="p-weight" min="1" step="0.5" />
+            </div>
+            <div class="field">
+              <label for="p-protein">Objectif protéines (g/j)</label>
+              <input class="control" type="number" id="p-protein" min="1" step="1" />
+            </div>
+          </div>
+          <div class="benchmark-box">
+            <span style="font-size:1.3rem">💡</span>
+            <div>
+              <strong id="p-benchmark">—</strong><br/>
+              <span>Repère indicatif (1,2 à 1,6 g / kg)</span>
+            </div>
+          </div>
+          <p class="field-hint" style="margin-top:16px">Ce fichier ne compte pas les calories : l'objectif est de simplifier la décision du repas, pas de vous faire calculer. Le suivi des protéines reste un repère libre.</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-eyebrow">📝 Suivi hebdo</span>
+          <h3 class="section-title" style="font-size:1.1rem">Votre semaine</h3>
+          <p class="section-desc">Pas de balance ici — juste votre énergie et votre ressenti au fil de la semaine.</p>
+        </div>
+        <div class="card">
+          <span class="field-hint" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--ink-soft);font-size:.72rem">Énergie de la semaine</span>
+          <div class="sparkline" id="week-sparkline"></div>
+        </div>
+        <div id="suivi-days" style="margin-top:14px"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="nav-item active" data-nav="today">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21c-4-2-7-6-7-11a7 7 0 0 1 14 0c0 5-3 9-7 11Z"/><path d="M12 21V9"/></svg>
+        <span>Aujourd'hui</span>
+      </button>
+      <button class="nav-item" data-nav="library">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+        <span>Recettes</span>
+      </button>
+      <button class="nav-item" data-nav="planning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+        <span>Planning</span>
+      </button>
+      <button class="nav-item" data-nav="shopping">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 2H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>
+        <span>Courses</span>
+      </button>
+      <button class="nav-item" data-nav="profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.2c1.4-3.6 4.3-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>
+        <span>Profil</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- FAB — add recipe, only shown on library view -->
+  <button class="fab" id="fab-add-recipe" style="display:none" aria-label="Ajouter une recette">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <!-- ============ WELCOME OVERLAY ============ -->
+  <div class="overlay center" id="overlay-welcome">
+    <div class="sheet">
+      <div class="sheet-body welcome-content">
+        <div class="welcome-logo">
+          <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 21c-4-2-7-6-7-11a7 7 0 0 1 14 0c0 5-3 9-7 11Z"/><path d="M12 21V9"/><path d="M12 12c-2-2-5-2-7-1"/><path d="M12 9c2-2 5-2 7-1"/></svg></div>
+        </div>
+        <h2>NutriGlow Adaptive</h2>
+        <p class="welcome-sub">L'assistant repas qui pense à votre place.</p>
+        <p style="font-size:0.87rem;color:var(--ink-soft);line-height:1.6;margin-bottom:20px">Chaque jour, une seule question : « qu'est-ce que je mange aujourd'hui ? » Cette app y répond pour vous — sans calcul de calories, sans culpabilité, juste des suggestions adaptées à votre envie du moment.</p>
+        <ul class="welcome-list">
+          <li><span class="wl-icon">🌸</span><span class="wl-text"><strong>Profil &amp; Objectifs</strong><span>À remplir en premier, une seule fois</span></span></li>
+          <li><span class="wl-icon">🌿</span><span class="wl-text"><strong>Aujourd'hui</strong><span>Vos suggestions + votre journal du jour</span></span></li>
+          <li><span class="wl-icon">📚</span><span class="wl-text"><strong>Bibliothèque de repas</strong><span>Toutes vos recettes, personnalisables</span></span></li>
+          <li><span class="wl-icon">🗓️</span><span class="wl-text"><strong>Planning semaine</strong><span>Organisez vos 7 jours en un clin d'œil</span></span></li>
+          <li><span class="wl-icon">🛒</span><span class="wl-text"><strong>Liste de courses</strong><span>Générée automatiquement</span></span></li>
+          <li><span class="wl-icon">📝</span><span class="wl-text"><strong>Suivi hebdo</strong><span>Votre énergie, jour après jour</span></span></li>
+        </ul>
+        <div class="form-actions">
+          <button class="btn btn-primary btn-block" id="btn-welcome-start">Commencer par mon profil</button>
+        </div>
+        <button class="btn btn-outline btn-block" id="btn-welcome-skip" style="margin-top:10px">Explorer directement</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HELP / MODE D'EMPLOI OVERLAY ============ -->
+  <div class="overlay" id="overlay-help">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3>✨ Mode d'emploi</h3>
+        <button class="icon-btn" data-close-overlay aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <div class="howto-step"><div class="howto-num">1</div><p><strong>Profil &amp; Objectifs</strong> : renseignez votre prénom, votre poids et votre objectif protéines (un repère indicatif est calculé, mais vous restez libre de le modifier).</p></div>
+        <div class="howto-step"><div class="howto-num">2</div><p><strong>Aujourd'hui</strong> : choisissez ce que vous cherchez (type de repas, rapide ou non, régime, envie) — 3 suggestions apparaissent instantanément.</p></div>
+        <div class="howto-step"><div class="howto-num">3</div><p><strong>Journal du jour</strong> : notez ce que vous mangez réellement en le choisissant librement dans la bibliothèque — le total de protéines et ce qu'il vous reste se calculent seuls.</p></div>
+        <div class="howto-step"><div class="howto-num">4</div><p><strong>Bibliothèque de repas</strong> : la base qui alimente tout. Ajoutez vos propres recettes (type, rapide, régime, envie, protéines, ingrédients).</p></div>
+        <div class="howto-step"><div class="howto-num">5</div><p><strong>Planning semaine</strong> : choisissez un repas par case pour organiser vos 7 jours.</p></div>
+        <div class="howto-step"><div class="howto-num">6</div><p><strong>Liste de courses</strong> : se remplit toute seule à partir de votre planning.</p></div>
+        <div class="howto-step"><div class="howto-num">7</div><p><strong>Suivi hebdo</strong> : notez votre énergie et votre ressenti chaque jour — pas de pesée, juste votre corps qui parle.</p></div>
+        <p class="field-hint" style="margin-top:16px">Important : cette app ne compte que les protéines, pas les calories. L'objectif protéines est un repère général, pas une prescription médicale.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RECIPE DETAIL OVERLAY ============ -->
+  <div class="overlay" id="overlay-recipe-detail">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3 id="rd-name">Recette</h3>
+        <button class="icon-btn" data-close-overlay aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <div class="recipe-badges" id="rd-badges"></div>
+        <div class="card" style="margin-top:6px">
+          <div class="field"><label>Ingrédients</label><p id="rd-ingredients" style="font-size:0.9rem;line-height:1.6"></p></div>
+          <div class="field" id="rd-tip-wrap"><label>Astuce</label><p id="rd-tip" style="font-size:0.9rem;font-style:italic;color:var(--ink-soft);line-height:1.6"></p></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-outline btn-block" id="rd-edit-btn">Modifier</button>
+          <button class="btn btn-block" id="rd-delete-btn" style="background:var(--coral-tint);color:var(--coral-deep)">Supprimer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RECIPE FORM OVERLAY (add / edit) ============ -->
+  <div class="overlay" id="overlay-recipe-form">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3 id="rf-title">Nouvelle recette</h3>
+        <button class="icon-btn" data-close-overlay aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <form id="recipe-form">
+          <input type="hidden" id="rf-id" />
+          <div class="field">
+            <label for="rf-name">Nom du repas</label>
+            <input class="control" type="text" id="rf-name" required placeholder="Ex : Bowl de saison" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="rf-type">Type de repas</label>
+              <select class="control" id="rf-type" required></select>
+            </div>
+            <div class="field">
+              <label for="rf-time">Temps (min)</label>
+              <input class="control" type="number" id="rf-time" min="1" required />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="rf-quick">Rapide</label>
+              <select class="control" id="rf-quick">
+                <option value="true">Oui</option>
+                <option value="false">Non</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="rf-protein">Protéines (g)</label>
+              <input class="control" type="number" id="rf-protein" min="0" required />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="rf-diet">Régime</label>
+              <select class="control" id="rf-diet" required></select>
+            </div>
+            <div class="field">
+              <label for="rf-craving">Envie</label>
+              <select class="control" id="rf-craving" required></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="rf-ingredients">Ingrédients principaux</label>
+            <textarea class="control" id="rf-ingredients" required placeholder="Séparez les ingrédients par une virgule"></textarea>
+          </div>
+          <div class="field">
+            <label for="rf-tip">Astuce (optionnel)</label>
+            <textarea class="control" id="rf-tip" placeholder="Un conseil pratique pour cette recette"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-block">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+</div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
