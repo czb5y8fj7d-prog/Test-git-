@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mes projets</title>
+  <meta name="description" content="Accueil : tous mes projets au même endroit.">
+  <meta name="theme-color" content="#0b0d10">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236b8cff'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #0b0d10; --s1: #13171c; --s2: #1b2128; --s3: #262e38; --line: #2a323c;
+      --txt: #e9edf2; --mut: #8e99a8; --acc: #6b8cff; --err: #ff6b6b;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { background: var(--bg); color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh; color: var(--txt);
+      font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      background:
+        radial-gradient(900px 420px at 50% -120px, rgba(107,140,255,.16), transparent 70%),
+        var(--bg);
+      padding: max(28px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+    main { max-width: 760px; margin: 0 auto; }
+    header { padding: 8vh 0 28px; }
+    .host { margin: 0 0 10px; color: var(--acc); font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(30px, 8vw, 44px); line-height: 1.1; letter-spacing: -.02em; }
+    .lead { margin: 10px 0 0; color: var(--mut); }
+
+    #list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+    .card {
+      display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 16px 18px;
+      color: inherit; text-decoration: none; background: var(--s1);
+      border: 1px solid var(--line); border-radius: 18px;
+      transition: border-color .15s, background .15s, transform .15s;
+    }
+    .card:hover { border-color: var(--acc); background: #161c26; }
+    .card:active { transform: scale(.985); background: var(--s2); }
+    .card:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+    .ico { flex: none; width: 52px; height: 52px; display: grid; place-items: center; font-size: 26px; background: var(--s2); border: 1px solid var(--line); border-radius: 14px; }
+    .txt { flex: 1; min-width: 0; }
+    .ttl { display: block; font-size: 17px; font-weight: 600; }
+    .dsc { display: block; margin-top: 2px; color: var(--mut); font-size: 14px; }
+    .go { flex: none; color: var(--mut); font-size: 22px; }
+    .card:hover .go { color: var(--acc); }
+
+    .msg { padding: 18px; color: var(--mut); background: var(--s1); border: 1px dashed var(--line); border-radius: 18px; }
+    .msg.err { color: #ffd9d9; border-color: #6a3434; background: #2b1a1a; }
+    .msg code { padding: 1px 6px; font: 0.9em ui-monospace, "SF Mono", Menlo, monospace; background: var(--s3); border-radius: 6px; color: var(--txt); }
+    footer { margin-top: 28px; color: var(--mut); font-size: 13px; }
+    @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="host" id="host"></p>
+    <h1>Mes projets</h1>
+    <p class="lead">Choisissez un projet.</p>
+  </header>
+
+  <div id="list" aria-live="polite"><div class="msg">Chargement…</div></div>
+  <noscript><div class="msg err">JavaScript est nécessaire pour afficher la liste des projets.</div></noscript>
+  <footer id="foot"></footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var list = document.getElementById('list');
+  document.getElementById('host').textContent = location.hostname;
+
+  /* Ancienne appli installée à la racine : on retire son service worker
+     pour qu'il ne masque pas cette page. Les projets ont le leur, dans leur dossier. */
+  try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        rs.forEach(function (r) { if (new URL(r.scope).pathname === '/') r.unregister(); });
+      }).catch(function () {});
+    }
+  } catch (e) { /* ignoré */ }
+
+  function message(html, err) {
+    list.textContent = '';
+    var d = document.createElement('div');
+    d.className = 'msg' + (err ? ' err' : '');
+    d.innerHTML = html;
+    list.appendChild(d);
+  }
+
+  function card(p) {
+    var href = typeof p.path === 'string' ? p.path : '/' + p.slug + '/';
+    if (href.charAt(0) !== '/' || href.indexOf('//') === 0) return null;   // liens internes uniquement
+    var a = document.createElement('a');
+    a.className = 'card';
+    a.href = href;
+
+    var ico = document.createElement('span');
+    ico.className = 'ico'; ico.setAttribute('aria-hidden', 'true');
+    ico.textContent = p.icon || '📁';
+
+    var txt = document.createElement('span');
+    txt.className = 'txt';
+    var t = document.createElement('span');
+    t.className = 'ttl'; t.textContent = p.title || p.slug;
+    txt.appendChild(t);
+    if (p.desc) {
+      var d = document.createElement('span');
+      d.className = 'dsc'; d.textContent = p.desc;
+      txt.appendChild(d);
+    }
+
+    var go = document.createElement('span');
+    go.className = 'go'; go.setAttribute('aria-hidden', 'true'); go.textContent = '›';
+
+    a.appendChild(ico); a.appendChild(txt); a.appendChild(go);
+    return a;
+  }
+
+  fetch('/projects.json', { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+    .then(function (data) {
+      var items = Array.isArray(data) ? data.filter(function (p) { return p && (p.slug || p.path); }) : [];
+      if (!items.length) {
+        message('Aucun projet pour le moment. Sur le serveur : <code>hub add mon-projet --titre "Mon projet"</code>');
+        return;
+      }
+      list.textContent = '';
+      items.forEach(function (p) { var c = card(p); if (c) list.appendChild(c); });
+      document.getElementById('foot').textContent = items.length + (items.length > 1 ? ' projets' : ' projet');
+    })
+    .catch(function () { message('Impossible de charger la liste des projets. Réessayez dans un instant.', true); });
+})();
+</script>
+</body>
+</html>

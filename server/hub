@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+# hub — gère les projets du site : un dossier + un chemin (/nom/) par projet.
+#
+#   hub add <nom> [--titre T] [--desc D] [--icone 🙂] [--branche B] [--depot URL]
+#   hub update            met à jour le hub et tous les projets (git pull)
+#   hub list              liste les projets publiés
+#   hub remove <nom>      retire un projet du site (les fichiers sont conservés)
+#
+# Organisation sur le serveur :
+#   /var/www/hub/              la page d'accueil (branche « hub »)           -> https://domaine/
+#   /var/www/projects/<nom>/   un projet (une branche du dépôt)               -> https://domaine/<nom>/
+#   /etc/caddy/projects/       un petit fichier Caddy par projet (le « routage »)
+#   /var/lib/hub/projects.json la liste des boutons de l'accueil
+set -e
+if [ "${SUDO+x}" != x ]; then if [ "$(id -u)" = 0 ]; then SUDO=""; else SUDO="sudo"; fi; fi
+HUB_DIR="${HUB_DIR:-/var/www/hub}"
+PROJ_DIR="${PROJ_DIR:-/var/www/projects}"
+SNIP_DIR="${SNIP_DIR:-/etc/caddy/projects}"
+DATA_DIR="${DATA_DIR:-/var/lib/hub}"
+CADDYFILE="${CADDYFILE:-/etc/caddy/Caddyfile}"
+CADDY_BIN="${CADDY_BIN:-caddy}"
+CADDY_RELOAD="${CADDY_RELOAD:-systemctl reload caddy}"
+DEFAULT_REPO="${REPO_URL:-https://github.com/czb5y8fj7d-prog/test-git-}"
+
+die() { echo "Erreur : $*" >&2; exit 1; }
+
+usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; }
+
+cmd_add() {
+  [ -n "$1" ] || die "il manque le nom du projet. Exemple : hub add llm --titre \"LocalLM\""
+  slug="$1"; shift
+  title=""; desc=""; icon=""; branch="$slug"; repo="$DEFAULT_REPO"
+  while [ $# -gt 0 ]; do
+    [ $# -ge 2 ] || die "l'option $1 attend une valeur"
+    case "$1" in
+      --titre) title="$2" ;;
+      --desc) desc="$2" ;;
+      --icone) icon="$2" ;;
+      --branche) branch="$2" ;;
+      --depot) repo="$2" ;;
+      *) die "option inconnue : $1" ;;
+    esac
+    shift 2
+  done
+  [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}$ ]] || die "le nom doit être en minuscules, chiffres et tirets (ex. : mon-projet)"
+  case "$slug" in api|v1|hub|server|projects|projects.json) die "« $slug » est réservé, choisissez un autre nom" ;; esac
+
+  dir="$PROJ_DIR/$slug"
+  echo "→ Récupération du projet « $slug » (branche $branch)…"
+  if [ -d "$dir/.git" ]; then
+    $SUDO git -C "$dir" pull --ff-only
+  else
+    $SUDO mkdir -p "$PROJ_DIR"
+    $SUDO git clone --depth 1 --branch "$branch" --single-branch "$repo" "$dir" \
+      || die "impossible de récupérer la branche « $branch » de $repo (elle existe sur GitHub ?)"
+  fi
+  $SUDO chmod -R a+rX "$dir"
+
+  echo "→ Création du chemin /$slug/ …"
+  $SUDO mkdir -p "$SNIP_DIR"
+  snip="$SNIP_DIR/$slug.caddy"
+  [ ! -e "$snip" ] || $SUDO cp "$snip" "$snip.bak"
+  $SUDO tee "$snip" >/dev/null <<SNIP
+redir /$slug /$slug/ 308
+handle_path /$slug/* {
+  root * $dir
+  encode gzip
+  header Cache-Control "no-cache"
+  file_server {
+    hide .git server
+  }
+}
+SNIP
+  if ! $SUDO "$CADDY_BIN" validate --config "$CADDYFILE" --adapter caddyfile >/dev/null 2>&1; then
+    if [ -e "$snip.bak" ]; then $SUDO mv "$snip.bak" "$snip"; else $SUDO rm -f "$snip"; fi
+    $SUDO "$CADDY_BIN" validate --config "$CADDYFILE" --adapter caddyfile || true
+    die "la configuration Caddy est refusée ; le projet n'a pas été publié"
+  fi
+  $SUDO rm -f "$snip.bak"
+
+  echo "→ Ajout du bouton sur l'accueil…"
+  $SUDO mkdir -p "$DATA_DIR"
+  $SUDO python3 - "$DATA_DIR/projects.json" "$slug" "$title" "$desc" "$icon" <<'PY'
+import json, sys
+f, slug, title, desc, icon = sys.argv[1:6]
+try:
+    data = json.load(open(f))
+    if not isinstance(data, list):
+        data = []
+except Exception:
+    data = []
+old = next((p for p in data if p.get("slug") == slug), {})
+entry = {
+    "slug": slug,
+    "title": title or old.get("title") or slug,
+    "desc": desc or old.get("desc") or "",
+    "icon": icon or old.get("icon") or "📁",
+    "path": "/" + slug + "/",
+}
+data = [entry if p.get("slug") == slug else p for p in data]
+if not any(p.get("slug") == slug for p in data):
+    data.append(entry)
+with open(f, "w", encoding="utf-8") as out:
+    json.dump(data, out, ensure_ascii=False, indent=2)
+PY
+  $SUDO chmod 644 "$DATA_DIR/projects.json"
+  $SUDO chmod 755 "$DATA_DIR"
+
+  $SUDO $CADDY_RELOAD
+  echo "OK : le projet est en ligne sur /$slug/"
+}
+
+cmd_update() {
+  if [ -d "$HUB_DIR/.git" ]; then echo "→ hub"; $SUDO git -C "$HUB_DIR" pull --ff-only; fi
+  for d in "$PROJ_DIR"/*/; do
+    [ -d "$d.git" ] || continue
+    echo "→ $(basename "$d")"
+    $SUDO git -C "$d" pull --ff-only
+  done
+  $SUDO chmod -R a+rX "$HUB_DIR" "$PROJ_DIR" 2>/dev/null || true
+  echo "OK : tout est à jour"
+}
+
+cmd_list() {
+  [ -r "$DATA_DIR/projects.json" ] || { echo "Aucun projet."; return; }
+  python3 - "$DATA_DIR/projects.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+if not data:
+    print("Aucun projet.")
+for p in data:
+    print("%s  /%s/  %s" % (p.get("icon", ""), p["slug"], p.get("title", "")))
+PY
+}
+
+cmd_remove() {
+  [ -n "$1" ] || die "il manque le nom du projet. Exemple : hub remove llm"
+  slug="$1"
+  [[ "$slug" =~ ^[a-z0-9][a-z0-9-]{0,30}$ ]] || die "nom invalide"
+  $SUDO rm -f "$SNIP_DIR/$slug.caddy"
+  if [ -r "$DATA_DIR/projects.json" ]; then
+    $SUDO python3 - "$DATA_DIR/projects.json" "$slug" <<'PY'
+import json, sys
+f, slug = sys.argv[1:3]
+data = [p for p in json.load(open(f)) if p.get("slug") != slug]
+with open(f, "w", encoding="utf-8") as out:
+    json.dump(data, out, ensure_ascii=False, indent=2)
+PY
+  fi
+  $SUDO $CADDY_RELOAD
+  echo "OK : « $slug » n'est plus publié (ses fichiers restent dans $PROJ_DIR/$slug)"
+}
+
+case "${1:-}" in
+  add) shift; cmd_add "$@" ;;
+  update) cmd_update ;;
+  list) cmd_list ;;
+  remove) shift; cmd_remove "$@" ;;
+  *) usage ;;
+esac
