@@ -69,7 +69,7 @@ function idb(mode, fn) {
   }));
 }
 
-let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, hideLocal: null, ctxR: 4096, think: true, persona: 'general', web: false, tools: true, visionModel: null, ...ls.get('locallm.settings', {}) };
+let S = { modelId: null, temperature: 0.7, top_p: 0.9, max_tokens: 512, ctx: 2048, system: DEFAULT_SYSTEM, remote: null, hideLocal: null, ctxR: 4096, think: true, persona: 'general', web: false, tools: true, visionModel: null, img: { format: 'carre', steps: 8, improve: true }, ...ls.get('locallm.settings', {}) };
 const ctxFor = (m) => (m.type === 'remote' ? Math.min(S.ctxR, m.maxCtx) : Math.min(S.ctx, m.maxCtx || 4096));   // contexte effectif pour un modèle
 const saveS = () => ls.set('locallm.settings', S);
 if (!S.v) { if (S.remote) S.max_tokens = Math.max(S.max_tokens, 4096); S.v = 2; saveS(); }   // migration : réponses plus longues si un serveur est configuré
@@ -81,6 +81,8 @@ function setCached(id, on) { if (on) cached.add(id); else cached.delete(id); ls.
    3. ÉTAT
    ===================================================================== */
 let chat = { id: 'main', messages: [], docs: [] };   // la conversation (docs : documents joints, texte extrait)
+const caps = { image: false };   // capacités du serveur (génération d'images installée ?)
+let imgMode = false;             // mode image : le message devient une image
 const pending = { docs: [], images: [], busy: 0 };   // pièces jointes du message en cours de rédaction
 const gen = { phase: 'idle', stick: true, stream: null, bubble: null, stopRequested: false };   // idle | loading | generating
 const gpu = { ok: false, f16: false, reason: '' };
@@ -275,7 +277,7 @@ async function keepAwake(on) {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   if (gen.phase === 'loading' || gen.phase === 'generating') keepAwake(true);
-  refreshStatus();
+  refreshStatus(); tickGens();
   const last = chat.messages[chat.messages.length - 1];
   if (gen.phase === 'idle' && last && last.interrupted) notice('warn', 'La réponse a été coupée pendant que l\'app était en arrière-plan.', [{ label: 'Reprendre', fn: continueGeneration }]);
 });
@@ -529,7 +531,7 @@ const persona = () => PERSONAS.find((p) => p.id === S.persona) || PERSONAS[0];
 function toolsActive(m) { return !!m && m.type === 'remote' && (S.tools || S.web); }
 function toolList(m) {
   if (!toolsActive(m)) return [];
-  return toolDefs({ base: !!S.tools, docs: !!S.tools && chat.docs.length > 0, web: !!S.web });
+  return toolDefs({ base: !!S.tools, docs: !!S.tools && chat.docs.length > 0, web: !!S.web, image: caps.image && !!S.tools });
 }
 
 /* Prompt système effectif : rôle choisi + date + consignes sur les outils */
@@ -539,6 +541,7 @@ function systemText(m) {
   const d = new Date();
   t += '\n\nDate et heure actuelles : ' + d.toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' }) + '.';
   if (toolList(m).length) t += '\nTu disposes d\'outils : utilise-les quand ils sont utiles (calcul exact, informations récentes, documents joints) et ne devine jamais un résultat que tu peux obtenir. Après un résultat d\'outil, réponds à l\'utilisateur.';
+  if (toolList(m).some((x) => x.function.name === 'generer_image')) t += '\nPour créer une image, appelle generer_image avec une description détaillée en anglais ; la génération dure plusieurs minutes et l\'image s\'affiche seule : dis-le brièvement à l\'utilisateur, sans la redemander.';
   return t;
 }
 
@@ -630,7 +633,147 @@ function bubbleHTML(msg) {
     const label = (TOOL_LABEL[st.name] ? TOOL_LABEL[st.name](st.args || {}) : st.name);
     return '<details class="tool"><summary>' + esc(label) + (st.result == null ? ' …' : '') + '</summary>' + (st.result != null ? '<pre>' + esc(st.result) + '</pre>' : '') + '</details>';
   }).join('');
-  return steps + renderMd(msg.content);
+  const gens = (msg.gen || []).map(genHTML).join('');
+  return steps + renderMd(msg.content) + gens;
+}
+
+/* ---------- images générées par le serveur (FLUX) ---------- */
+const fmtDur = (s) => { s = Math.max(0, Math.round(s)); return s >= 60 ? Math.floor(s / 60) + ' min ' + String(s % 60).padStart(2, '0') + ' s' : s + ' s'; };
+function genLabel(g) {
+  if (g.state === 'queued') return '🎨 En attente' + (g.position ? ' (' + g.position + ' avant)' : '') + '…';
+  const st = g.steps ? ' · étape ' + Math.min(g.step || 0, g.steps) + '/' + g.steps : '';
+  return '🎨 ' + (g.phase || 'Génération') + st + ' · ' + fmtDur(g.elapsed || 0) + (g.eta ? ' · reste ≈ ' + fmtDur(g.eta) : '');
+}
+const genPct = (g) => (g.steps ? Math.round(100 * Math.min(g.step || 0, g.steps) / g.steps) : 0);
+function genHTML(g) {
+  const id = esc(g.id);
+  if (g.state === 'queued' || g.state === 'running') {
+    return '<div class="gen" data-id="' + id + '"><div class="gen-t">' + esc(genLabel(g)) + '</div><div class="gbar"><div style="width:' + genPct(g) + '%"></div></div><button type="button" class="gen-cancel" data-id="' + id + '">Annuler</button></div>';
+  }
+  if (g.state === 'done' && g.img && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(g.img)) {
+    return '<figure class="genimg"><img alt="Image générée" src="' + g.img + '"><figcaption><a download="ll-image.jpg" href="' + g.img + '">Télécharger</a> · ' + g.w + '×' + g.h + ' · ' + fmtDur(g.elapsed || 0) + '<details><summary>Description utilisée</summary>' + esc(g.prompt || '') + '</details></figcaption></figure>';
+  }
+  return '<div class="gen err">🎨 ' + esc(g.error || 'Image indisponible.') + '</div>';
+}
+const imgApi = (path, opt = {}) => fetch(S.remote.url + '/_ll/image' + path, { ...opt, headers: { Authorization: 'Bearer ' + S.remote.key, 'Content-Type': 'application/json' } });
+
+async function startImageJob(prompt, format) {
+  if (!S.remote) throw new Error('Aucun serveur configuré.');
+  const fmt = ['carre', 'portrait', 'paysage'].includes(format) ? format : S.img.format;
+  let res;
+  try { res = await imgApi('', { method: 'POST', body: JSON.stringify({ prompt, format: fmt, steps: S.img.steps }) }); }
+  catch { throw Object.assign(new Error('Serveur injoignable.'), { kind: 'server' }); }
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || 'Génération refusée (' + res.status + ').');
+  return { ...j, format: fmt };
+}
+function addGen(msg, job, prompt) {
+  msg.gen = msg.gen || [];
+  const g = { id: job.id, state: job.state, phase: job.phase, prompt, w: job.width, h: job.height, steps: job.steps, step: 0, elapsed: 0, position: job.position || 0, img: null, error: null };
+  msg.gen.push(g);
+  pollGens();
+  return g;
+}
+const activeGens = () => chat.messages.flatMap((m) => (m.gen || []).filter((g) => g.state === 'queued' || g.state === 'running'));
+let genTimer = 0;
+function pollGens() {
+  if (genTimer || !activeGens().length) return;
+  genTimer = setInterval(tickGens, 4000);
+  tickGens();
+}
+async function toJpegDataUrl(blob) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, 0, 0);
+    return c.toDataURL('image/jpeg', 0.92);
+  } finally { URL.revokeObjectURL(url); }
+}
+let ticking = false;
+async function tickGens() {
+  if (ticking) return;
+  ticking = true;
+  try {
+    const act = activeGens();
+    if (!act.length) { clearInterval(genTimer); genTimer = 0; return; }
+    let changed = false;
+    for (const g of act) {
+      try {
+        const r = await imgApi('/' + g.id);
+        if (r.status === 404) { g.state = 'error'; g.error = 'Tâche introuvable sur le serveur.'; changed = true; continue; }
+        if (r.status === 401 || r.status === 403) { g.state = 'error'; g.error = 'Session expirée : reconnectez-vous dans les réglages.'; changed = true; continue; }
+        const j = await r.json();
+        Object.assign(g, { state: j.state, phase: j.phase, step: j.step, elapsed: j.elapsed, eta: j.eta, position: j.position, error: j.error });
+        if (j.state === 'done') {
+          const pr = await imgApi('/' + g.id + '/png');
+          g.img = await toJpegDataUrl(await pr.blob());
+        }
+        if (g.state === 'done' || g.state === 'error') changed = true;
+        else document.querySelectorAll('.gen[data-id="' + g.id + '"]').forEach((el) => { el.querySelector('.gen-t').textContent = genLabel(g); el.querySelector('.gbar > div').style.width = genPct(g) + '%'; });
+      } catch (e) { /* réseau coupé : on réessaie au prochain passage */ }
+    }
+    if (changed) {
+      await persist();
+      if (gen.phase === 'idle') { const keep = chatEl().scrollTop; renderChat(); chatEl().scrollTop = keep; if (activeGens().length === 0) notice('info', '🎨 Image prête.'); } else scheduleStreamRender();
+    }
+  } finally { ticking = false; }
+}
+
+/* Mode image : l'IA enrichit la description (en anglais, détaillée) avant de la donner à FLUX */
+const IMG_SYS = 'Tu transformes l\'idée de l\'utilisateur en description détaillée pour un générateur d\'images (FLUX). Écris en anglais, en un seul paragraphe de 60 à 120 mots : sujet, décor, composition, éclairage, ambiance, style (photographique ou artistique selon l\'idée), détails de matière et d\'optique. Respecte strictement le style et les éléments demandés par l\'utilisateur. Si un texte doit apparaître dans l\'image, mets-le entre guillemets. Réponds uniquement par la description.';
+async function improvePrompt(idea) {
+  const R = S.remote, cur = modelById(S.modelId);
+  const m = cur && cur.type === 'remote' && !cur.vision ? cur : remoteModels().find((x) => !x.vision);
+  if (!R || !m) return idea;
+  const res = await fetch(R.url + '/api/chat', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + R.key },
+    body: JSON.stringify({ model: m.remoteName, stream: false, think: false, keep_alive: '30m', options: { temperature: 0.7, num_predict: 400, num_ctx: 4096 }, messages: [{ role: 'system', content: IMG_SYS }, { role: 'user', content: idea }] }),
+  });
+  if (!res.ok) return idea;
+  const j = await res.json();
+  const t = stripThink((j.message && j.message.content) || '').replace(/^["«\s]+|["»\s]+$/g, '');
+  return t.length > 20 ? t.slice(0, 1500) : idea;
+}
+
+async function submitImage(text) {
+  const input = $('input');
+  hideNotice();
+  gen.phase = 'loading'; setSendMode();
+  input.value = ''; autosize();
+  chat.messages.push({ role: 'user', content: text, ts: Date.now() });
+  const msg = { role: 'assistant', content: '*Préparation de la description…*', ts: Date.now(), model: 'FLUX' };
+  chat.messages.push(msg);
+  gen.stick = true; renderChat();
+  try {
+    let prompt = text;
+    if (S.img.improve) { try { prompt = await improvePrompt(text); } catch { prompt = text; } }
+    const job = await startImageJob(prompt);
+    msg.content = '**Description envoyée au générateur :**\n\n> ' + prompt.replace(/\n+/g, ' ');
+    addGen(msg, job, prompt);
+  } catch (e) {
+    chat.messages.pop(); chat.messages.pop();
+    input.value = text; autosize();
+    notice('err', 'Image impossible : ' + String((e && e.message) || e));
+  }
+  gen.phase = 'idle'; setSendMode();
+  await persist(); renderChat();
+}
+
+async function fetchCaps() {
+  const R = S.remote;
+  caps.image = false;
+  if (R && R.url && R.key) {
+    try { const r = await fetch(R.url + '/_ll/capabilities', { headers: { Authorization: 'Bearer ' + R.key } }); if (r.ok) caps.image = !!(await r.json()).image; } catch { /* serveur ancien ou injoignable */ }
+  }
+  if (!caps.image) imgMode = false;
+  renderToolbar(); renderImgSettings();
+}
+function renderImgSettings() {
+  $('imgSettings').hidden = !caps.image;
+  $('imgHint').hidden = caps.image || !S.remote;
+  $('imgHint').textContent = 'Génération d\'images : non installée sur le serveur (script install-images.sh).';
+  $('selImgFormat').value = S.img.format; $('selImgSteps').value = String(S.img.steps); $('chkImgImprove').checked = S.img.improve !== false;
 }
 
 let speakingIdx = -1;
@@ -841,6 +984,7 @@ async function onSubmit() {
   const hasAtt = pending.docs.length || pending.images.length;
   if (!text && !hasAtt) return;
   if (!text) text = pending.images.length && !pending.docs.length ? 'Décris cette image.' : 'Résume ce document.';
+  if (imgMode && caps.image && !hasAtt) { await submitImage(text); return; }
   hideNotice();
   const userMsg = { role: 'user', content: text, ts: Date.now() };
   if (pending.images.length) userMsg.images = pending.images.map((x) => x.b64);
@@ -950,7 +1094,18 @@ async function runGeneration(cont = false) {
         const step = { name: c.name, args: typeof c.args === 'object' ? c.args : {}, result: null };
         msg.steps.push(step); scheduleStreamRender();
         let out;
-        try { out = await runTool(c.name, step.args, { remote: S.remote, docs: chat.docs, selectExcerpts, signal: E.ac && E.ac.signal }); }
+        try {
+          out = await runTool(c.name, step.args, {
+            remote: S.remote, docs: chat.docs, selectExcerpts, signal: E.ac && E.ac.signal,
+            startImage: async (a) => {
+              const prompt = String(a.description || a.prompt || '').trim().slice(0, 1500);
+              if (!prompt) return 'Erreur : description vide.';
+              const job = await startImageJob(prompt, a.format);
+              addGen(msg, job, prompt);
+              return 'Génération lancée (tâche ' + job.id + '). Elle prend plusieurs minutes ; l\'image s\'affichera seule dans la conversation. Préviens brièvement l\'utilisateur et n\'appelle pas l\'outil une seconde fois.';
+            },
+          });
+        }
         catch (e) { out = 'Interrompu.'; }
         step.result = String(out).slice(0, 4000);
         extra.push({ role: 'tool', tool_name: c.name, content: String(out).slice(0, 8000) });
@@ -986,6 +1141,7 @@ async function runGeneration(cont = false) {
 async function clearChat() {
   if (gen.phase !== 'idle') return;
   if ((chat.messages.length || chat.docs.length) && !(await askConfirm('Effacer la conversation et en commencer une nouvelle ?', 'Effacer'))) return;
+  for (const g of activeGens()) { try { imgApi('/' + g.id + '/cancel', { method: 'POST' }); } catch { /* ignoré */ } }
   chat.messages = []; chat.docs = [];
   pending.docs = []; pending.images = []; renderAttach();
   voice.stopSpeaking(); speakingIdx = -1;
@@ -1136,7 +1292,7 @@ async function testRemote() {
     if (!cur || cur.type !== 'remote') selectModel('remote:' + (names.find((n) => !S.remote.vision.includes(n)) || names[0])); else renderModelSel();
     syncSettingsUI();   // met à jour curseurs et cases (longueur de réponse relevée, etc.)
     info.textContent = remoteSummary();
-    refreshStatus();
+    refreshStatus(); fetchCaps();
   } finally { clearTimeout(to); btn.disabled = false; btn.textContent = 'Se connecter et récupérer les modèles'; }
 }
 function syncHideLocalUI() {
@@ -1172,7 +1328,7 @@ function clearRemote(keepUrl = false) {
   saveS();
   $('rUrl').value = keepUrl === true && url ? url : ''; $('rKey').value = ''; $('rPw').value = ''; $('remoteInfo').textContent = keepUrl === true ? '' : 'Serveur retiré.';
   syncHideLocalUI(); syncSettingsUI();
-  renderModelSel(); refreshStatus();
+  renderModelSel(); refreshStatus(); fetchCaps();
   if (!chat.messages.length && gen.phase === 'idle') renderChat();
 }
 
@@ -1187,6 +1343,7 @@ function syncAuthUI() {
 
 function syncSettingsUI() {
   const R = S.remote;
+  renderImgSettings();
   $('rUrl').value = (R && R.url) || '';
   $('rAuth').value = R && R.auth === 'key' ? 'key' : 'pw';
   $('rKey').value = (R && R.auth === 'key' && R.key) || '';
@@ -1232,6 +1389,8 @@ function renderToolbar() {
   const cur = modelById(S.modelId);
   const remote = !!(cur && cur.type === 'remote');
   $('chipThink').hidden = !remote; $('chipWeb').hidden = !remote;
+  $('chipImg').hidden = !(remote && caps.image); $('chipImg').setAttribute('aria-pressed', String(imgMode));
+  $('input').placeholder = imgMode ? 'Décrivez l\'image à créer…' : 'Écrire un message…';
   $('chipThink').setAttribute('aria-pressed', String(S.think !== false));
   $('chipWeb').setAttribute('aria-pressed', String(!!S.web));
   if (!remote) $('srvStatus').hidden = true;
@@ -1311,6 +1470,10 @@ function bindEvents() {
     S.web = !S.web; saveS(); renderToolbar(); $('chkWeb').checked = S.web;
     if (S.web) notice('info', 'Recherche web activée : le modèle peut faire chercher le serveur sur Internet (les termes recherchés quittent votre serveur).');
   };
+  $('chipImg').onclick = () => { imgMode = !imgMode; renderToolbar(); if (imgMode) notice('info', 'Mode image : votre prochain message devient une image (plusieurs minutes de calcul). Touchez 🎨 de nouveau pour revenir au chat.'); };
+  $('selImgFormat').onchange = () => { S.img.format = $('selImgFormat').value; saveS(); };
+  $('selImgSteps').onchange = () => { S.img.steps = +$('selImgSteps').value; saveS(); };
+  $('chkImgImprove').onchange = () => { S.img.improve = $('chkImgImprove').checked; saveS(); };
   $('chkTools').onchange = () => { S.tools = $('chkTools').checked; saveS(); };
   $('chkWeb').onchange = () => { S.web = $('chkWeb').checked; saveS(); renderToolbar(); };
   $('selVision').onchange = () => { S.visionModel = $('selVision').value || null; saveS(); renderVisionSel(); };
@@ -1323,6 +1486,8 @@ function bindEvents() {
   dz.addEventListener('dragover', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
   dz.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
   $('msgs').addEventListener('click', (e) => {
+    const cb = e.target.closest && e.target.closest('.gen-cancel');
+    if (cb) { imgApi('/' + cb.dataset.id + '/cancel', { method: 'POST' }).catch(() => {}); cb.disabled = true; cb.textContent = 'Annulation…'; return; }
     const b = e.target.closest && e.target.closest('.copy-code');
     if (b) copyText(b.closest('.code').querySelector('code').textContent, b);
   });
@@ -1392,7 +1557,7 @@ async function boot() {
 
   if (hideLocalOn() && !(modelById(S.modelId) || {}).type?.startsWith('remote')) { S.modelId = remoteModels()[0].id; saveS(); }
   if (!modelById(S.modelId) || !usable(modelById(S.modelId)).ok) { const d = pickDefault(); S.modelId = d ? d.id : null; saveS(); }
-  renderModelSel(); renderToolbar(); renderChat(); setSendMode(); refreshStatus();
+  renderModelSel(); renderToolbar(); renderChat(); setSendMode(); refreshStatus(); fetchCaps(); pollGens();
   setInterval(() => { if (document.visibilityState === 'visible' && gen.phase === 'idle') refreshStatus(); }, 60000);
 
   const crashed = ls.get('locallm.loading', null);

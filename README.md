@@ -12,6 +12,7 @@ Application statique, sans build : `index.html`, `app.js`, `style.css`, `models.
 - **Pièces jointes** : texte, CSV, JSON, PDF, Excel, Word (lus dans le navigateur ; extraits pertinents si le document est long) et **photos** (modèle de vision du serveur, ex. `ollama pull qwen2.5vl:7b`).
 - **Outils** appelés par le modèle : calculatrice exacte, date/heure, documents joints, recherche web, lecture de page.
 - **Reprise** d'une réponse coupée (réseau, iPhone en veille) : bouton « ▶ Reprendre ».
+- **Images** 🎨 : FLUX.1 schnell sur le serveur (plusieurs minutes par image, suivi en direct, annulation) ; le modèle peut aussi en créer via l'outil `generer_image`. Installation : `install-images.sh` (branche `hub`).
 - **Dictée** 🎙 et **lecture à voix haute** 🔊 (selon le navigateur).
 - **État du serveur** : pastille « prêt / à froid » (toucher pour précharger le modèle).
 - **Connexion** par mot de passe (session révocable) ou clé d'accès.

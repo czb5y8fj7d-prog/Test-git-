@@ -35,8 +35,9 @@
 
   <div id="toolbar">
     <select id="personaSel" aria-label="Rôle de l'assistant"></select>
-    <button type="button" id="chipThink" class="chip" aria-pressed="false" title="Réflexion du modèle">🧠 Réflexion</button>
-    <button type="button" id="chipWeb" class="chip" aria-pressed="false" title="Autoriser la recherche web">🌐 Web</button>
+    <button type="button" id="chipThink" class="chip" aria-pressed="false" title="Réflexion du modèle">🧠<span class="lbl"> Réflexion</span></button>
+    <button type="button" id="chipWeb" class="chip" aria-pressed="false" title="Autoriser la recherche web">🌐<span class="lbl"> Web</span></button>
+    <button type="button" id="chipImg" class="chip" aria-pressed="false" title="Mode image : votre message devient une image" hidden>🎨<span class="lbl"> Image</span></button>
     <button type="button" id="srvStatus" class="chip status" hidden></button>
   </div>
 
@@ -90,6 +91,24 @@
     <label class="check"><input type="checkbox" id="chkThink"> Afficher la réflexion du modèle</label>
     <label class="check"><input type="checkbox" id="chkTools"> Outils : calcul, date, documents joints</label>
     <label class="check"><input type="checkbox" id="chkWeb"> Autoriser la recherche web (le serveur interroge le web)</label>
+    <div id="imgSettings" hidden>
+      <h3>Images (FLUX sur le serveur)</h3>
+      <label for="selImgFormat">Format</label>
+      <select id="selImgFormat">
+        <option value="carre">Carré (1024 × 1024)</option>
+        <option value="portrait">Portrait (832 × 1216)</option>
+        <option value="paysage">Paysage (1216 × 832)</option>
+      </select>
+      <label for="selImgSteps">Qualité</label>
+      <select id="selImgSteps">
+        <option value="4">Rapide (4 étapes)</option>
+        <option value="8">Qualité (8 étapes)</option>
+        <option value="12">Maximale (12 étapes)</option>
+      </select>
+      <label class="check"><input type="checkbox" id="chkImgImprove"> Enrichir ma description avec l'IA avant de dessiner</label>
+      <p class="hint">Une image prend plusieurs minutes (chaque étape se compte en dizaines de secondes sur processeur). Le modèle texte est déchargé pendant le dessin : le message suivant sera plus lent.</p>
+    </div>
+    <p class="hint" id="imgHint" hidden></p>
     <label for="selVision">Modèle pour les photos</label>
     <select id="selVision"></select>
     <p class="hint" id="visionHint"></p>

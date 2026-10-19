@@ -77,7 +77,7 @@ const fmtNum = (v) => (Number.isInteger(v) ? String(v) : String(+v.toPrecision(1
 /* ---------- définitions (format Ollama / OpenAI) ---------- */
 const def = (name, description, properties, required) => ({ type: 'function', function: { name, description, parameters: { type: 'object', properties, required } } });
 
-export function toolDefs({ base, docs, web }) {
+export function toolDefs({ base, docs, web, image }) {
   const t = [];
   if (base) {
     t.push(def('calculatrice', 'Calcule une expression mathématique exacte (+ - * / ^ %, parenthèses, sqrt, sin, cos, ln, log, round, min, max, pi). À utiliser pour tout calcul non trivial.', { expression: { type: 'string', description: 'ex. : 12*(3+4)/5' } }, ['expression']));
@@ -88,12 +88,13 @@ export function toolDefs({ base, docs, web }) {
     t.push(def('recherche_web', 'Cherche sur le web (informations récentes, faits à vérifier). Renvoie titres, adresses et extraits.', { requete: { type: 'string', description: 'termes de recherche' } }, ['requete']));
     t.push(def('lire_page', 'Télécharge une page web et renvoie son texte.', { url: { type: 'string', description: 'adresse complète https://…' } }, ['url']));
   }
+  if (image) t.push(def('generer_image', 'Crée une image (FLUX). La génération dure plusieurs minutes et s\'affiche seule dans la conversation. À utiliser quand l\'utilisateur demande de dessiner, illustrer ou générer une image. Décris la scène en ANGLAIS, avec précision (sujet, décor, composition, lumière, ambiance, style).', { description: { type: 'string', description: 'description détaillée de l\'image, en anglais (60 à 120 mots)' }, format: { type: 'string', enum: ['carre', 'portrait', 'paysage'], description: 'format de l\'image (par défaut : celui des réglages)' } }, ['description']));
   return t;
 }
 
 export const TOOL_LABEL = {
   calculatrice: (a) => '🧮 ' + (a.expression || ''), date_heure: () => '🕐 date et heure',
-  lire_document: (a) => '📄 ' + (a.requete || ''), recherche_web: (a) => '🌐 ' + (a.requete || ''), lire_page: (a) => '🔗 ' + (a.url || ''),
+  lire_document: (a) => '📄 ' + (a.requete || ''), recherche_web: (a) => '🌐 ' + (a.requete || ''), lire_page: (a) => '🔗 ' + (a.url || ''), generer_image: (a) => '🎨 ' + String(a.description || '').slice(0, 60),
 };
 
 /* ---------- exécution ---------- */
@@ -114,6 +115,10 @@ export async function runTool(name, args, ctx) {
       const pool = (ctx.docs || []).filter((d) => !args.nom || d.name.toLowerCase().includes(String(args.nom).toLowerCase()));
       if (!pool.length) return 'Aucun document joint' + (args.nom ? ' correspondant à « ' + args.nom + ' »' : '') + '.';
       return pool.map((d) => '## ' + d.name + '\n' + ctx.selectExcerpts(d.text, q, 5000).text).join('\n\n');
+    }
+    if (name === 'generer_image') {
+      if (!ctx.startImage) return 'Erreur : génération d\'images indisponible.';
+      return await ctx.startImage(args);
     }
     if (name === 'recherche_web' || name === 'lire_page') {
       const R = ctx.remote;

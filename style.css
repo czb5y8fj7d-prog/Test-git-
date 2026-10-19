@@ -190,3 +190,18 @@ button.wide { width: 100%; margin-top: 10px; }
 .bubble .fchips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .bubble .fchips span { padding: 3px 9px; border-radius: 10px; background: rgba(255,255,255,.18); font-size: 12px; }
 .user .bubble .txt { white-space: pre-wrap; }
+
+/* Images générées */
+.bubble .gen { margin: 8px 0; padding: 10px 12px; background: rgba(107,140,255,.08); border: 1px solid var(--line); border-radius: 12px; font-size: 14px; }
+.bubble .gen.err { color: #ffd9d9; background: #2b1a1a; border-color: #6a3434; }
+.bubble .gen-t { color: var(--mut); }
+.bubble .gbar { height: 6px; margin: 8px 0; background: var(--s3); border-radius: 3px; overflow: hidden; }
+.bubble .gbar > div { height: 100%; width: 0; background: var(--acc); transition: width .6s; }
+.bubble .gen-cancel { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--mut); font-size: 13px; }
+.bubble figure.genimg { margin: 8px 0; }
+.bubble figure.genimg img { display: block; max-width: 100%; height: auto; border-radius: 12px; }
+.bubble figure.genimg figcaption { margin-top: 6px; font-size: 13px; color: var(--mut); }
+.bubble figure.genimg details { margin-top: 4px; white-space: pre-wrap; }
+.bubble figure.genimg a { color: #9db4ff; }
+
+@media (max-width: 520px) { .chip:not(.status) .lbl { display: none; } .chip:not(.status) { min-width: 42px; padding: 0 8px; font-size: 16px; } }
