@@ -40,3 +40,15 @@ Autres commandes : `hub list`, `hub update` (git pull de tout), `hub remove nom`
 | `/var/www/projects/<nom>/` | un projet |
 | `/etc/caddy/projects/<nom>.caddy` | le routage d'un projet (créé par `hub add`) |
 | `/var/lib/hub/projects.json` | la liste des boutons |
+
+## Service LL (connexion, recherche web)
+
+`install-hub.sh` installe aussi `ll-server` (service systemd, `127.0.0.1:8787`, derrière Caddy sous `/_ll/`).
+Il vérifie chaque requête vers l'API (clé d'accès **ou** session par mot de passe) et fournit la recherche web et la lecture de pages pour LL.
+
+```bash
+ll-auth passwd       # définir / changer le mot de passe (déconnecte les appareils)
+ll-auth rotate-key   # nouvelle clé d'accès
+ll-auth logout-all   # déconnecter tous les appareils
+ll-auth status
+```

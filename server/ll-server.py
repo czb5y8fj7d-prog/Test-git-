@@ -134,6 +134,9 @@ def _clean(s):
 
 def search_web(q, n=6):
     n = max(1, min(10, n))
+    if os.environ.get("LL_SEARCH_FIXTURE"):  # tests uniquement
+        with open(os.environ["LL_SEARCH_FIXTURE"], encoding="utf-8") as f:
+            return json.load(f)[:n]
     if SEARXNG:
         req = urllib.request.Request(SEARXNG + "/search?" + urllib.parse.urlencode({"q": q, "format": "json"}), headers={"User-Agent": UA})
         with urllib.request.urlopen(req, timeout=15) as r:
