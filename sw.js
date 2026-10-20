@@ -11,7 +11,7 @@
    fichiers déjà demandés par la page.
    ===================================================================== */
 
-const VERSION = 'v5';                      // à incrémenter à chaque mise à jour
+const VERSION = 'v6';                      // à incrémenter à chaque mise à jour
 const SHELL = 'locallm-shell-' + VERSION;    // fichiers de l'app
 const CDN = 'locallm-cdn-' + VERSION;        // code des moteurs
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'esm.run', 'unpkg.com', 'fastly.jsdelivr.net', 'cdnjs.cloudflare.com'];   // cdnjs : lecteurs PDF / Excel / Word

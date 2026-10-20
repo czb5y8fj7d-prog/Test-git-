@@ -632,7 +632,7 @@ const persona = () => PERSONAS.find((p) => p.id === S.persona) || PERSONAS[0];
 function toolsActive(m) { return !!m && m.type === 'remote' && (S.tools || S.web); }
 function toolList(m) {
   if (!toolsActive(m)) return [];
-  return toolDefs({ base: !!S.tools, docs: !!S.tools && chat.docs.length > 0, web: !!S.web, image: caps.image && !!S.tools });
+  return toolDefs({ base: !!S.tools, docs: !!S.tools && chat.docs.length > 0, web: !!S.web, image: caps.image && !!S.tools && S.img.auto === true });
 }
 
 /* Prompt système effectif : rôle choisi + date + consignes sur les outils */
@@ -876,7 +876,7 @@ function renderImgSettings() {
   $('imgSettings').hidden = !caps.image;
   $('imgHint').hidden = caps.image || !S.remote;
   $('imgHint').textContent = 'Génération d\'images : non installée sur le serveur (script install-images.sh).';
-  $('selImgFormat').value = S.img.format; $('selImgSteps').value = String(S.img.steps); $('chkImgImprove').checked = S.img.improve !== false;
+  $('selImgFormat').value = S.img.format; $('selImgSteps').value = String(S.img.steps); $('chkImgImprove').checked = S.img.improve !== false; $('chkImgAuto').checked = S.img.auto === true;
 }
 
 let speakingIdx = -1;
@@ -1198,7 +1198,8 @@ async function runGeneration(cont = false) {
         msg.steps.push(step); scheduleStreamRender();
         let out;
         try {
-          out = await runTool(c.name, step.args, {
+          if (!tools.some((t) => t.function.name === c.name)) out = 'Erreur : outil « ' + c.name + ' » non disponible.';
+          else out = await runTool(c.name, step.args, {
             remote: S.remote, docs: chat.docs, selectExcerpts, signal: E.ac && E.ac.signal,
             startImage: async (a) => {
               const prompt = String(a.description || a.prompt || '').trim().slice(0, 1500);
@@ -1602,6 +1603,7 @@ function bindEvents() {
   $('chipImg').onclick = () => { imgMode = !imgMode; renderToolbar(); if (imgMode) notice('info', 'Mode image : votre prochain message devient une image (plusieurs minutes de calcul). Touchez 🎨 de nouveau pour revenir au chat.'); };
   $('selImgFormat').onchange = () => { S.img.format = $('selImgFormat').value; saveS(); };
   $('selImgSteps').onchange = () => { S.img.steps = +$('selImgSteps').value; saveS(); };
+  $('chkImgAuto').onchange = () => { S.img.auto = $('chkImgAuto').checked; saveS(); };
   $('chkImgImprove').onchange = () => { S.img.improve = $('chkImgImprove').checked; saveS(); };
   $('chkTools').onchange = () => { S.tools = $('chkTools').checked; saveS(); };
   $('chkWeb').onchange = () => { S.web = $('chkWeb').checked; saveS(); renderToolbar(); };
