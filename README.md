@@ -12,6 +12,20 @@ curl -fsSLo install-hub.sh https://raw.githubusercontent.com/czb5y8fj7d-prog/tes
 Installe Caddy, la page d'accueil, la commande `hub`, et publie LocalLM sur `/llm/`.
 L'API Ollama reste protégée par la même clé d'accès (reprise de la config existante).
 
+## Menu admin (sur le site)
+
+En bas de l'accueil, **Admin** (ou directement `https://domaine/#admin`) : connexion avec le mot de passe
+de `ll-auth passwd`, puis :
+
+- **+ Ajouter** un bouton (titre, description, icône, catégorie, lien vers `/un-chemin/` ou `https://…`) ;
+- **✎** renommer / modifier, **↑ ↓** changer l'ordre ;
+- **🗑** retirer de l'accueil : le bouton passe dans « Retirés de l'accueil », d'où on peut le remettre (↺)
+  ou l'effacer (✕). Le projet lui-même reste en ligne sur son chemin (`hub remove` pour le dépublier).
+
+Les boutons modifiés depuis le menu ne sont plus réécrits par `hub sync` / `hub update` ;
+un `hub add nom …` explicite reprend la main sur ce projet.
+Le menu modifie seulement les boutons : installer un nouveau projet sur le serveur se fait toujours avec `hub add`.
+
 ## Ajouter un projet
 
 Un projet = une branche du dépôt, avec `index.html` à la racine de la branche.

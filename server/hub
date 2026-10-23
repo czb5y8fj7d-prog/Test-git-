@@ -72,9 +72,9 @@ SNIP
   $SUDO rm -f "$snip.bak"
 
   $SUDO mkdir -p "$DATA_DIR"
-  $SUDO python3 - "$DATA_DIR/projects.json" "$slug" "$title" "$desc" "$icon" "$cat" "$rank" <<'PY'
+  $SUDO python3 - "$DATA_DIR/projects.json" "$slug" "$title" "$desc" "$icon" "$cat" "$rank" "${HUB_FORCE:-0}" <<'PY'
 import json, sys
-f, slug, title, desc, icon, cat, rank = sys.argv[1:8]
+f, slug, title, desc, icon, cat, rank, force = sys.argv[1:9]
 try:
     data = json.load(open(f))
     if not isinstance(data, list):
@@ -82,6 +82,9 @@ try:
 except Exception:
     data = []
 old = next((p for p in data if p.get("slug") == slug), {})
+if old.get("edited") and force != "1":
+    # modifié depuis le menu admin de l'accueil : « hub sync » / « hub update » ne l'écrasent pas
+    sys.exit(0)
 entry = {
     "slug": slug,
     "title": title or old.get("title") or slug,
@@ -135,7 +138,7 @@ cmd_add() {
   echo "→ Projet « $slug » (branche $branch)…"
   fetch_branch "$dir" "$repo" "$branch"
   local root="$dir"; [ -z "$sub" ] || root="$dir/$sub"
-  publish "$slug" "$root" "$title" "$desc" "$icon" "$cat" "$rank"
+  HUB_FORCE=1 publish "$slug" "$root" "$title" "$desc" "$icon" "$cat" "$rank"
   $SUDO $CADDY_RELOAD
   echo "OK : le projet est en ligne sur /$slug/"
 }
