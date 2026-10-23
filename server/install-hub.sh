@@ -118,7 +118,13 @@ $HOST {
     }
   }
 
-  # Liste des boutons de l'accueil
+  # Textes et éléments de l'accueil (public) ; leur modification passe par /_ll/admin/* (protégé, mot de passe)
+  handle /_hub/site.json {
+    header Cache-Control "no-store"
+    reverse_proxy 127.0.0.1:$LL_PORT
+  }
+
+  # Liste des boutons de l'accueil (ancien format, repli)
   handle /projects.json {
     root * $DATA_DIR
     header Cache-Control "no-store"
@@ -199,4 +205,5 @@ if [ -z "$SKIP_RESTART" ]; then
   echo "Changer la clé d'accès     : ll-auth rotate-key"
   echo
   echo "Ajouter un projet : hub add nom --titre \"Mon projet\" --branche ma-branche"
+  echo "Administration de l'accueil : https://$HOST/admin/   (mot de passe : ll-auth passwd)"
 fi

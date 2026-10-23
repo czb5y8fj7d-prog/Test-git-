@@ -60,3 +60,13 @@ Avec le service à jour, la réponse du modèle est lue par `ll-server` (`/_ll/c
 
 `server/install-images.sh` installe stable-diffusion.cpp et FLUX.1 schnell (Q8, ≈ 19 Go) dans `/opt/ll/sd`.
 `ll-server` le détecte seul : le bouton 🎨 apparaît dans LL. Le modèle texte est déchargé pendant le dessin.
+
+## Administration de l'accueil (`/admin/`)
+
+`https://<hôte>/admin/` permet de modifier la page d'accueil sans toucher au serveur : textes (titre, surtitre, accroche, pied de page), titre / description / icône / catégorie de chaque carte, masquer ou réordonner, ajouter ou supprimer des liens externes.
+
+- Connexion : mot de passe défini par `ll-auth passwd` (la clé d'accès ne suffit pas).
+- Les modifications sont enregistrées dans `$LL_STATE/site.json` (sauvegarde `.bak` à chaque écriture) et **superposées** à `/var/lib/hub/projects.json` (`HUB_DATA`, fichier géré par la commande `hub`) : `hub sync` / `hub update` n'écrasent donc pas vos retouches.
+- Publier ou retirer un vrai projet reste le rôle de `hub add` / `hub remove` ; l'admin peut le renommer, le masquer, le réordonner.
+- Mise à jour d'une installation existante : `hub update`, puis `sudo bash /var/www/hub/server/install-hub.sh <hôte>` (nouvelle route Caddy `/_hub/site.json`), puis `sudo systemctl restart ll-server`.
+- `admin` est un nom de projet réservé.

@@ -31,7 +31,7 @@ usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
 
 check_slug() {
   [[ "$1" =~ $SLUG_RE ]] || die "le nom « $1 » doit être en minuscules, chiffres et tirets (ex. : mon-projet)"
-  case "$1" in api|v1|hub|server|projects|projects.json|robots.txt) die "« $1 » est réservé, choisissez un autre nom" ;; esac
+  case "$1" in api|v1|hub|server|projects|projects.json|robots.txt|admin) die "« $1 » est réservé, choisissez un autre nom" ;; esac
 }
 
 # git clone ou pull d'une branche dans un dossier

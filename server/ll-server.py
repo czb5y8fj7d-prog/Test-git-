@@ -574,6 +574,197 @@ def chat_cancel(c):
 
 
 
+# --------------------------------------------------------------------------- accueil du hub (textes, éléments, ordre)
+# projects.json (géré par la commande « hub ») reste la source des projets déployés ; l'administration y superpose
+# ses propres réglages dans site.json (textes, titres modifiés, éléments masqués, liens ajoutés, ordre).
+# « hub update » ne les écrase donc jamais.
+HUB_DATA = os.environ.get("HUB_DATA", "/var/lib/hub/projects.json")
+SITE_FILE = os.environ.get("LL_SITE", os.path.join(os.path.dirname(CONF), "site.json"))
+SITE_LOCK = threading.Lock()
+TEXT_DEFAULTS = {"title": "Mes projets", "lead": "Choisissez un projet."}
+TEXT_LIMITS = {"eyebrow": 40, "title": 80, "lead": 200, "foot": 120}
+ITEM_LIMITS = {"title": 80, "desc": 200, "cat": 30}
+MAX_LINKS = 100
+FIELDS = ("title", "desc", "icon", "cat")
+
+
+def _txt(v, n):
+    s = re.sub(r"[\x00-\x1f\x7f  ]", " ", str(v if v is not None else ""))
+    return re.sub(r" {2,}", " ", s).strip()[:n]
+
+
+def _icon(v):
+    return _txt(v, 12)[:12]
+
+
+def _url_ok(u):
+    u = str(u or "").strip()
+    if not u or len(u) > 500 or re.search(r"[\s\x00-\x1f\x7f\\]", u):
+        return ""
+    if u.startswith("/") and not u.startswith("//"):
+        return u
+    try:
+        p = urllib.parse.urlparse(u)
+    except ValueError:
+        return ""
+    return u if p.scheme in ("http", "https") and p.netloc and "@" not in p.netloc else ""
+
+
+def hub_projects():
+    try:
+        with open(HUB_DATA, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return []
+    out = []
+    for p in data if isinstance(data, list) else []:
+        if not isinstance(p, dict) or not (p.get("slug") or p.get("path")):
+            continue
+        slug = str(p.get("slug") or "")
+        path = p.get("path") if isinstance(p.get("path"), str) else "/" + slug + "/"
+        if not slug or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,30}", slug) or not path.startswith("/") or path.startswith("//"):
+            continue
+        out.append({"slug": slug, "title": _txt(p.get("title") or slug, 80), "desc": _txt(p.get("desc"), 200),
+                    "icon": _icon(p.get("icon")) or "📁", "cat": _txt(p.get("cat"), 30), "path": path})
+    return out
+
+
+def site_load():
+    try:
+        with open(SITE_FILE, encoding="utf-8") as f:
+            d = json.load(f)
+        if not isinstance(d, dict):
+            raise ValueError
+    except (OSError, ValueError):
+        d = {}
+    d["rev"] = d["rev"] if isinstance(d.get("rev"), int) else 0
+    for k, t in (("texts", dict), ("overrides", dict), ("links", list), ("order", list), ("hide", list)):
+        if not isinstance(d.get(k), t):
+            d[k] = t()
+    return d
+
+
+def site_items(site, base):
+    """Éléments dans l'ordre d'affichage, masqués compris."""
+    items = {}
+    for p in base:
+        o = site["overrides"].get(p["slug"]) or {}
+        o = o if isinstance(o, dict) else {}
+        it = {"key": "p:" + p["slug"], "kind": "project", "slug": p["slug"], "href": p["path"],
+              "title": o.get("title") or p["title"], "icon": o.get("icon") or p["icon"],
+              "desc": o["desc"] if "desc" in o else p["desc"], "cat": o["cat"] if "cat" in o else p["cat"],
+              "hidden": bool(o.get("hidden")),
+              "base": {k: p[k] for k in FIELDS}, "overridden": [k for k in FIELDS if k in o]}
+        items[it["key"]] = it
+    for l in site["links"]:
+        if isinstance(l, dict) and re.fullmatch(r"[0-9a-f]{16}", str(l.get("id", ""))):
+            it = {"key": "l:" + l["id"], "kind": "link", "id": l["id"], "href": l.get("url", ""), "title": l.get("title", ""),
+                  "icon": l.get("icon") or "🔗", "desc": l.get("desc", ""), "cat": l.get("cat", ""), "hidden": bool(l.get("hidden"))}
+            items[it["key"]] = it
+    order = [k for k in site["order"] if k in items]
+    seen = set(order)
+    return [items[k] for k in order + [k for k in items if k not in seen]]
+
+
+def site_texts(site):
+    t = site["texts"]
+    return {k: _txt(t.get(k), TEXT_LIMITS[k]) for k in TEXT_LIMITS}
+
+
+def site_public():
+    site = site_load()
+    t, hide = site_texts(site), set(site["hide"])
+    texts = {"title": t["title"] or TEXT_DEFAULTS["title"],
+             "eyebrow": "" if "eyebrow" in hide else (t["eyebrow"] or None),     # None : nom de domaine
+             "lead": "" if "lead" in hide else (t["lead"] or TEXT_DEFAULTS["lead"]),
+             "foot": "" if "foot" in hide else (t["foot"] or None)}               # None : nombre de projets
+    items = [{k: it[k] for k in ("key", "kind", "title", "desc", "icon", "cat", "href")} for it in site_items(site, hub_projects()) if not it["hidden"]]
+    return {"texts": texts, "items": items}
+
+
+def site_admin():
+    site = site_load()
+    return {"rev": site["rev"], "texts": site_texts(site), "hide": [h for h in site["hide"] if h in ("eyebrow", "lead", "foot")],
+            "defaults": TEXT_DEFAULTS, "limits": {**TEXT_LIMITS, **{"item_" + k: v for k, v in ITEM_LIMITS.items()}, "links": MAX_LINKS},
+            "items": site_items(site, hub_projects())}
+
+
+class SiteError(Exception):
+    def __init__(self, code, msg, field=None):
+        super().__init__(msg)
+        self.code, self.msg, self.field = code, msg, field
+
+
+def site_save(b):
+    """Valide et enregistre l'état envoyé par l'interface. Lève SiteError."""
+    if not isinstance(b, dict):
+        raise SiteError(400, "requête invalide")
+    base = {p["slug"]: p for p in hub_projects()}
+    texts_in = b.get("texts") if isinstance(b.get("texts"), dict) else {}
+    texts = {k: _txt(texts_in.get(k), n) for k, n in TEXT_LIMITS.items()}
+    hide = [h for h in (b.get("hide") if isinstance(b.get("hide"), list) else []) if h in ("eyebrow", "lead", "foot")]
+    overrides, links, order, seen = {}, [], [], set()
+    items_in = b.get("items")
+    if not isinstance(items_in, list) or len(items_in) > 400:
+        raise SiteError(400, "liste d'éléments invalide")
+    for raw in items_in:
+        if not isinstance(raw, dict):
+            raise SiteError(400, "élément invalide")
+        title = _txt(raw.get("title"), ITEM_LIMITS["title"])
+        desc, cat, icon = _txt(raw.get("desc"), ITEM_LIMITS["desc"]), _txt(raw.get("cat"), ITEM_LIMITS["cat"]), _icon(raw.get("icon"))
+        hidden = bool(raw.get("hidden"))
+        if raw.get("kind") == "project":
+            slug = str(raw.get("slug", ""))
+            if slug not in base or ("p:" + slug) in seen:
+                continue   # projet retiré du serveur entre-temps : ignoré
+            seen.add("p:" + slug)
+            order.append("p:" + slug)
+            bp, o = base[slug], {}
+            if title and title != bp["title"]:
+                o["title"] = title
+            if icon and icon != bp["icon"]:
+                o["icon"] = icon
+            if desc != bp["desc"]:
+                o["desc"] = desc
+            if cat != bp["cat"]:
+                o["cat"] = cat
+            if hidden:
+                o["hidden"] = True
+            if o:
+                overrides[slug] = o
+        elif raw.get("kind") == "link":
+            lid = str(raw.get("id", ""))
+            if not re.fullmatch(r"[0-9a-f]{16}", lid) or ("l:" + lid) in seen:
+                raise SiteError(400, "identifiant de lien invalide")
+            if not title:
+                raise SiteError(422, "Un lien doit avoir un titre.", "title:" + lid)
+            url = _url_ok(raw.get("url"))
+            if not url:
+                raise SiteError(422, "Adresse invalide : https://… ou un chemin commençant par /", "url:" + lid)
+            seen.add("l:" + lid)
+            order.append("l:" + lid)
+            links.append({"id": lid, "title": title, "desc": desc, "cat": cat, "icon": icon or "🔗", "url": url, "hidden": hidden})
+        else:
+            raise SiteError(400, "type d'élément inconnu")
+    if len(links) > MAX_LINKS:
+        raise SiteError(422, "Trop de liens (maximum %d)." % MAX_LINKS)
+    with SITE_LOCK:
+        cur = site_load()
+        if b.get("rev") != cur["rev"]:
+            raise SiteError(409, "La page a été modifiée ailleurs. Rechargez avant d'enregistrer.")
+        new = {"rev": cur["rev"] + 1, "texts": texts, "hide": hide, "overrides": overrides, "links": links, "order": order, "saved": int(time.time())}
+        try:
+            os.makedirs(os.path.dirname(SITE_FILE), exist_ok=True)
+            if os.path.isfile(SITE_FILE):
+                shutil.copyfile(SITE_FILE, SITE_FILE + ".bak")
+            tmp = SITE_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(new, f, ensure_ascii=False, indent=1)
+            os.replace(tmp, SITE_FILE)
+        except OSError as e:
+            raise SiteError(500, "Écriture impossible : %s" % str(e)[:120])
+
+
 # --------------------------------------------------------------------------- serveur HTTP
 class H(BaseHTTPRequestHandler):
     server_version = "ll-server"
@@ -612,9 +803,15 @@ class H(BaseHTTPRequestHandler):
         p = u.path
         if p == "/_ll/auth/check":
             return self.send_json(204 if auth_kind(self.token()) else 401)
+        if p == "/_hub/site.json":   # public : textes et éléments visibles de l'accueil
+            return self.send_json(200, site_public())
         kind = auth_kind(self.token())
         if not kind:
             return self.send_json(401, {"error": "non autorisé"})
+        if p == "/_ll/admin/site":
+            if kind != "session":
+                return self.send_json(403, {"error": "connexion par mot de passe requise"})
+            return self.send_json(200, site_admin())
         if p == "/_ll/auth/me":
             return self.send_json(200, {"ok": True, "kind": kind, "passwordSet": bool(conf().get("pw"))})
         if p == "/_ll/capabilities":
@@ -700,6 +897,14 @@ class H(BaseHTTPRequestHandler):
         kind = auth_kind(self.token())
         if not kind:
             return self.send_json(401, {"error": "non autorisé"})
+        if p == "/_ll/admin/site":
+            if kind != "session":
+                return self.send_json(403, {"error": "connexion par mot de passe requise"})
+            try:
+                site_save(self.body(limit=1_000_000))
+            except SiteError as e:
+                return self.send_json(e.code, {"error": e.msg, "field": e.field})
+            return self.send_json(200, site_admin())
         if p == "/_ll/chat":
             b = self.body(limit=80_000_000)
             if not isinstance(b, dict) or not b.get("model") or not isinstance(b.get("messages"), list):

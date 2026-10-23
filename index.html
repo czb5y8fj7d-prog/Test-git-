@@ -13,12 +13,14 @@
     :root {
       --bg: #0b0d10; --s1: #13171c; --s2: #1b2128; --s3: #262e38; --line: #2a323c;
       --txt: #e9edf2; --mut: #8e99a8; --acc: #6b8cff; --err: #ff6b6b;
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html { background: var(--bg); color-scheme: dark; }
+    html { background: var(--bg); color-scheme: dark; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     body {
       margin: 0; min-height: 100vh; min-height: 100dvh; color: var(--txt);
       font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
       background:
         radial-gradient(900px 420px at 50% -120px, rgba(107,140,255,.16), transparent 70%),
         var(--bg);
@@ -26,43 +28,51 @@
     }
     main { max-width: 760px; margin: 0 auto; }
     header { padding: 8vh 0 28px; }
-    .host { margin: 0 0 10px; color: var(--acc); font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-    h1 { margin: 0; font-size: clamp(30px, 8vw, 44px); line-height: 1.1; letter-spacing: -.02em; }
-    .lead { margin: 10px 0 0; color: var(--mut); }
+    .host { margin: 0 0 10px; color: var(--acc); font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; overflow-wrap: anywhere; }
+    h1 { margin: 0; font-size: clamp(30px, 8vw, 44px); line-height: 1.1; letter-spacing: -.02em; text-wrap: balance; overflow-wrap: anywhere; }
+    .lead { margin: 10px 0 0; color: var(--mut); text-wrap: pretty; overflow-wrap: anywhere; }
 
     #list { display: grid; gap: 30px; }
-    .cat { margin: 0 0 12px; color: var(--mut); font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .grid > * { min-width: 0; }
     .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
     .card {
-      display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 16px 18px;
+      min-width: 0; display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 16px 18px;
       color: inherit; text-decoration: none; background: var(--s1);
-      border: 1px solid var(--line); border-radius: 18px;
-      transition: border-color .15s, background .15s, transform .15s;
+      border: 1px solid var(--line); border-radius: 18px; touch-action: manipulation;
+      transition: transform 140ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
     }
-    .card:hover { border-color: var(--acc); background: #161c26; }
-    .card:active { transform: scale(.985); background: var(--s2); }
+    /* Survol : seulement avec une vraie souris (sur écran tactile, il se déclenche au toucher et reste collé) */
+    @media (hover: hover) and (pointer: fine) {
+      .card:hover { border-color: var(--acc); background: #161c26; }
+      .card:hover .go { color: var(--acc); }
+    }
+    .card:active { transform: scale(0.98); background: var(--s2); transition-duration: 90ms; }
     .card:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-    .ico { flex: none; width: 52px; height: 52px; display: grid; place-items: center; font-size: 26px; background: var(--s2); border: 1px solid var(--line); border-radius: 14px; }
+    .ico { flex: none; width: 52px; height: 52px; display: grid; place-items: center; font-size: 26px; line-height: 1; background: var(--s2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
     .txt { flex: 1; min-width: 0; }
-    .tag { display: block; margin-bottom: 2px; color: var(--acc); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-    .ttl { display: block; font-size: 17px; font-weight: 600; }
-    .dsc { display: block; margin-top: 2px; color: var(--mut); font-size: 14px; }
-    .go { flex: none; color: var(--mut); font-size: 22px; }
-    .card:hover .go { color: var(--acc); }
+    .tag { display: block; margin-bottom: 2px; color: var(--acc); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ttl { display: block; font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+    .dsc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; margin-top: 2px; color: var(--mut); font-size: 14px; overflow-wrap: anywhere; }
+    .go { flex: none; color: var(--mut); font-size: 22px; transition: color 150ms ease; }
 
     .msg { padding: 18px; color: var(--mut); background: var(--s1); border: 1px dashed var(--line); border-radius: 18px; }
     .msg.err { color: #ffd9d9; border-color: #6a3434; background: #2b1a1a; }
     .msg code { padding: 1px 6px; font: 0.9em ui-monospace, "SF Mono", Menlo, monospace; background: var(--s3); border-radius: 6px; color: var(--txt); }
-    footer { margin-top: 28px; color: var(--mut); font-size: 13px; }
-    @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+    .msg a, footer a { color: inherit; }
+    footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-top: 28px; color: var(--mut); font-size: 13px; font-variant-numeric: tabular-nums; }
+    footer:empty { display: none; }
+    footer a { text-decoration: none; padding: 8px 0; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    /* Mouvement réduit : on garde les fondus de couleur, on retire les déplacements */
+    @media (prefers-reduced-motion: reduce) { .card { transition: background-color 150ms ease, border-color 150ms ease; } .card:active { transform: none; } }
   </style>
 </head>
 <body>
 <main>
   <header>
-    <p class="host" id="host"></p>
-    <h1>Mes projets</h1>
-    <p class="lead">Choisissez un projet.</p>
+    <p class="host" id="host" dir="auto"></p>
+    <h1 id="ttl" dir="auto">Mes projets</h1>
+    <p class="lead" id="lead" dir="auto">Choisissez un projet.</p>
   </header>
 
   <div id="list" aria-live="polite"><div class="msg">Chargement…</div></div>
@@ -74,7 +84,7 @@
 (function () {
   'use strict';
   var list = document.getElementById('list');
-  document.getElementById('host').textContent = location.hostname;
+  var DEFAULTS = { title: 'Mes projets', lead: 'Choisissez un projet.', eyebrow: null, foot: null };
 
   /* Ancienne appli installée à la racine : on retire son service worker
      pour qu'il ne masque pas cette page. Les projets ont le leur, dans leur dossier. */
@@ -94,58 +104,83 @@
     list.appendChild(d);
   }
 
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  /* Un élément : { title, desc, icon, cat, href }. Liens internes (/…) ou http(s) ; le reste est refusé. */
   function card(p) {
-    var href = typeof p.path === 'string' ? p.path : '/' + p.slug + '/';
-    if (href.charAt(0) !== '/' || href.indexOf('//') === 0) return null;   // liens internes uniquement
-    var a = document.createElement('a');
-    a.className = 'card';
+    var href = typeof p.href === 'string' ? p.href : '';
+    var external = /^https?:\/\//i.test(href);
+    if (!external && (href.charAt(0) !== '/' || href.indexOf('//') === 0)) return null;
+    var a = el('a', 'card');
     a.href = href;
+    if (external) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
 
-    var ico = document.createElement('span');
-    ico.className = 'ico'; ico.setAttribute('aria-hidden', 'true');
-    ico.textContent = p.icon || '📁';
+    var ico = el('span', 'ico', p.icon || '📁');
+    ico.setAttribute('aria-hidden', 'true');
 
-    var txt = document.createElement('span');
-    txt.className = 'txt';
-    var t = document.createElement('span');
-    t.className = 'ttl'; t.textContent = p.title || p.slug;
+    var txt = el('span', 'txt');
+    if (p.cat) { var k = el('span', 'tag', p.cat); k.dir = 'auto'; txt.appendChild(k); }
+    var t = el('span', 'ttl', p.title || href); t.dir = 'auto';
     txt.appendChild(t);
-    if (p.desc) {
-      var d = document.createElement('span');
-      d.className = 'dsc'; d.textContent = p.desc;
-      txt.appendChild(d);
-    }
+    if (p.desc) { var d = el('span', 'dsc', p.desc); d.dir = 'auto'; txt.appendChild(d); }
+    if (external) txt.appendChild(el('span', 'sr', ' (s’ouvre dans un nouvel onglet)'));
 
-    if (typeof p.cat === 'string' && p.cat) {
-      var k = document.createElement('span');
-      k.className = 'tag'; k.textContent = p.cat;
-      txt.insertBefore(k, t);
-    }
-
-    var go = document.createElement('span');
-    go.className = 'go'; go.setAttribute('aria-hidden', 'true'); go.textContent = '›';
-
+    var go = el('span', 'go', external ? '↗' : '›');
+    go.setAttribute('aria-hidden', 'true');
     a.appendChild(ico); a.appendChild(txt); a.appendChild(go);
     return a;
   }
 
-  fetch('/projects.json', { cache: 'no-store' })
-    .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-    .then(function (data) {
-      var items = Array.isArray(data) ? data.filter(function (p) { return p && (p.slug || p.path); }) : [];
-      if (!items.length) {
-        message('Aucun projet pour le moment. Sur le serveur : <code>hub add mon-projet --titre "Mon projet"</code>');
-        return;
-      }
+  /* Anciennes données (projects.json) : mêmes éléments, sans textes personnalisés */
+  function legacy(data) {
+    var items = Array.isArray(data) ? data.filter(function (p) { return p && (p.slug || p.path); }) : [];
+    return { texts: DEFAULTS, items: items.map(function (p) { return { title: p.title || p.slug, desc: p.desc, icon: p.icon, cat: p.cat, href: typeof p.path === 'string' ? p.path : '/' + p.slug + '/' }; }) };
+  }
+
+  function getJSON(url) {
+    return fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); });
+  }
+
+  function render(site) {
+    var tx = site.texts || DEFAULTS;
+    var title = typeof tx.title === 'string' && tx.title ? tx.title : DEFAULTS.title;
+    document.title = title;
+    document.getElementById('ttl').textContent = title;
+    var host = document.getElementById('host');
+    host.textContent = tx.eyebrow === null || tx.eyebrow === undefined ? location.hostname : String(tx.eyebrow);
+    host.hidden = !host.textContent;
+    var lead = document.getElementById('lead');
+    lead.textContent = typeof tx.lead === 'string' ? tx.lead : DEFAULTS.lead;
+    lead.hidden = !lead.textContent;
+
+    var items = Array.isArray(site.items) ? site.items : [];
+    var g = el('div', 'grid'), shown = 0;
+    items.forEach(function (p) { var c = p && card(p); if (c) { g.appendChild(c); shown++; } });
+    if (!shown) {
+      message('Rien à afficher pour le moment. Les éléments se gèrent dans l’<a href="/admin/">administration</a>.');
+    } else {
       list.textContent = '';
-      var g = document.createElement('div'); g.className = 'grid'; var shown = 0;
-      items.forEach(function (p) {
-        var c = card(p); if (!c) return;
-        g.appendChild(c); shown++;
-      });
       list.appendChild(g);
-      document.getElementById('foot').textContent = shown + (shown > 1 ? ' projets' : ' projet');
-    })
+    }
+
+    var foot = document.getElementById('foot');
+    foot.textContent = '';
+    var note = tx.foot === null || tx.foot === undefined ? (shown ? shown + (shown > 1 ? ' projets' : ' projet') : '') : String(tx.foot);
+    if (note) foot.appendChild(el('span', '', note));
+    var adm = el('a', '', 'Administration'); adm.href = '/admin/';
+    foot.appendChild(adm);
+  }
+
+  /* Nouvelle source (textes et éléments modifiables) ; repli sur l'ancienne liste si le service n'est pas à jour */
+  getJSON('/_hub/site.json')
+    .then(function (s) { if (!s || !Array.isArray(s.items)) throw new Error('format'); return s; })
+    .catch(function () { return getJSON('/projects.json').then(legacy); })
+    .then(render)
     .catch(function () { message('Impossible de charger la liste des projets. Réessayez dans un instant.', true); });
 })();
 </script>
