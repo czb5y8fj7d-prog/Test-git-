@@ -39,6 +39,7 @@ HOST = os.environ.get("LL_HOST", "127.0.0.1")
 PORT = int(os.environ.get("LL_PORT", "8787"))
 SESSION_DAYS = int(os.environ.get("LL_SESSION_DAYS", "90"))
 SEARXNG = os.environ.get("SEARXNG_URL", "").rstrip("/")
+HUB_DATA = os.environ.get("HUB_DATA", "/var/lib/hub/projects.json")
 UA = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
 LOCK = threading.Lock()
 
@@ -573,6 +574,67 @@ def chat_cancel(c):
             pass
 
 
+# --------------------------------------------------------------------------- boutons de l'accueil (menu admin)
+# L'accueil lit /var/lib/hub/projects.json ; le menu admin de la page le modifie ici.
+# « edited » : la commande « hub sync » ne réécrit plus le titre, la description, etc.
+# « hidden » : supprimé de l'accueil (le projet reste en ligne sur son chemin, restaurable).
+HUB_LOCK = threading.Lock()
+SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,30}$")
+HUB_FIELDS = {"title": 80, "desc": 200, "icon": 8, "cat": 40}
+
+
+def hub_read():
+    try:
+        st = os.stat(HUB_DATA)
+        with open(HUB_DATA, encoding="utf-8") as f:
+            data = json.load(f)
+        return (data if isinstance(data, list) else []), str(st.st_mtime_ns)
+    except (OSError, ValueError):
+        return [], ""
+
+
+def hub_clean(items, old):
+    """Vérifie la liste envoyée par le menu admin ; renvoie (liste, erreur)."""
+    if not isinstance(items, list) or len(items) > 200:
+        return None, "liste invalide"
+    prev = {p.get("slug"): p for p in old if isinstance(p, dict)}
+    out, seen = [], set()
+    for i, p in enumerate(items):
+        if not isinstance(p, dict):
+            return None, "élément invalide"
+        slug = str(p.get("slug", "")).strip()
+        if not SLUG_RE.match(slug):
+            return None, "identifiant invalide : %r (minuscules, chiffres, tirets)" % slug
+        if slug in seen:
+            return None, "identifiant en double : %s" % slug
+        seen.add(slug)
+        e = dict(prev.get(slug, {}))   # garde les champs inconnus du menu
+        e["slug"] = slug
+        for k, n in HUB_FIELDS.items():
+            e[k] = str(p.get(k) or "").strip()[:n]
+        if not e["title"]:
+            return None, "titre manquant pour %s" % slug
+        path = str(p.get("path") or ("/" + slug + "/")).strip()
+        if not (re.match(r"^/(?!/)[^\s<>\"]*$", path) or re.match(r"^https://[^\s<>\"/]+(/[^\s<>\"]*)?$", path)):
+            return None, "lien invalide pour %s : chemin (/projet/) ou adresse https://" % slug
+        e["path"] = path[:300]
+        e["order"] = i + 1
+        e["edited"] = True
+        if p.get("hidden"):
+            e["hidden"] = True
+        else:
+            e.pop("hidden", None)
+        out.append(e)
+    return out, None
+
+
+def hub_write(data):
+    tmp = HUB_DATA + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, HUB_DATA)
+
 
 # --------------------------------------------------------------------------- serveur HTTP
 class H(BaseHTTPRequestHandler):
@@ -617,6 +679,9 @@ class H(BaseHTTPRequestHandler):
             return self.send_json(401, {"error": "non autorisé"})
         if p == "/_ll/auth/me":
             return self.send_json(200, {"ok": True, "kind": kind, "passwordSet": bool(conf().get("pw"))})
+        if p == "/_ll/hub/projects":
+            items, ver = hub_read()
+            return self.send_json(200, {"projects": items, "version": ver})
         if p == "/_ll/capabilities":
             return self.send_json(200, {"web": True, "chat": True, "image": image_ready(), "image_model": "FLUX.1 schnell (Q8)", "formats": list(FORMATS)})
         m = re.fullmatch(r"/_ll/chat/([0-9a-f]{16})", p)
@@ -717,6 +782,21 @@ class H(BaseHTTPRequestHandler):
             if c:
                 chat_cancel(c)
             return self.send_json(200, {"ok": True})
+        if p == "/_ll/hub/projects":
+            b = self.body(limit=200_000)
+            with HUB_LOCK:
+                old, ver = hub_read()
+                if str(b.get("version", "")) != ver:
+                    return self.send_json(409, {"error": "la liste a changé entre-temps, rechargez la page"})
+                items, err = hub_clean(b.get("projects"), old)
+                if err:
+                    return self.send_json(400, {"error": err})
+                try:
+                    hub_write(items)
+                except OSError as e:
+                    return self.send_json(500, {"error": "écriture impossible : %s" % e.strerror})
+                items, ver = hub_read()
+            return self.send_json(200, {"projects": items, "version": ver})
         if p == "/_ll/image":
             if not image_ready():
                 return self.send_json(503, {"error": "générateur d'images non installé sur le serveur (install-images.sh)"})

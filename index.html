@@ -53,7 +53,35 @@
     .msg { padding: 18px; color: var(--mut); background: var(--s1); border: 1px dashed var(--line); border-radius: 18px; }
     .msg.err { color: #ffd9d9; border-color: #6a3434; background: #2b1a1a; }
     .msg code { padding: 1px 6px; font: 0.9em ui-monospace, "SF Mono", Menlo, monospace; background: var(--s3); border-radius: 6px; color: var(--txt); }
-    footer { margin-top: 28px; color: var(--mut); font-size: 13px; }
+    footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; color: var(--mut); font-size: 13px; }
+    .lnk { padding: 0; color: var(--mut); font: inherit; background: none; border: 0; cursor: pointer; }
+    .lnk:hover { color: var(--acc); }
+
+    /* Menu admin */
+    .bar { position: sticky; top: 8px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 22px; padding: 10px 12px; background: rgba(19,23,28,.92); border: 1px solid var(--acc); border-radius: 16px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .bar b { flex: 1; min-width: 120px; font-size: 14px; }
+    .bar .st { flex-basis: 100%; color: var(--mut); font-size: 13px; }
+    .bar .st.err { color: var(--err); }
+    .btn { min-height: 38px; padding: 0 14px; color: var(--txt); font: 600 14px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; background: var(--s2); border: 1px solid var(--line); border-radius: 11px; cursor: pointer; }
+    .btn:hover { border-color: var(--acc); }
+    .btn.pri { color: #fff; background: var(--acc); border-color: var(--acc); }
+    .btn.dng { color: #ffd9d9; border-color: #6a3434; background: #2b1a1a; }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .row { display: flex; align-items: stretch; gap: 8px; }
+    .row .card { flex: 1; min-width: 0; }
+    .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: none; width: 92px; }
+    .tools .btn { min-height: 0; padding: 0; font-size: 16px; }
+    .card.off { opacity: .55; border-style: dashed; }
+    dialog { width: min(480px, calc(100vw - 32px)); padding: 0; color: var(--txt); background: var(--s1); border: 1px solid var(--line); border-radius: 20px; }
+    dialog::backdrop { background: rgba(0,0,0,.6); }
+    dialog form { display: grid; gap: 12px; padding: 20px; }
+    dialog h2 { margin: 0 0 4px; font-size: 20px; }
+    label { display: grid; gap: 5px; color: var(--mut); font-size: 13px; font-weight: 600; }
+    input { width: 100%; min-height: 42px; padding: 0 12px; color: var(--txt); font: 16px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; background: var(--bg); border: 1px solid var(--line); border-radius: 11px; }
+    input:focus { outline: none; border-color: var(--acc); }
+    .hint { margin: -6px 0 0; color: var(--mut); font-size: 12px; }
+    .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+    .ferr { margin: 0; color: var(--err); font-size: 14px; }
     @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
   </style>
 </head>
@@ -65,10 +93,43 @@
     <p class="lead">Choisissez un projet.</p>
   </header>
 
+  <div id="bar" class="bar" hidden>
+    <b>Mode admin</b>
+    <button class="btn pri" type="button" id="add">+ Ajouter</button>
+    <button class="btn" type="button" id="done">Terminer</button>
+    <button class="btn" type="button" id="logout">Se déconnecter</button>
+    <span class="st" id="st" role="status"></span>
+  </div>
   <div id="list" aria-live="polite"><div class="msg">Chargement…</div></div>
   <noscript><div class="msg err">JavaScript est nécessaire pour afficher la liste des projets.</div></noscript>
-  <footer id="foot"></footer>
+  <footer><span id="foot"></span><button class="lnk" type="button" id="admin">Admin</button></footer>
 </main>
+
+<dialog id="dlogin">
+  <form method="dialog" id="flogin">
+    <h2>Connexion admin</h2>
+    <label>Mot de passe<input type="password" id="pw" autocomplete="current-password" required></label>
+    <p class="hint">Le même que pour LL (sur le serveur : <code>ll-auth passwd</code>).</p>
+    <p class="ferr" id="lerr" hidden></p>
+    <div class="acts"><button class="btn" type="button" data-close>Annuler</button><button class="btn pri" type="submit">Se connecter</button></div>
+  </form>
+</dialog>
+
+<dialog id="dedit">
+  <form method="dialog" id="fedit">
+    <h2 id="etitle">Modifier</h2>
+    <label>Titre<input id="f-title" maxlength="80" required></label>
+    <label>Description<input id="f-desc" maxlength="200"></label>
+    <div class="row">
+      <label style="flex:none;width:96px">Icône<input id="f-icon" maxlength="8" placeholder="📁"></label>
+      <label style="flex:1">Catégorie<input id="f-cat" maxlength="40" placeholder="Projets"></label>
+    </div>
+    <label>Lien<input id="f-path" maxlength="300" placeholder="/mon-projet/ ou https://…" required></label>
+    <p class="hint">Un chemin du site (<code>/llm/</code>) ou une adresse complète (<code>https://…</code>).</p>
+    <p class="ferr" id="eerr" hidden></p>
+    <div class="acts"><button class="btn" type="button" data-close>Annuler</button><button class="btn pri" type="submit">Enregistrer</button></div>
+  </form>
+</dialog>
 
 <script>
 (function () {
@@ -94,12 +155,19 @@
     list.appendChild(d);
   }
 
+  function linkOf(p) {
+    var href = typeof p.path === 'string' && p.path ? p.path : '/' + p.slug + '/';
+    if (/^\/(?!\/)/.test(href) || /^https:\/\//.test(href)) return href;   // chemin du site ou adresse https
+    return null;
+  }
+
   function card(p) {
-    var href = typeof p.path === 'string' ? p.path : '/' + p.slug + '/';
-    if (href.charAt(0) !== '/' || href.indexOf('//') === 0) return null;   // liens internes uniquement
+    var href = linkOf(p);
+    if (!href) return null;
     var a = document.createElement('a');
-    a.className = 'card';
+    a.className = 'card' + (p.hidden ? ' off' : '');
     a.href = href;
+    if (href.charAt(0) !== '/') { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
 
     var ico = document.createElement('span');
     ico.className = 'ico'; ico.setAttribute('aria-hidden', 'true');
@@ -129,24 +197,229 @@
     return a;
   }
 
-  fetch('/projects.json', { cache: 'no-store' })
-    .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-    .then(function (data) {
-      var items = Array.isArray(data) ? data.filter(function (p) { return p && (p.slug || p.path); }) : [];
-      if (!items.length) {
-        message('Aucun projet pour le moment. Sur le serveur : <code>hub add mon-projet --titre "Mon projet"</code>');
-        return;
-      }
-      list.textContent = '';
-      var g = document.createElement('div'); g.className = 'grid'; var shown = 0;
-      items.forEach(function (p) {
-        var c = card(p); if (!c) return;
-        g.appendChild(c); shown++;
+  function showPublic(data) {
+    var items = Array.isArray(data) ? data.filter(function (p) { return p && (p.slug || p.path) && !p.hidden; }) : [];
+    if (!items.length) {
+      message('Aucun projet pour le moment. Ajoutez-en avec le menu <b>Admin</b> en bas de page, ou sur le serveur : <code>hub add mon-projet --titre "Mon projet"</code>');
+      document.getElementById('foot').textContent = '';
+      return;
+    }
+    list.textContent = '';
+    var g = document.createElement('div'); g.className = 'grid'; var shown = 0;
+    items.forEach(function (p) {
+      var c = card(p); if (!c) return;
+      g.appendChild(c); shown++;
+    });
+    list.appendChild(g);
+    document.getElementById('foot').textContent = shown + (shown > 1 ? ' projets' : ' projet');
+  }
+
+  function loadPublic() {
+    fetch('/projects.json', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(showPublic)
+      .catch(function () { message('Impossible de charger la liste des projets. Réessayez dans un instant.', true); });
+  }
+
+  /* ---------------------------------------------------------------- menu admin
+     Connexion par le mot de passe de ll-server ; la liste est lue et enregistrée par /_ll/hub/projects. */
+  var TOKEN_KEY = 'hub.token';
+  var bar = document.getElementById('bar'), st = document.getElementById('st');
+  var dlogin = document.getElementById('dlogin'), dedit = document.getElementById('dedit');
+  var state = { items: [], version: '', editing: -1, busy: false };
+
+  function token() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+  function setToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignoré */ } }
+
+  function api(method, path, body) {
+    return fetch(path, {
+      method: method, cache: 'no-store',
+      headers: { 'Authorization': 'Bearer ' + token(), 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.status === 401) { setToken(''); throw new Error('Session expirée : reconnectez-vous.'); }
+        if (!r.ok) throw new Error(j.error || ('Erreur ' + r.status));
+        return j;
       });
-      list.appendChild(g);
-      document.getElementById('foot').textContent = shown + (shown > 1 ? ' projets' : ' projet');
-    })
-    .catch(function () { message('Impossible de charger la liste des projets. Réessayez dans un instant.', true); });
+    });
+  }
+
+  function status(text, err) { st.textContent = text || ''; st.className = 'st' + (err ? ' err' : ''); }
+
+  function slugify(s, taken) {
+    var b = (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'lien';
+    if (/^[^a-z0-9]/.test(b)) b = 'l' + b;
+    var s2 = b, n = 2;
+    while (taken.indexOf(s2) >= 0) s2 = b + '-' + (n++);
+    return s2;
+  }
+
+  function toolBtn(label, title, fn, cls) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn' + (cls ? ' ' + cls : ''); b.textContent = label;
+    b.title = title; b.setAttribute('aria-label', title);
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  function renderAdmin() {
+    list.textContent = '';
+    var shown = state.items.filter(function (p) { return !p.hidden; });
+    var gone = state.items.filter(function (p) { return p.hidden; });
+    function section(title, arr) {
+      var wrap = document.createElement('section');
+      if (title) { var h = document.createElement('h2'); h.className = 'cat'; h.textContent = title; wrap.appendChild(h); }
+      var g = document.createElement('div'); g.className = 'grid';
+      arr.forEach(function (p) {
+        var i = state.items.indexOf(p);
+        var row = document.createElement('div'); row.className = 'row';
+        var c = card(p) || card({ slug: p.slug, title: p.title + ' (lien invalide)', path: '/', hidden: true });
+        c.addEventListener('click', function (e) { e.preventDefault(); openEdit(i); });
+        row.appendChild(c);
+        var tools = document.createElement('div'); tools.className = 'tools';
+        if (p.hidden) {
+          tools.appendChild(toolBtn('↺', 'Remettre sur l\'accueil', function () { p.hidden = false; save('« ' + p.title + ' » est de retour'); }));
+          tools.appendChild(toolBtn('✕', 'Effacer définitivement', function () { remove(i, true); }, 'dng'));
+        } else {
+          tools.appendChild(toolBtn('↑', 'Monter', function () { move(i, -1); }));
+          tools.appendChild(toolBtn('✎', 'Modifier', function () { openEdit(i); }));
+          tools.appendChild(toolBtn('↓', 'Descendre', function () { move(i, 1); }));
+          tools.appendChild(toolBtn('🗑', 'Supprimer', function () { remove(i, false); }, 'dng'));
+        }
+        row.appendChild(tools);
+        g.appendChild(row);
+      });
+      wrap.appendChild(g);
+      list.appendChild(wrap);
+    }
+    if (shown.length) section('', shown);
+    else message('Aucun élément sur l\'accueil. Utilisez « + Ajouter ».');
+    if (gone.length) section('Retirés de l\'accueil', gone);
+    document.getElementById('foot').textContent = shown.length + ' affiché(s)' + (gone.length ? ', ' + gone.length + ' retiré(s)' : '');
+  }
+
+  function save(okText) {
+    if (state.busy) return Promise.resolve(false);
+    state.busy = true; status('Enregistrement…');
+    return api('POST', '/_ll/hub/projects', { version: state.version, projects: state.items })
+      .then(function (j) {
+        state.items = j.projects; state.version = j.version;
+        status(okText ? okText + ' ✓' : 'Enregistré ✓');
+        return true;
+      })
+      .catch(function (e) { status(e.message, true); return reload().then(function () { status(e.message, true); return false; }); })
+      .then(function (ok) { state.busy = false; renderAdmin(); return ok; });
+  }
+
+  function reload() {
+    return api('GET', '/_ll/hub/projects').then(function (j) {
+      state.items = j.projects || []; state.version = j.version || '';
+      renderAdmin();
+    }).catch(function (e) {
+      if (!token()) { stopAdmin(); openLogin(e.message); } else status(e.message, true);
+    });
+  }
+
+  function move(i, d) {
+    // échange avec le voisin visible le plus proche (les éléments retirés sont ignorés)
+    var j = i + d;
+    while (j >= 0 && j < state.items.length && state.items[j].hidden) j += d;
+    if (j < 0 || j >= state.items.length) return;
+    var t = state.items[i]; state.items[i] = state.items[j]; state.items[j] = t;
+    save('Ordre modifié');
+  }
+
+  function remove(i, forever) {
+    var p = state.items[i];
+    if (forever) {
+      if (!window.confirm('Effacer « ' + p.title + ' » définitivement de la liste ?\n\n' +
+          'Un projet installé sur le serveur reviendra à la prochaine mise à jour (hub update).')) return;
+      state.items.splice(i, 1);
+      save('« ' + p.title + ' » effacé');
+    } else {
+      p.hidden = true;
+      save('« ' + p.title + ' » retiré de l\'accueil (restaurable en bas de page)');
+    }
+  }
+
+  var F = ['title', 'desc', 'icon', 'cat', 'path'];
+  function field(k) { return document.getElementById('f-' + k); }
+
+  function openEdit(i) {
+    state.editing = i;
+    var p = i >= 0 ? state.items[i] : { title: '', desc: '', icon: '', cat: '', path: '' };
+    document.getElementById('etitle').textContent = i >= 0 ? 'Modifier' : 'Ajouter un élément';
+    F.forEach(function (k) { field(k).value = p[k] || (k === 'path' && i >= 0 ? '/' + p.slug + '/' : ''); });
+    document.getElementById('eerr').hidden = true;
+    dedit.showModal();
+    field('title').focus();
+  }
+
+  document.getElementById('fedit').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = {}; F.forEach(function (k) { v[k] = field(k).value.trim(); });
+    var err = document.getElementById('eerr');
+    if (!/^\/(?!\/)/.test(v.path) && !/^https:\/\/[^\s\/]+/.test(v.path)) {
+      err.textContent = 'Le lien doit commencer par / (page du site) ou par https://'; err.hidden = false; return;
+    }
+    var p, isNew = state.editing < 0;
+    if (isNew) {
+      p = { slug: slugify(v.title, state.items.map(function (x) { return x.slug; })) };
+      state.items.push(p);
+    } else p = state.items[state.editing];
+    F.forEach(function (k) { p[k] = v[k]; });
+    dedit.close();
+    save(isNew ? '« ' + v.title + ' » ajouté' : '« ' + v.title + ' » modifié');
+  });
+
+  function openLogin(msg) {
+    var e = document.getElementById('lerr');
+    e.textContent = msg || ''; e.hidden = !msg;
+    document.getElementById('pw').value = '';
+    dlogin.showModal();
+    document.getElementById('pw').focus();
+  }
+
+  document.getElementById('flogin').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = document.getElementById('lerr');
+    fetch('/_ll/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: document.getElementById('pw').value })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok || !j.token) throw new Error(j.error || ('Erreur ' + r.status));
+        setToken(j.token); dlogin.close(); startAdmin();
+      });
+    }).catch(function (x) { err.textContent = x.message; err.hidden = false; });
+  });
+
+  function startAdmin() {
+    if (!token()) { openLogin(); return; }
+    bar.hidden = false; status('');
+    if (location.hash !== '#admin') history.replaceState(null, '', '#admin');
+    reload();
+  }
+
+  function stopAdmin() {
+    bar.hidden = true;
+    if (location.hash === '#admin') history.replaceState(null, '', location.pathname + location.search);
+    loadPublic();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) {
+    b.addEventListener('click', function () { b.closest('dialog').close(); });
+  });
+  document.getElementById('admin').addEventListener('click', startAdmin);
+  document.getElementById('add').addEventListener('click', function () { openEdit(-1); });
+  document.getElementById('done').addEventListener('click', stopAdmin);
+  document.getElementById('logout').addEventListener('click', function () {
+    api('POST', '/_ll/auth/logout').catch(function () {}).then(function () { setToken(''); stopAdmin(); });
+  });
+
+  if (location.hash === '#admin') startAdmin(); else loadPublic();
 })();
 </script>
 </body>

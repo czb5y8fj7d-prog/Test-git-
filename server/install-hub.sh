@@ -4,7 +4,7 @@
 #  - installe la commande « hub » pour ajouter des projets en une ligne
 #  - garde l'API Ollama protégée (clé d'accès reprise de la config existante, sinon créée ;
 #    connexion par mot de passe possible : « ll-auth passwd »)
-#  - installe le service « ll-server » (connexion, recherche web, lecture de pages) derrière Caddy
+#  - installe le service « ll-server » (connexion, recherche web, lecture de pages, menu admin de l'accueil) derrière Caddy
 #  - ajoute LL (https://<hôte>/llm/) puis les sites statiques de la branche « sites » (hub sync)
 # Relançable sans risque.
 # Usage : bash install-hub.sh [nom-d-hôte]      (par défaut : <ip>.sslip.io)
@@ -61,6 +61,8 @@ LL_PY=/usr/bin/python3
 if [ -z "$SKIP_SERVICE" ]; then
   id ll >/dev/null 2>&1 || $SUDO useradd --system --no-create-home --shell /usr/sbin/nologin ll
   $SUDO mkdir -p "$LL_STATE"; $SUDO chown ll:ll "$LL_STATE"; $SUDO chmod 750 "$LL_STATE"
+  # le menu admin de l'accueil (servi par ll-server) modifie la liste des boutons
+  $SUDO chown ll:ll "$DATA_DIR" "$DATA_DIR/projects.json"
   if [ ! -x /opt/ll/venv/bin/python ]; then   # bibliothèque de recherche (facultative : sans elle, repli intégré)
     { $APT install -y python3-venv >/dev/null 2>&1 && $SUDO mkdir -p /opt/ll && $SUDO python3 -m venv /opt/ll/venv \
       && $SUDO /opt/ll/venv/bin/pip install -q ddgs >/dev/null 2>&1; } || echo "(recherche web : bibliothèque ddgs non installée, repli intégré utilisé)"
@@ -161,13 +163,13 @@ After=network-online.target
 
 [Service]
 User=ll
-Environment=LL_PORT=$LL_PORT LL_CONF=$LL_CONF
+Environment=LL_PORT=$LL_PORT LL_CONF=$LL_CONF HUB_DATA=$DATA_DIR/projects.json
 ExecStart=$LL_PY $HUB_DIR/server/ll-server.py serve
 Restart=always
 RestartSec=2
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=$LL_STATE
+ReadWritePaths=$LL_STATE $DATA_DIR
 PrivateTmp=true
 
 [Install]
@@ -196,6 +198,7 @@ if [ -z "$SKIP_RESTART" ]; then
   echo "Service LL        (attendu 401) : $(curl -s -o /dev/null -w '%{http_code}' https://$HOST/_ll/search?q=test)"
   echo
   echo "Connexion par mot de passe : ll-auth passwd   (puis « Se connecter » dans LL > ⚙)"
+  echo "Menu admin de l'accueil    : https://$HOST/#admin   (même mot de passe)"
   echo "Changer la clé d'accès     : ll-auth rotate-key"
   echo
   echo "Ajouter un projet : hub add nom --titre \"Mon projet\" --branche ma-branche"
