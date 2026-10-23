@@ -6,23 +6,24 @@
   <title>Mes projets</title>
   <meta name="description" content="Accueil : tous mes projets au même endroit.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#0b0d10">
-  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#f7f6f3">
+  <meta name="color-scheme" content="light">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236b8cff'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
   <style>
     :root {
-      --bg: #0b0d10; --s1: #13171c; --s2: #1b2128; --s3: #262e38; --line: #2a323c;
-      --txt: #e9edf2; --mut: #8e99a8; --acc: #6b8cff; --err: #ff6b6b;
+      --bg: #f7f6f3; --s1: #ffffff; --s2: #f1efeb; --s3: #e9e6e0; --line: #e4e1da;
+      --txt: #1c1b19; --mut: #6f6b64; --acc: #3b5bdb; --err: #c92a2a;
+      --shadow: 0 1px 2px rgba(28,27,25,.05), 0 1px 1px rgba(28,27,25,.03);
       --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html { background: var(--bg); color-scheme: dark; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html { background: var(--bg); color-scheme: light; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     body {
       margin: 0; min-height: 100vh; min-height: 100dvh; color: var(--txt);
       font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
       background:
-        radial-gradient(900px 420px at 50% -120px, rgba(107,140,255,.16), transparent 70%),
+        radial-gradient(900px 420px at 50% -120px, rgba(59,91,219,.07), transparent 70%),
         var(--bg);
       padding: max(28px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     }
@@ -36,14 +37,14 @@
     .grid > * { min-width: 0; }
     .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
     .card {
-      min-width: 0; display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 16px 18px;
+      box-shadow: var(--shadow); min-width: 0; display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 16px 18px;
       color: inherit; text-decoration: none; background: var(--s1);
       border: 1px solid var(--line); border-radius: 18px; touch-action: manipulation;
       transition: transform 140ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
     }
     /* Survol : seulement avec une vraie souris (sur écran tactile, il se déclenche au toucher et reste collé) */
     @media (hover: hover) and (pointer: fine) {
-      .card:hover { border-color: var(--acc); background: #161c26; }
+      .card:hover { border-color: var(--acc); background: #fbfaf8; box-shadow: 0 2px 8px rgba(28,27,25,.07); }
       .card:hover .go { color: var(--acc); }
     }
     .card:active { transform: scale(0.98); background: var(--s2); transition-duration: 90ms; }
@@ -56,7 +57,7 @@
     .go { flex: none; color: var(--mut); font-size: 22px; transition: color 150ms ease; }
 
     .msg { padding: 18px; color: var(--mut); background: var(--s1); border: 1px dashed var(--line); border-radius: 18px; }
-    .msg.err { color: #ffd9d9; border-color: #6a3434; background: #2b1a1a; }
+    .msg.err { color: #8a1f1f; border-color: #f0c4c4; background: #fdeeee; }
     .msg code { padding: 1px 6px; font: 0.9em ui-monospace, "SF Mono", Menlo, monospace; background: var(--s3); border-radius: 6px; color: var(--txt); }
     .msg a, footer a { color: inherit; }
     footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-top: 28px; color: var(--mut); font-size: 13px; font-variant-numeric: tabular-nums; }

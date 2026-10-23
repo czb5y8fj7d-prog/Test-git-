@@ -5,24 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Administration</title>
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#0b0d10">
-  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#f7f6f3">
+  <meta name="color-scheme" content="light">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236b8cff'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
   <style>
     :root {
-      --bg: #0b0d10; --s1: #13171c; --s2: #1b2128; --s3: #262e38; --line: #2a323c;
-      --txt: #e9edf2; --mut: #8e99a8; --acc: #6b8cff; --acc-d: #5775e6; --err: #ff7b7b; --warn: #ffb454; --ok: #3ddc97;
+      --bg: #f7f6f3; --s1: #ffffff; --s2: #f1efeb; --s3: #e9e6e0; --line: #e4e1da;
+      --txt: #1c1b19; --mut: #6f6b64; --acc: #3b5bdb; --acc-d: #2f4ac0; --err: #c92a2a; --warn: #b45309; --ok: #1f8f5f;
       --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
       --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
       --tap: 48px;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html { background: var(--bg); color-scheme: dark; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html { background: var(--bg); color-scheme: light; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     body {
       margin: 0; min-height: 100vh; min-height: 100dvh; color: var(--txt); overscroll-behavior-y: none;
       font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
-      background: radial-gradient(900px 380px at 50% -140px, rgba(107,140,255,.13), transparent 70%), var(--bg);
+      background: radial-gradient(900px 380px at 50% -140px, rgba(59,91,219,.06), transparent 70%), var(--bg);
       padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     }
     body.modal { overflow: hidden; }
@@ -48,7 +48,7 @@
     .btn.danger { color: var(--err); }
     .btn:disabled { opacity: .45; pointer-events: none; }
     @media (hover: hover) and (pointer: fine) {
-      .btn:hover { border-color: #3a4552; background: var(--s3); }
+      .btn:hover { border-color: #cfcac1; background: var(--s3); }
       .btn.primary:hover { background: var(--acc-d); border-color: var(--acc-d); }
     }
     .btn:focus-visible, .iconbtn:focus-visible, .row-main:focus-visible, input:focus-visible, textarea:focus-visible, .chip:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
@@ -71,7 +71,7 @@
       transition: border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
     }
     textarea { resize: vertical; min-height: 84px; line-height: 1.4; }
-    input:focus, textarea:focus { border-color: var(--acc); box-shadow: 0 0 0 3px rgba(107,140,255,.25); }
+    input:focus, textarea:focus { border-color: var(--acc); box-shadow: 0 0 0 3px rgba(59,91,219,.22); }
     input:disabled { opacity: .45; }
     input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--err); }
     .err-msg { margin-top: 6px; color: var(--err); font-size: 13px; }
@@ -109,13 +109,13 @@
     #items { list-style: none; margin: 0; padding: 0; }
     .row { display: flex; align-items: center; gap: 2px; margin-bottom: 8px; padding-right: 4px; background: var(--s1); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; transition: opacity 150ms ease, border-color 150ms ease; }
     .row.is-hidden .row-main { opacity: .55; }
-    .row.has-error { border-color: #6a3434; }
+    .row.has-error { border-color: #f0c4c4; }
     .row-main {
       flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 8px 12px 12px; text-align: left; color: inherit; font: inherit;
       background: transparent; border: 0; cursor: pointer; touch-action: manipulation; border-radius: 16px; transition: transform 140ms var(--ease-out), background-color 150ms ease, opacity 150ms ease;
     }
     .row-main:active { transform: scale(0.985); background: var(--s2); transition-duration: 90ms; }
-    @media (hover: hover) and (pointer: fine) { .row-main:hover { background: #161c26; } }
+    @media (hover: hover) and (pointer: fine) { .row-main:hover { background: #faf9f6; } }
     .ico { flex: none; width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; line-height: 1; background: var(--s2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
     .row-txt { flex: 1; min-width: 0; }
     .row-ttl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-weight: 600; font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; }
@@ -123,16 +123,16 @@
     .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
     .badges:empty { display: none; }
     .badge { padding: 1px 7px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--mut); border: 1px solid var(--line); border-radius: 8px; white-space: nowrap; }
-    .badge.warn { color: var(--warn); border-color: #5a4727; }
-    .badge.err { color: var(--err); border-color: #6a3434; }
-    .badge.acc { color: var(--acc); border-color: #2d3d6e; }
+    .badge.warn { color: var(--warn); border-color: #f1d9b0; }
+    .badge.err { color: var(--err); border-color: #f0c4c4; }
+    .badge.acc { color: var(--acc); border-color: #c5d0f5; }
     .empty { padding: 22px 18px; color: var(--mut); text-align: center; border: 1px dashed var(--line); border-radius: 16px; text-wrap: pretty; }
 
     /* Barre d'enregistrement : elle monte quand il y a des changements */
     #savebar {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center;
       padding: 10px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-      background: rgba(19,23,28,.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+      background: rgba(255,255,255,.92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
       transform: translateY(110%); visibility: hidden; transition: transform 160ms var(--ease-out), visibility 0s linear 160ms;
     }
     #savebar.in { transform: none; visibility: visible; transition: transform 250ms var(--ease-out), visibility 0s; }
@@ -145,11 +145,11 @@
     body.has-bar #toasts { transform: translateY(-74px); }
     .toast {
       display: flex; align-items: center; gap: 12px; max-width: 460px; width: fit-content; padding: 12px 14px 12px 16px; font-size: 14px; line-height: 1.3;
-      background: #20272f; border: 1px solid #34404c; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.45); pointer-events: auto;
+      background: #ffffff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(28,27,25,.14); pointer-events: auto;
       opacity: 0; transform: translateY(8px) scale(0.96); transition: transform 150ms var(--ease-out), opacity 150ms ease-out;
     }
     .toast.in { opacity: 1; transform: none; transition: transform 250ms var(--ease-out), opacity 200ms ease-out; }
-    .toast.err { border-color: #6a3434; color: #ffd9d9; }
+    .toast.err { border-color: #f0c4c4; color: var(--err); }
     .toast button { flex: none; min-height: 36px; padding: 0 10px; color: var(--acc); font: inherit; font-weight: 600; background: transparent; border: 0; border-radius: 10px; cursor: pointer; touch-action: manipulation; transition: transform 140ms var(--ease-out); }
     .toast button:active { transform: scale(0.95); }
 
@@ -160,7 +160,7 @@
       opacity: 0; transform: translateY(28px); transition: transform 180ms var(--ease-out), opacity 150ms ease-out;
     }
     dialog#editor.in { opacity: 1; transform: none; transition: transform 320ms var(--ease-drawer), opacity 200ms ease-out; }
-    dialog#editor::backdrop { background: rgba(0,0,0,.6); opacity: 0; transition: opacity 180ms ease; }
+    dialog#editor::backdrop { background: rgba(28,27,25,.35); opacity: 0; transition: opacity 180ms ease; }
     dialog#editor.in::backdrop { opacity: 1; transition: opacity 250ms ease; }
     @media (min-width: 600px) {
       dialog#editor { margin: auto; border-bottom: 1px solid var(--line); border-radius: 22px; max-height: 88dvh; transform: scale(0.96); }
