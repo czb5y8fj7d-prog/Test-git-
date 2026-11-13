@@ -195,6 +195,12 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
 .drow:not(:disabled):hover{background:#f4f6f7}
 
 #modal{position:fixed;inset:0;background:rgba(19,25,34,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+#modal.top{z-index:35}
+.slot{border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;background:#fff}.slot.empty{background:transparent;border-style:dashed}
+.slot .sw{flex:0 0 12px;height:36px;border-radius:4px}
+.hsave{background:none;border:1px solid rgba(255,255,255,.25);color:#F2EFE4;border-radius:8px;width:34px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px}
+.hsave svg{width:17px;height:17px}
+textarea.code{width:100%;min-height:90px;font:11px 'B612 Mono',monospace;border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box;word-break:break-all}
 #modal[hidden]{display:none}
 .sheet{background:var(--paper);width:min(560px,100%);max-height:92%;overflow-y:auto;border-radius:12px 12px 0 0;padding:16px 16px 22px;display:flex;flex-direction:column;gap:12px}
 .sheet>*{flex-shrink:0}
@@ -232,6 +238,7 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
       <button data-act="speed" data-v="2" aria-label="Vitesse rapide">&gt;&gt;</button>
       <button data-act="speed" data-v="3" aria-label="Vitesse très rapide">&gt;&gt;&gt;</button>
     </div>
+    <button class="hsave" data-act="saves" aria-label="Sauvegardes" title="Sauvegardes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3"/><rect x="8" y="13" width="8" height="6"/></svg></button>
   </header>
   <main>
     <section id="mapwrap" aria-label="Carte du monde">
@@ -270,6 +277,9 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
       <div class="row">
         <button class="btn primary" data-act="newgame">Fonder la compagnie</button>
         <button class="btn" data-act="continue" id="btnContinue" hidden>Reprendre la partie</button>
+        <button class="btn" data-act="saves">Charger ou importer</button>
+      </div>
+      <div class="muted" id="contInfo" style="font-size:12px;margin-top:6px"></div><div>
       </div>
     </div>
   </div>
@@ -1043,8 +1053,33 @@ function shortDate(day){return (day%30+1)+' '+MONTHS[Math.floor(day/30)%12];}
 const UI={tab:'carte',sel:null,speed:0,modal:null,acc:0,dirty:true,lastRender:0,holding:false,view:null,anim:null,hide:{},rf:'all',rs:'profit',ff:'all',best:null};
 const SPEEDS=[0,1/3,1,3];
 
-function save(){try{localStorage.setItem('plan-de-vol-save-v7',JSON.stringify(G));}catch(e){}}
-function load(){try{const s=localStorage.getItem('plan-de-vol-save-v7'),g=s?JSON.parse(s):null;if(g&&g.v===7)migrate8(g);if(g&&g.v===8)migrate9(g);return g&&g.v===9?g:null;}catch(e){return null;}}
+// ---- Sauvegardes : une sauvegarde automatique (et sa copie précédente), trois emplacements, export et import
+const SLOTS=['auto','1','2','3'],svK=x=>'pdv.save.'+x,svM=x=>'pdv.meta.'+x;
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
+function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+function saveMeta(){const p=player();return{name:p.name,color:p.color,day:G.day,cash:Math.round(p.cash),fleet:p.planes.length,routes:p.routes.length,share:p.share||0,over:!!G.over,won:!!G.won,at:Date.now()};}
+function writeSlot(slot,quiet){if(!G)return false;let data;try{data=JSON.stringify(G);}catch(e){return false;}const meta=JSON.stringify(saveMeta());
+ if(slot==='auto'){const cur=lsGet(svK('auto'));if(cur&&cur.length){const m=lsGet(svM('auto'));if(!m||JSON.parse(m).day!==G.day){lsSet(svK('auto.prev'),cur);lsSet(svM('auto.prev'),m||'{}');}}}   // garde la sauvegarde précédente en secours
+ let ok=lsSet(svK(slot),data);if(!ok){lsDel(svK('auto.prev'));lsDel(svM('auto.prev'));ok=lsSet(svK(slot),data);}
+ if(ok){lsSet(svM(slot),meta);UI.savedAt=Date.now();}else if(!quiet)toast('Espace de stockage plein dans ce navigateur. Exporte ta partie dans un fichier, puis libère un emplacement.');
+ return ok;}
+function parseSave(txt){const g=JSON.parse(txt);if(!g||typeof g!=='object'||!Array.isArray(g.airlines)||!g.airlines.length)throw new Error('format');
+ if(g.v===7)migrate8(g);if(g.v===8)migrate9(g);if(g.v!==9)throw new Error('version');return g;}
+function readSlot(slot){const t=lsGet(svK(slot));if(!t)return null;try{return parseSave(t);}catch(e){return null;}}
+function slotMeta(slot){const t=lsGet(svM(slot));if(!t||!lsGet(svK(slot)))return null;try{return JSON.parse(t);}catch(e){return null;}}
+function migrateLegacy(){const old=lsGet('plan-de-vol-save-v7');if(!old)return;if(!lsGet(svK('auto'))){try{const g=parseSave(old),G0=G;G=g;restoreWorld();writeSlot('auto',true);G=G0;}catch(e){}}lsDel('plan-de-vol-save-v7');}
+function save(){return writeSlot('auto',true);}
+function load(){const g=readSlot('auto');if(g)return g;const b=readSlot('auto.prev');if(b){UI.recovered=1;return b;}return null;}
+// Code de transfert : JSON compressé (gzip) en base64, préfixé pour reconnaître le format
+const b64e=u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);},b64d=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+async function packSave(){const txt=JSON.stringify(G);if(window.CompressionStream){try{const st=new Blob([txt]).stream().pipeThrough(new CompressionStream('gzip'));return 'PDV1:'+b64e(new Uint8Array(await new Response(st).arrayBuffer()));}catch(e){}}return 'PDV0:'+b64e(new TextEncoder().encode(txt));}
+async function unpackSave(t){t=(t||'').trim().replace(/\s+/g,'');if(t.startsWith('PDV1:')){const st=new Blob([b64d(t.slice(5))]).stream().pipeThrough(new DecompressionStream('gzip'));return await new Response(st).text();}if(t.startsWith('PDV0:'))return new TextDecoder().decode(b64d(t.slice(5)));return t;}
+async function importText(t){let g;try{g=parseSave(await unpackSave(t));}catch(e){toast('Ce fichier ou ce code n\'est pas une sauvegarde de Plan de Vol valide.');return false;}
+ if(G&&!G.over)save();G=g;begin();save();closeModal();toast('Partie importée : '+player().name+', '+dateStr(G.day)+'.');return true;}
+function exportFile(){const blob=new Blob([JSON.stringify(G)],{type:'application/json'}),a=document.createElement('a'),p=player();a.href=URL.createObjectURL(blob);a.download='plan-de-vol-'+slugify(p.name)+'-'+slugify(dateStr(G.day))+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}
+const slugify=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const ago=t=>{if(!t)return '';const m=Math.round((Date.now()-t)/60000);return m<1?'à l\'instant':m<60?'il y a '+m+' min':m<1440?'il y a '+Math.round(m/60)+' h':'il y a '+Math.round(m/1440)+' j';};
 // Partie de la version précédente : créneaux attribués selon l'usage, nouveaux compteurs initialisés
 function migrate9(g){const G0=G;G=g;g.v=9;g.prog=g.prog||{};g.apSh=g.apSh||{};
  for(const al of g.airlines){Object.assign(al,{cs:[],subs:{},rms:!al.player&&['premium','national','challenger'].includes(al.profile),ob:al.player?0:(({premium:0.03,national:0.03,challenger:0.05,lowcost:0.04})[al.profile]||0),cRate:al.profile==='lowcost'?0.95:1,revH:[],shareH:[],cashH:[],paxH:[],cargoH:[]});al.m=Object.assign(newM(),al.m);}
@@ -1353,7 +1388,7 @@ function subFin(p){const m=p.last,lim=creditLimit(p);
   '<p class="muted" style="font-size:12px">Fixe le prix d\'une partie de ton kérosène pour te protéger des flambées. Le prix proposé est l\'indice du jour plus une prime qui grandit avec la durée.</p>'+
   chipRow('hsh',String(sh),[['0.25','25 %'],['0.5','50 %'],['0.75','75 %']])+chipRow('hdur',String(du),[['3','3 mois'],['6','6 mois'],['12','12 mois']])+
   '<div class="row"><button class="btn small primary" data-act="hedge">Signer à l\'indice '+nf(G.fuel*(1.02+0.01*du/3)*100)+'</button><span class="muted" style="font-size:12px">marché : '+nf(G.fuel*100)+'</span></div>')+'</div>';
- h+='<div class="row"><button class="btn small" data-act="savegame">Sauvegarder</button><button class="btn small danger" data-act="quit">Nouvelle partie</button></div>';
+ h+='<div class="row"><button class="btn small" data-act="savegame">Sauvegardes</button><button class="btn small danger" data-act="quit">Nouvelle partie</button></div>';
  return h;}
 function subStaff(p){const need=p.need||updateCap(p);let req=0;for(const k of SK)req+=need[k];
  let h='<div class="card"><div class="kv"><span>Effectif</span><b>'+nf(staffCount(p))+' (besoin '+nf(req)+')</b><span>Masse salariale</span><b>'+money(wagesMonth(p))+'/mois</b><span>Capacité de vol</span><b class="'+(p.capF<1?'neg':'pos')+'">'+Math.round(p.capF*100)+' %</b><span>Moral moyen</span><b>'+Math.round(avgMorale(p))+'/100</b></div>'+
@@ -1435,8 +1470,8 @@ addEventListener('pointerup',()=>{setTimeout(()=>{UI.holding=false;},60);});
 addEventListener('pointercancel',()=>{UI.holding=false;});
 
 // ---- Fenêtres
-function openModal(kind,data){UI.modal=Object.assign({kind,resume:UI.modal?UI.modal.resume:UI.speed},data||{});UI.speed=0;renderModal();$('modal').hidden=false;$('sheet').scrollTop=0;header();}
-function closeModal(){const m=UI.modal;UI.modal=null;$('modal').hidden=true;if(m&&m.resume&&!G.over)UI.speed=m.resume;renderAll(true);}
+function openModal(kind,data){UI.modal=Object.assign({kind,resume:UI.modal?UI.modal.resume:UI.speed},data||{});UI.speed=0;renderModal();$('modal').hidden=false;$('modal').classList.toggle('top',!$('start').hidden);$('sheet').scrollTop=0;if(G)header();}
+function closeModal(){const m=UI.modal;UI.modal=null;$('modal').hidden=true;if(!G||!$('start').hidden){if(!$('start').hidden)showStart();return;}if(m&&m.resume&&!G.over)UI.speed=m.resume;renderAll(true);}
 const IMG=(src,fb,cls,st)=>'<img'+(cls?' class="'+cls+'"':'')+(st?' style="'+st+'"':'')+' src="art/'+src+'" alt="" onerror="this.onerror=null;this.src=\'art/'+fb+'\'">';
 function seasBars(a,b){const Y=Math.floor(G.day/360),cm=Math.floor((G.day%360)/30),V=[];for(let i=0;i<12;i++){let mx=0;for(let k=3;k<30;k+=9)mx=Math.max(mx,seasonAt(a,b,Y*360+i*30+k));V.push(mx);}
  const top=Math.max(1.4,...V),evm=i=>EVENTS.some(E=>(E.aps.includes(a)||E.aps.includes(b))&&E.to>=Y*360+i*30&&E.from<Y*360+i*30+30);
@@ -1466,7 +1501,7 @@ function destListHTML(M){const p=player(),pl=M.plane?planeOf(p,M.plane):null,q=n
  const tot=L.length;L=L.slice(0,40);if(!tot)return '<p class="muted" style="padding:10px 12px">Aucune destination ne correspond. Élargis les filtres.</p>';
  return L.map(x=>'<button class="drow" data-act="pickdest" data-v="'+x.a.code+'" data-r="'+x.rot+'"'+(x.has||(pl&&!x.inR&&!x.via)?DIS(x.has?'Tu exploites déjà cette ligne.':'Hors de portée de cet avion, même avec une escale.'):'')+'><span><b>'+esc(x.a.name)+'</b> <span class="num muted" style="font-size:11px">'+x.a.code+'</span><small>'+REGIONS[x.a.reg]+' · '+nf(x.d)+' km · '+nf(x.D)+' pax/j'+(x.riv?' · '+x.riv+' conc.':' · sans concurrent')+(x.slot?' · créneaux':'')+'</small></span>'+
   '<span class="num '+(x.pf===null?'muted':cls(x.pf))+'">'+(x.has?'déjà ouverte':x.pf===null?(x.via?'via '+x.via.v:pl?'hors de portée':''):signed(x.pf)+'/j')+'</span></button>').join('')+(tot>40?'<p class="muted" style="padding:8px 12px;font-size:12px">'+(tot-40)+' autres destinations : affine la recherche.</p>':'');}
-function renderModal(){const M=UI.modal,p=player(),S=$('sheet');let h='';
+function renderModal(){const M=UI.modal,p=G?player():null,S=$('sheet');let h='';
  if(M.kind==='route'){const idle=p.planes.filter(x=>!x.route);
   if(!idle.find(x=>x.id===M.plane)){const d0=M.b?dist(M.a,M.b):0;const c=idle.filter(x=>!M.b||canServe(MX[x.model],M.a,M.b))[0]||idle[0];M.plane=c?c.id:null;}
   const pl=M.plane?planeOf(p,M.plane):null;
@@ -1553,6 +1588,20 @@ function renderModal(){const M=UI.modal,p=player(),S=$('sheet');let h='';
  else if(M.kind==='end'){const fired=!M.win&&G.overReason==='fired';h=(fired?IMG('bd-fired.jpg','end-lose.jpg','hero'):'<img class="hero" src="art/end-'+(M.win?'win':'lose')+'.jpg" alt="">')+'<h2>'+(M.win?'Objectif atteint':fired?'Révoqué par le conseil':'Faillite')+'</h2><p>'+(fired?'Le conseil d\'administration a perdu confiance et met fin à ton mandat le '+dateStr(G.day)+'. La compagnie continuera sans toi.':M.win?'Ta compagnie transporte '+nf(p.share*100,1)+' % des passagers du marché mondial, le '+dateStr(G.day)+'. Tu peux continuer à développer ton réseau.':'La trésorerie est restée négative trop longtemps. La compagnie est liquidée le '+dateStr(G.day)+'.')+'</p>'+
   '<div class="kv"><span>Valeur de la compagnie</span><b>'+money(companyValue(p))+'</b><span>Avions</span><b>'+p.planes.length+'</b><span>Lignes</span><b>'+p.routes.length+'</b></div>'+
   '<div class="row">'+(M.win?'<button class="btn primary" data-act="close">Continuer</button>':'')+'<button class="btn'+(M.win?'':' primary')+'" data-act="quit">Nouvelle partie</button></div>';}
+ else if(M.kind==='saves'){const ingame=!!G&&$('start').hidden;
+  h='<div class="row"><h2 class="grow">Sauvegardes</h2><button class="btn small" data-act="close">Fermer</button></div>';
+  if(ingame)h+='<p class="muted" style="font-size:13px">La partie s\'enregistre toute seule chaque mois de jeu et quand tu quittes la page'+(UI.savedAt?' (dernière fois '+ago(UI.savedAt)+')':'')+'. Les emplacements gardent des copies que tu choisis.</p>';
+  if(UI.recovered)h+='<div class="alert">La dernière sauvegarde automatique était illisible : la copie précédente a été récupérée.</div>';
+  for(const sl of SLOTS){const mt=slotMeta(sl),lab=sl==='auto'?'Sauvegarde automatique':'Emplacement '+sl;
+   h+='<div class="slot'+(mt?'':' empty')+'"><div class="row">'+(mt?'<span class="sw" style="background:'+(mt.color||'#B01F6A')+'"></span>':'')+'<div class="grow"><b>'+lab+'</b><div class="muted" style="font-size:12px">'+(mt?esc(mt.name)+' · '+dateStr(mt.day)+' · '+money(mt.cash)+' · '+plur(mt.fleet,'avion')+' · '+plur(mt.routes,'ligne')+(mt.over?' · <b class="neg">terminée</b>':'')+'<br>enregistrée '+ago(mt.at):'vide')+'</div></div></div>'+
+    '<div class="row">'+(ingame&&sl!=='auto'?'<button class="btn small'+(mt?'':' primary')+'" data-act="svwrite" data-v="'+sl+'">'+(mt?'Écraser':'Sauvegarder ici')+'</button>':'')+(ingame&&sl==='auto'?'<button class="btn small" data-act="svwrite" data-v="auto">Sauvegarder maintenant</button>':'')+
+    (mt?'<button class="btn small primary" data-act="svload" data-v="'+sl+'">Charger</button>':'')+(mt&&sl!=='auto'?'<button class="btn small danger" data-act="svdel" data-v="'+sl+'">Effacer</button>':'')+'</div></div>';}
+  const bk=slotMeta('auto.prev');if(bk)h+='<p class="muted" style="font-size:12px">Copie de secours : '+esc(bk.name)+', '+dateStr(bk.day)+' <button class="btn small" data-act="svload" data-v="auto.prev">Charger la copie</button></p>';
+  h+='<h3>Transférer une partie</h3><p class="muted" style="font-size:12px">Une partie est liée au site et au navigateur où tu joues. Pour la reprendre ailleurs, sur geokolis.tech ou un autre appareil, exporte-la ici puis importe-la là-bas.</p>';
+  if(ingame)h+='<div class="row"><button class="btn small" data-act="svexport">Télécharger le fichier</button><button class="btn small" data-act="svcode">Afficher le code de transfert</button></div>';
+  if(M.code)h+='<textarea class="code" id="svCodeOut" readonly>'+M.code+'</textarea><div class="row"><button class="btn small primary" data-act="svcopy">Copier le code</button><span class="muted" style="font-size:12px">'+nf(M.code.length/1024)+' Ko</span></div>';
+  h+='<div class="row"><label class="btn small" style="cursor:pointer">Importer un fichier<input type="file" id="svFile" accept=".json,application/json,text/plain" hidden></label><button class="btn small" data-act="svpaste">Coller un code</button></div>';
+  if(M.paste)h+='<textarea class="code" id="svCodeIn" placeholder="Colle ici le code PDV1:… ou le contenu du fichier"></textarea><div class="row"><button class="btn small primary" data-act="svimport">Charger ce code</button></div>';}
  else if(M.kind==='brand'){const B=BRANDS[M.k];h='<div class="row"><h2 class="grow">Nouvelle filiale '+B.label.toLowerCase()+'</h2><button class="btn small" data-act="close">Fermer</button></div>'+IMG('br-'+M.k+'.jpg','tab-lignes.jpg','hero')+
   '<label class="f"><span>Nom de la marque</span><input type="text" data-f="bname" maxlength="24" value="'+esc(M.bname)+'"></label><div class="f"><span class="lbl">Couleur</span><div class="chips">'+['#F28C28','#E5C100','#1E8C8C','#6A3FA0','#2E9E4F','#D6336C'].map(c=>'<button class="chip" data-act="mset" data-k="color" data-v="'+c+'" aria-pressed="'+(M.color===c)+'"><i style="background:'+c+'"></i>'+c+'</button>').join('')+'</div></div>'+
   '<div class="kv"><span>Création</span><b>'+money(B.cost)+'</b><span>Frais fixes</span><b>'+money(B.fee)+'/mois</b></div><div class="row"><button class="btn primary" data-act="brandok"'+(p.cash<B.cost?DIS('Trésorerie insuffisante : il manque '+money(B.cost-p.cash)+'.'):'')+'>Créer la filiale</button></div>';}
@@ -1580,7 +1629,7 @@ $('sheet').addEventListener('input',e=>{const M=UI.modal;if(!M)return;if(e.targe
  else if(e.target.id==='mPriceB'){M.priceB=+e.target.value;refreshEst();}
  else if(e.target.id==='mPriceF'){M.priceF=+e.target.value;refreshEst();}
  else if(e.target.id==='mQ'){M.q=e.target.value;$('mList').innerHTML=destListHTML(M);}});
-$('sheet').addEventListener('change',e=>{const M=UI.modal,f=e.target.dataset.f;if(!M||!f)return;M[f]=f==='plane'?+e.target.value:e.target.value;if(f==='a'){M.b=null;M.step='pick';M.price=null;M.priceB=null;M.priceF=null;}M.rot=0;renderModal();});
+$('sheet').addEventListener('change',e=>{if(e.target.id==='svFile'){const f=e.target.files&&e.target.files[0];if(f){if(f.size>20e6){toast('Fichier trop volumineux.');return;}f.text().then(importText);}return;}const M=UI.modal,f=e.target.dataset.f;if(!M||!f)return;M[f]=f==='plane'?+e.target.value:e.target.value;if(f==='a'){M.b=null;M.step='pick';M.price=null;M.priceB=null;M.priceF=null;}M.rot=0;renderModal();});
 $('modal').addEventListener('click',e=>{if(e.target.id==='modal'&&UI.modal&&!['end','board'].includes(UI.modal.kind))closeModal();});
 
 // ---- Actions de l'interface
@@ -1668,15 +1717,25 @@ const ACT={
  confirmorder(){const M=UI.modal,p=player(),L=M.lid,got=acquireBatch(p,M.model,M.src==='lease',M.qty,M.biz,M.first,L);if(got.length){const m=MX[M.model];news(plur(got.length,m.name)+' '+(M.src==='lease'?'loué'+(got.length>1?'s':'')+', livraison dans 7 jours':'commandé'+(got.length>1?'s':'')+', livraison dans '+got[0].down+' jours')+' ('+got.map(x=>x.reg).join(', ')+').','good');UI.tab='flotte';UI.ff='all';closeModal();}},
  loan(d){const p=player(),v=+d.v;if(v>0&&p.debt+v<=creditLimit(p)){p.debt+=v;p.cash+=v;}else if(v<0&&p.debt>=-v&&p.cash>=-v){p.debt+=v;p.cash+=v;}renderAll(true);},
  openbase(d){const p=player();openModal('confirm',{title:'Ouvrir une base à '+APX[d.v].name+' ?',text:'Coût : '+money(CFG.baseCost)+', puis 60 k€ par mois. Tu pourras ouvrir des lignes au départ de cet aéroport.',ok:'Ouvrir la base',yes(){if(openBase(p,d.v))news('Nouvelle base ouverte à '+APX[d.v].name+'.','good','base');}});},
- savegame(){save();news('Partie sauvegardée dans ce navigateur.','info');renderAll(true);},
- quit(){UI.modal=null;$('modal').hidden=true;UI.speed=0;showStart();},
+ savegame(){openModal('saves');},
+ saves(){openModal('saves');},
+ svwrite(d){if(writeSlot(d.v)){toast(d.v==='auto'?'Partie sauvegardée.':'Partie enregistrée dans l\'emplacement '+d.v+'.');}renderModal();},
+ svload(d){const go=()=>{const g=readSlot(d.v);if(!g){toast('Cette sauvegarde est illisible.');return;}if(G&&$('start').hidden&&!G.over)save();G=g;UI.recovered=0;closeModal();begin();if(d.v!=='auto')save();toast('Partie chargée : '+player().name+', '+dateStr(G.day)+'.');};
+  if(G&&$('start').hidden&&!G.over)openModal('confirm',{title:'Charger cette sauvegarde ?',text:'La partie en cours est d\'abord enregistrée dans la sauvegarde automatique, qui sera ensuite remplacée par la partie chargée. Enregistre-la dans un emplacement si tu veux la garder.',ok:'Charger',yes:go});else go();},
+ svdel(d){openModal('confirm',{title:'Effacer l\'emplacement '+d.v+' ?',text:'Cette sauvegarde sera supprimée de ce navigateur.',ok:'Effacer',yes(){lsDel(svK(d.v));lsDel(svM(d.v));setTimeout(()=>openModal('saves'),0);}});},
+ svexport(){exportFile();toast('Fichier de sauvegarde téléchargé.');},
+ async svcode(){UI.modal.code=await packSave();renderModal();const t=$('svCodeOut');if(t){t.focus();t.select();}},
+ async svcopy(){const t=$('svCodeOut');if(!t)return;try{await navigator.clipboard.writeText(t.value);toast('Code copié. Colle-le dans « Coller un code » sur l\'autre appareil.');}catch(e){t.focus();t.select();try{document.execCommand('copy');toast('Code copié.');}catch(_){toast('Copie bloquée par le navigateur : sélectionne le texte et copie-le à la main.');}}},
+ svpaste(){UI.modal.paste=1;renderModal();const t=$('svCodeIn');if(t)t.focus();},
+ svimport(){const t=$('svCodeIn');if(t&&t.value.trim())importText(t.value);else toast('Colle d\'abord un code de transfert.');},
+ quit(){if(G&&!G.over)save();UI.modal=null;$('modal').hidden=true;UI.speed=0;showStart();},
  newgame(){const name=$('inName').value.trim()||'Atlas Aéro';newGame({name,hub:$('inHub').value,diff:+$('inDiff').value,seed:(Date.now()%2147483647)|0});begin();},
- continue(){const s=load();if(s){G=s;begin();}}
+ continue(){const s=load();if(s){G=s;begin();if(UI.recovered)toast('Sauvegarde automatique illisible : la copie précédente a été chargée.');}else toast('Aucune partie à reprendre.');}
 };
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;if(el.getAttribute('aria-disabled')==='true'){e.stopPropagation();toast(el.dataset.why||'Action indisponible pour le moment.');return;}const f=ACT[el.dataset.act];if(f)f(el.dataset);});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[role=button][data-act]'))e.target.click();if(e.key==='Escape'){if(UI.modal&&!['end','board'].includes(UI.modal.kind))closeModal();$('qres').hidden=true;}});
 
-function showStart(){const s=load();$('btnContinue').hidden=!(s&&!s.over);$('start').hidden=false;}
+function showStart(){const mt=slotMeta('auto')||slotMeta('auto.prev');$('btnContinue').hidden=!(mt&&!mt.over);$('contInfo').textContent=mt&&!mt.over?'Dernière partie : '+mt.name+', '+dateStr(mt.day)+', enregistrée '+ago(mt.at)+'.':'';$('start').hidden=false;}
 function begin(){restoreWorld();_mk.k='';_cx.k='';$('start').hidden=true;UI.sel=null;UI.tab='carte';UI.speed=0;UI.acc=0;UI.hide={};UI.best=null;UI.rf='all';UI.ff='all';UI.endShown=G.over?2:G.won?1:0;UI.view=null;CW=0;resizeMap();renderAll(true);}
 
 // ---- Horloge
@@ -1695,8 +1754,11 @@ function frame(t){const dt=Math.min(0.25,(t-lastT)/1000||0);lastT=t;resizeMap();
 function start(data){$('lede').textContent='Un avion, un capital limité, huit compagnies rivales sur '+AP.length+' villes du monde. Ouvre des lignes, règle tes prix, tes équipages et tes services, et prends '+GOAL+' % du marché mondial avant la faillite.';
  $('inHub').innerHTML=Object.entries(REGIONS).map(r=>'<optgroup label="'+r[1]+'">'+AP.filter(a=>a.reg===r[0]).sort((a,b)=>a.name.localeCompare(b.name,'fr')).map(a=>'<option value="'+a.code+'"'+(a.code==='CMN'?' selected':'')+'>'+esc(a.name)+' ('+a.code+')</option>').join('')+'</optgroup>').join('');
  mapChrome();
+ migrateLegacy();
  if(data&&data.G){G=data.G;begin();}else showStart();
  requestAnimationFrame(frame);}
+// Sauvegarde dès que la page passe en arrière-plan ou se ferme (onglet, appli mobile)
+const bgSave=()=>{if(G&&$('start').hidden&&!G.over)save();};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')bgSave();});addEventListener('pagehide',bgSave);
 try{window.claude&&window.claude.hot&&window.claude.hot.snapshot&&window.claude.hot.snapshot(()=>G?{G}:{});}catch(e){}
 if(window.claude&&window.claude.hot&&window.claude.hot.ready)window.claude.hot.ready(start);else start((window.claude&&window.claude.hot&&window.claude.hot.data)||{});
 </script>
