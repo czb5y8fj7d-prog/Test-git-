@@ -133,5 +133,14 @@
     "icon": "🎭",
     "cat": "Outils",
     "order": 16
+  },
+  {
+    "slug": "plan-de-vol",
+    "dir": "plan-de-vol",
+    "title": "Plan de Vol",
+    "desc": "Jeu de gestion de compagnie aérienne face à des rivales",
+    "icon": "✈️",
+    "cat": "Jeux",
+    "order": 17
   }
 ]

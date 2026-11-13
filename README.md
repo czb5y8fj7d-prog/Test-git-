@@ -20,6 +20,7 @@ Le fichier `projects.json` décrit ce qui est publié sur le site et sous quel n
 | `simulateur-moteur/` | `/simulateur-moteur/` | Simulateur moteur |
 | `atlas-horaire/` | `/atlas-horaire/` | Atlas horaire |
 | `souffleur-cx/` | `/souffleur-cx/` | Souffleur Cx |
+| `plan-de-vol/` | `/plan-de-vol/` | Plan de Vol (jeu de gestion de compagnie aérienne, illustrations dans `art/`) |
 
 ## Publier sur le serveur
 
