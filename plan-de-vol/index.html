@@ -1077,7 +1077,10 @@ async function packSave(){const txt=JSON.stringify(G);if(window.CompressionStrea
 async function unpackSave(t){t=(t||'').trim().replace(/\s+/g,'');if(t.startsWith('PDV1:')){const st=new Blob([b64d(t.slice(5))]).stream().pipeThrough(new DecompressionStream('gzip'));return await new Response(st).text();}if(t.startsWith('PDV0:'))return new TextDecoder().decode(b64d(t.slice(5)));return t;}
 async function importText(t){let g;try{g=parseSave(await unpackSave(t));}catch(e){toast('Ce fichier ou ce code n\'est pas une sauvegarde de Plan de Vol valide.');return false;}
  if(G&&!G.over)save();G=g;begin();save();closeModal();toast('Partie importée : '+player().name+', '+dateStr(G.day)+'.');return true;}
-function exportFile(){const blob=new Blob([JSON.stringify(G)],{type:'application/json'}),a=document.createElement('a'),p=player();a.href=URL.createObjectURL(blob);a.download='plan-de-vol-'+slugify(p.name)+'-'+slugify(dateStr(G.day))+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}
+async function exportFile(){const p=player(),name='plan-de-vol-'+slugify(p.name)+'-'+slugify(dateStr(G.day))+'.json',data=JSON.stringify(G);
+ let dl=null;try{if(window.claude&&typeof window.claude.use==='function')dl=await window.claude.use('downloads');}catch(e){}
+ if(dl){try{await dl.save({filename:name,data});toast('Fichier de sauvegarde enregistré.');}catch(e){toast(e&&e.code==='declined'?'Téléchargement annulé.':'Téléchargement impossible ici : utilise le code de transfert.');}return;}   // dans l'aperçu Claude
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);toast('Fichier de sauvegarde téléchargé.');}
 const slugify=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ago=t=>{if(!t)return '';const m=Math.round((Date.now()-t)/60000);return m<1?'à l\'instant':m<60?'il y a '+m+' min':m<1440?'il y a '+Math.round(m/60)+' h':'il y a '+Math.round(m/1440)+' j';};
 // Partie de la version précédente : créneaux attribués selon l'usage, nouveaux compteurs initialisés
@@ -1723,7 +1726,7 @@ const ACT={
  svload(d){const go=()=>{const g=readSlot(d.v);if(!g){toast('Cette sauvegarde est illisible.');return;}if(G&&$('start').hidden&&!G.over)save();G=g;UI.recovered=0;closeModal();begin();if(d.v!=='auto')save();toast('Partie chargée : '+player().name+', '+dateStr(G.day)+'.');};
   if(G&&$('start').hidden&&!G.over)openModal('confirm',{title:'Charger cette sauvegarde ?',text:'La partie en cours est d\'abord enregistrée dans la sauvegarde automatique, qui sera ensuite remplacée par la partie chargée. Enregistre-la dans un emplacement si tu veux la garder.',ok:'Charger',yes:go});else go();},
  svdel(d){openModal('confirm',{title:'Effacer l\'emplacement '+d.v+' ?',text:'Cette sauvegarde sera supprimée de ce navigateur.',ok:'Effacer',yes(){lsDel(svK(d.v));lsDel(svM(d.v));setTimeout(()=>openModal('saves'),0);}});},
- svexport(){exportFile();toast('Fichier de sauvegarde téléchargé.');},
+ svexport(){exportFile();},
  async svcode(){UI.modal.code=await packSave();renderModal();const t=$('svCodeOut');if(t){t.focus();t.select();}},
  async svcopy(){const t=$('svCodeOut');if(!t)return;try{await navigator.clipboard.writeText(t.value);toast('Code copié. Colle-le dans « Coller un code » sur l\'autre appareil.');}catch(e){t.focus();t.select();try{document.execCommand('copy');toast('Code copié.');}catch(_){toast('Copie bloquée par le navigateur : sélectionne le texte et copie-le à la main.');}}},
  svpaste(){UI.modal.paste=1;renderModal();const t=$('svCodeIn');if(t)t.focus();},
