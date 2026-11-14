@@ -421,6 +421,30 @@ details.lines[open] summary::before{transform:rotate(45deg)}
  #legend{left:12px;right:12px;bottom:12px}
 }
 .bpow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fbf7ef;display:flex;flex-direction:column;gap:6px}.bpow small{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold3)}.bpow b{font-family:var(--serif);font-size:22px;font-weight:600}.bpow .bar{position:relative;overflow:visible}.bpow.t2,.bpow.t3{background:#fbeeea;border-color:#efcfc8}
+
+/* ---- Ordinateur : sections en pleine largeur, lecture confortable ---- */
+@media (min-width:900px){
+ body{font-size:15px}
+ body:not([data-tab="carte"]) #app{grid-template-areas:"nav board board" "nav panel panel"}
+ body:not([data-tab="carte"]) #mapwrap{display:none!important}
+ body:not([data-tab="carte"]) #panel{border-left:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));align-content:start;align-items:start;gap:20px 22px;padding:26px max(32px,calc((100% - 1500px)/2)) 48px}
+ body:not([data-tab="carte"]) #panel>*{grid-column:1/-1;min-width:0}
+ body:not([data-tab="carte"]) #panel>.card{grid-column:auto}
+ body:not([data-tab="carte"]) #panel>.tabhero:first-child{width:100%;margin:-26px 0 0;height:clamp(170px,24vh,260px);border-radius:0 0 18px 18px}
+ body:not([data-tab="carte"]) #panel>.tabhero:first-child+h2,body:not([data-tab="carte"]) #panel>.tabhero:first-child+.row{margin-top:-74px;padding:0 6px}
+ body:not([data-tab="carte"]) .subnav{margin:0;padding:10px 0;top:-26px}
+ body:not([data-tab="carte"]) h2{font-size:36px}
+ #panel .chips{flex-wrap:wrap;overflow:visible}
+ .subnav{-webkit-mask-image:none;mask-image:none}
+ .sheet{width:min(780px,100%);padding:24px 28px 30px}
+ .sheet .hero{max-height:250px;object-fit:cover;width:100%}
+ .chart svg,.card svg{max-height:260px}
+ .kv{font-size:14px}
+ .chips{cursor:grab}
+}
+@media (min-width:900px) and (max-width:1250px){#app{grid-template-columns:200px minmax(0,1fr) clamp(380px,38vw,480px)}}
+/* barres de puces défilantes à la souris : barre fine visible */
+@media (hover:hover) and (pointer:fine){.chips{scrollbar-width:thin;scrollbar-color:var(--line2) transparent;padding-bottom:4px}.chips::-webkit-scrollbar{display:block;height:6px}.chips::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}.chips::-webkit-scrollbar-track{background:transparent}}
 .cheatgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .devbadge{position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:7;background:var(--gold2);color:#14213a;font:700 10px var(--body);letter-spacing:.14em;padding:3px 10px;border-radius:99px;box-shadow:var(--sh);pointer-events:none}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
@@ -1930,6 +1954,11 @@ function amt(o){const k=o.k;AMTM[k]=o;const mx=Math.max(o.min,o.max);let v=UI.am
  return '<div class="amt"><div class="row"><button class="btn small sq" data-act="amtstep" data-k="'+k+'" data-v="-1" aria-label="Moins">−</button><input type="range" data-amt="'+k+'" min="'+o.min+'" max="'+mx+'" step="'+o.step+'" value="'+v+'"'+(off?' disabled':'')+' aria-label="'+esc(o.lbl||'Montant')+'"><button class="btn small sq" data-act="amtstep" data-k="'+k+'" data-v="1" aria-label="Plus">+</button></div>'+
   (o.act?'<button class="btn small '+(o.cls||'')+'" data-act="'+o.act+'" data-k="'+k+'"'+(o.attrs||'')+(off&&o.why?DIS(o.why):'')+'><span data-amtl="'+k+'">'+o.fmt(v)+'</span></button>':'<div class="amtv" data-amtl="'+k+'">'+o.fmt(v)+'</div>')+'</div>';}
 function amtRefresh(k){const o=AMTM[k],v=UI.amt[k];document.querySelectorAll('[data-amtl="'+k+'"]').forEach(x=>{x.innerHTML=o?o.fmt(v):v;});document.querySelectorAll('[data-amt="'+k+'"]').forEach(x=>{if(+x.value!==v)x.value=v;});if(o&&o.link)for(const l of o.link)if(AMTM[l])amtRefresh(l);}
+// Bandeaux de puces : la molette fait défiler horizontalement, et on peut les faire glisser à la souris
+document.addEventListener('wheel',e=>{const c=e.target.closest&&e.target.closest('.chips');if(!c||c.scrollWidth<=c.clientWidth+2||Math.abs(e.deltaX)>Math.abs(e.deltaY))return;const max=c.scrollWidth-c.clientWidth;if((e.deltaY<0&&c.scrollLeft<=0)||(e.deltaY>0&&c.scrollLeft>=max-1))return;c.scrollLeft+=e.deltaY;e.preventDefault();},{passive:false});
+(()=>{let D=null;document.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0)return;const c=e.target.closest&&e.target.closest('.chips');if(!c||c.scrollWidth<=c.clientWidth+2)return;D={c,x:e.clientX,l:c.scrollLeft,m:false};});
+ document.addEventListener('pointermove',e=>{if(!D)return;const dx=e.clientX-D.x;if(Math.abs(dx)>5)D.m=true;if(D.m){D.c.scrollLeft=D.l-dx;D.c.style.cursor='grabbing';}});
+ document.addEventListener('pointerup',()=>{if(D){D.c.style.cursor='';if(D.m){const c=D.c;const stop=ev=>{ev.stopPropagation();ev.preventDefault();};c.addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>c.removeEventListener('click',stop,{capture:true}),50);}}D=null;});})();
 document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.amt;if(k==null)return;UI.amt[k]=+e.target.value;amtRefresh(k);});
 const pc1=v=>nf(v*100,1)+' %',sgn=c=>c<0?'−'+money(-c):'+'+money(c);
 function reAll(){renderAll(true);if(UI.modal&&!$('modal').hidden){const st=$('sheet').scrollTop;renderModal();$('sheet').scrollTop=st;}}
