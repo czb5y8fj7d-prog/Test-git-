@@ -775,9 +775,10 @@ function rng(){G.seed=(G.seed+0x6D2B79F5)|0;let t=G.seed;t=Math.imul(t^t>>>15,t|
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const key=(a,b)=>a<b?a+'-'+b:b+'-'+a;
 const _d={};
-function dist(a,b){const k=key(a,b);if(_d[k])return _d[k];const A=APX[a],B=APX[b],r=Math.PI/180;
+let _dN=0;const _dM=new Map();
+function dist(a,b){const A=APX[a],B=APX[b];if(A._i==null)A._i=_dN++;if(B._i==null)B._i=_dN++;const ik=A._i<B._i?A._i*65536+B._i:B._i*65536+A._i,hv=_dM.get(ik);if(hv!==undefined)return hv;const k=key(a,b),r=Math.PI/180;
  const h=Math.sin((B.lat-A.lat)*r/2)**2+Math.cos(A.lat*r)*Math.cos(B.lat*r)*Math.sin((B.lon-A.lon)*r/2)**2;
- return _d[k]=Math.round(12742*Math.asin(Math.sqrt(h)));}
+ const dv=Math.round(12742*Math.asin(Math.sqrt(h)));_d[k]=dv;_dM.set(ik,dv);return dv;}
 const pref=d=>35+0.09*Math.min(d,2000)+0.045*Math.max(0,d-2000);   // prix moyen éco réel (aller simple), dégressif au-delà de 3 000 km
 const prmF=d=>clamp((d-1000)/5000,0,1),prefB=d=>pref(d)*(2.2+1.4*prmF(d));                                         // prix de référence affaires
 const prefF=d=>pref(d)*(4.5+3.5*prmF(d));                                           // prix de référence Première
@@ -870,7 +871,7 @@ const BEN=(al,k)=>al&&al.ben?al.ben[k]||0:0,apBen=(al,a,b)=>al&&al.apInv&&a?((al
 function apTier(a,b){if(!a)return 0.8;const t=c=>clamp(APX[c].pop/10,0.2,1.3)*(0.7+0.3*clamp(APX[c].w,0.3,1.5));return (t(a)+t(b))/2;}
 // Économies d'échelle : contrats carburant, restauration, assistance au sol (selon les passagers du mois) et flotte homogène (entretien)
 function volF(al){const px=al.last?al.last.pax:0;return clamp(1.1-0.06*Math.log10(Math.max(1e4,px)/1e4),0.85,1.1);}
-function famF(al,m){let n=0;for(const p of al.planes)if(MX[p.model].mk===m.mk)n++;return clamp(1.1-0.05*Math.log2(Math.max(1,n)),0.85,1.1);}
+function famF(al,m){if(al._famD!==G.day||al._famN!==al.planes.length){const c={};for(const p of al.planes){const k=MX[p.model].mk;c[k]=(c[k]||0)+1;}al._fam=c;al._famD=G.day;al._famN=al.planes.length;}return clamp(1.1-0.05*Math.log2(Math.max(1,al._fam[m.mk]||0)),0.85,1.1);}   // nombre d'avions par constructeur, mis en cache pour la journée
 function planeOf(al,id){return al.planes.find(p=>p.id===id);}
 // Ponctualité attendue d'une ligne : rotations serrées, météo, hiver, aéroports saturés, état des avions, mécaniciens, réserve
 function otpOf(al,r,o){const mr=Math.max(1,maxRotRoute(al,r)),tight=r.rot/mr,t=G.day%360;let p=0.91;
@@ -1071,9 +1072,9 @@ const CX={share:0.3,maxDet:1.45,fareF:0.88,hubFee:150e3,directF:0.2};
 const isAlly=(a,b)=>a!==b&&(!!a.allies&&a.allies.includes(b.id)||a.parent===b.id||b.parent===a.id||(a.parent!=null&&a.parent===b.parent));
 function modsOf(a,b){let f=1;for(const m of G.mods)if(m.ap?(m.ap===a||m.ap===b):true)f*=m.mult;return f;}
 let _cx={k:'',L:null};
-function cxOpps(){const k=(G.mut||0)+':'+(G.av||0)+':'+G.nid;if(_cx.k===k)return _cx.L;const M={},seen=new Set();
+function cxOpps(){let rn=0,rs=0;for(const al of G.airlines)if(!al.bankrupt)for(const r of al.routes){rn++;rs+=r.id;}const k=(G.mut||0)+':'+(G.av||0)+':'+rn+':'+rs;if(_cx.k===k)return _cx.L;const M={},seen=new Set();
  for(const X of G.airlines){if(X.bankrupt)continue;const part=[X].concat(G.airlines.filter(o=>!o.bankrupt&&isAlly(X,o)));
-  for(const H of X.hubs){const legs=[];for(const o of part)for(const r of o.routes)if(r.a===H||r.b===H)legs.push({o,r,e:r.a===H?r.b:r.a});
+  for(const H of X.hubs){let legs=[];for(const o of part)for(const r of o.routes)if(r.a===H||r.b===H)legs.push({o,r,e:r.a===H?r.b:r.a});if(!X.player&&legs.length>45)legs=legs.sort((x,y)=>(y.r.seats||0)-(x.r.seats||0)).slice(0,45);   // pour une rivale, seules ses plus grosses lignes alimentent les correspondances
    for(let i=0;i<legs.length;i++)for(let j=i+1;j<legs.length;j++){const L1=legs[i],L2=legs[j];if((L1.o!==X&&L2.o!==X)||L1.e===L2.e)continue;
     const sk=H+'|'+Math.min(L1.r.id,L2.r.id)+'|'+Math.max(L1.r.id,L2.r.id);if(seen.has(sk))continue;seen.add(sk);
     const A=L1.e,B=L2.e,dAB=dist(A,B);if(dAB<500)continue;const d1=dist(A,H),d2=dist(H,B),det=(d1+d2)/dAB;if(det>CX.maxDet)continue;
@@ -1085,7 +1086,8 @@ function connectStep(mk){const M=cxOpps(),sz=G.econ;
   const D=mx*sz*seasonF(ab[0],ab[1])*modsOf(ab[0],ab[1])*(mk[k]?CX.directF:1),E=[];
   for(const o of L){const cap=Math.min(o.L1.r._left||0,o.L2.r._left||0);if(cap<1)continue;
    const fare=pref(o.dAB)*(o.L1.r.price/pref(o.d1)+o.L2.r.price/pref(o.d2))/2*CX.fareF;
-   E.push({o,price:fare,cap,_c:comfort(o.X,o.a,o.b),_f:(0.6+0.8*o.X.rep/100)*(0.5+0.5*awOf(o.X,o.a,o.b))*Math.sqrt(Math.min(o.L1.r.rot,o.L2.r.rot))*(o.base/mx)*(o.L1.o!==o.L2.o?0.9:1)});}
+   if(!o._cd||G.day-o._cd>=7){o._cd=G.day;o._cc=comfort(o.X,o.a,o.b);o._ff=(0.6+0.8*o.X.rep/100)*(0.5+0.5*awOf(o.X,o.a,o.b))*Math.sqrt(Math.min(o.L1.r.rot,o.L2.r.rot))*(o.base/mx)*(o.L1.o!==o.L2.o?0.9:1);}   // attrait recalculé chaque semaine
+   E.push({o,price:fare,cap,_c:o._cc,_f:o._ff});}
   if(!E.length)continue;
   splitClass(E,D,pref(dist(ab[0],ab[1])),CFG.elasticity,CFG.shareSens,e=>({p:e.price,cap:e.cap,cf:e._c.e}));
   for(const e of E){const o=e.o,c=Math.min(e.cap,o.L1.r._left,o.L2.r._left,e._p*(0.95+rng()*0.1));if(c<0.5)continue;
@@ -1327,6 +1329,7 @@ function csPartner(al,r,P){if(!P||!P.cs||!P.cs.length)return null;const T=x=>x.b
  if(al.player){for(const id of P.cs){const q=G.airlines[id];if(q&&!q.bankrupt&&T(q))return q;}return null;}return P.cs.includes(al.id)&&T(P)?P:null;}
 function entryX(al,r,e,P){if(r.brand&&BRANDS[r.brand]){const B=BR(al,r.brand);if(r.brand==='lc'){e.svcAl=LCAL;e.rep=al.rep*0.8+12;}e.cab=(e.cab||0)+B.cab;let rp=B.rp||0;if(B.seas&&seasonF(r.a,r.b)>1.05)rp+=12;if(rp)e.rep=(e.rep!=null?e.rep:al.rep)+rp;}e.cs=csPartner(al,r,P);return e;}
 function dayStep(){G.day++;const mk={},cmk={},P0=player();
+ for(const al of G.airlines)if(!al.bankrupt&&!al.player&&(G.day+al.id)%7===0)aiWeek(al);   // chaque rivale réfléchit une fois par semaine, à tour de rôle
  for(const al of G.airlines){if(al.bankrupt)continue;staffTick(al);let nsp=0;for(const pl of al.planes){pl.flew=false;pl._h=0;if(pl.spare&&!pl.route&&!pl.down)nsp++;}al._sp=nsp;let ow=0,on=0;
   for(const r of al.routes){const o=routeOps(al,r,null,true);r.sE=o.seats;r.sB=o.seatsB;r.sF=o.seatsF;r.spd=o.spd;r.cab=o.cab;r.seats=o.seats+o.seatsB+o.seatsF;r._o=o;
    const ot=clamp(otpOf(al,r,o)+(rng()-0.5)*0.06,0.3,0.99);r.otp=r.otp==null?ot:r.otp*0.85+ot*0.15;o.otp=ot;ow+=ot*o.flights;on+=o.flights;
@@ -1378,7 +1381,7 @@ function dayStep(){G.day++;const mk={},cmk={},P0=player();
  if(G.day%7===0)weekStep();
  if(G.day%30===0)monthStep();
  const p=player();if(!G.over&&!(G.cheat&&G.cheat.safe)&&!gcfg().safe&&p.negDays>=CFG.graceDays){G.over=true;news('Faillite : la trésorerie est restée négative '+CFG.graceDays+' jours.','bad');}}
-function weekStep(){stockStep();for(const al of G.airlines){if(al.bankrupt)continue;if(al.autoHire)staffAuto(al);if(al.player){for(const r of al.routes){if(r.lf>0.98&&!r.rec&&r.seats>0){r.rec=1;news('Record : '+r.a+' - '+r.b+' vole complet.','good','record');}r.h=r.h||[];r.h.push({lf:Math.round(r.lf*100),pf:Math.round(r.profitW/7),cx:Math.round((r.cxW||0)/7)});if(r.h.length>26)r.h.shift();if(r.brand&&al.subs[r.brand])al.subs[r.brand].pw=(al.subs[r.brand].pw||0)+r.profitW;r.lastW=r.profitW;r.profitW=0;r.cxW=0;}}else{for(const r of al.routes)r.cxW=0;aiWeek(al);}}}
+function weekStep(){stockStep();for(const al of G.airlines){if(al.bankrupt)continue;if(al.autoHire)staffAuto(al);if(al.player){for(const r of al.routes){if(r.lf>0.98&&!r.rec&&r.seats>0){r.rec=1;news('Record : '+r.a+' - '+r.b+' vole complet.','good','record');}r.h=r.h||[];r.h.push({lf:Math.round(r.lf*100),pf:Math.round(r.profitW/7),cx:Math.round((r.cxW||0)/7)});if(r.h.length>26)r.h.shift();if(r.brand&&al.subs[r.brand])al.subs[r.brand].pw=(al.subs[r.brand].pw||0)+r.profitW;r.lastW=r.profitW;r.profitW=0;r.cxW=0;}}else{for(const r of al.routes)r.cxW=0;}}}
 function strikes(al){for(const k of SK){const s=al.staff[k];if(s.mo>=35||!s.n||rng()>=(35-s.mo)/50)continue;al.penalty+=6;
   if(k==='mech'){al.mechStrike=10;news('Grève des mécaniciens chez '+al.name+' : révisions bloquées 10 jours.',al.player?'bad':'info','strike');}
   else{for(const pl of al.planes)if(!pl.down)pl.down=3;news('Grève du '+(k==='pilot'?'personnel navigant technique':k==='cabin'?'personnel de cabine':'personnel au sol')+' chez '+al.name+' : flotte clouée au sol 3 jours.',al.player?'bad':'info','strike');}
@@ -1464,7 +1467,7 @@ function aiWeek(al){const P=PROFILES[al.profile],L=al.last,reserve=Math.max(P.re
   if(o){const c=aiCandidates(al,[o.model])[0];if(c&&c.score>3000){const pl=buyUsed(al,o.id);if(pl)openRoute(al,c.a,c.b,c.price,c.rot,[pl.id]);}}}
  let lf=0;for(const r of al.routes)lf+=r.lf;lf=al.routes.length?lf/al.routes.length:1;
  // Expansion : plus la trésorerie dépasse la réserve, plus la compagnie investit (plusieurs avions par semaine si elle est riche)
- const gm=al.parent!=null&&al.dir?[0.4,1,1.8][al.dir.grow]:1,spare=al.cash-reserve,rich=spare>60e6,
+ const gm=al.parent!=null&&al.dir?[0.4,1,1.8][al.dir.grow]:1,cap=Math.round(({national:170,premium:120,challenger:130,lowcost:160,regional:80}[al.profile]||130)*(G.econ||1)*(al.parent!=null?1.4:1)),spare=al.planes.length>=cap?0:al.cash-reserve,rich=spare>60e6,
   ctl=al.parent!=null,opOK=al.routes.reduce((t,r)=>t+(r.profitD||0),0)>0,tries=spare<=0?0:ctl?Math.min(gm>1?3:gm<1?1:2,1+Math.floor(spare/120e6)):(spare>150e6?2:1);
  if(tries&&(lf>0.66||rich)&&(!al.routes.length||!al.last||al.last.profit>0||al.planes.length<=3||(rich&&opOK))&&rng()<Math.min(0.95,P.appetite*(al.planes.length<=3?2:1)*gm*(ctl?1:gcfg().aggr||1)*(rich?(ctl?2.5:1.5):1))){
   const C=aiCandidates(al,aiModels(al)),used=new Set();let n=0;
@@ -1601,7 +1604,7 @@ for(const a of AP){a.x=a.lon+180;a.y=YT-mercY(a.lat);}
 const WORLD=window.WORLD||{land:[],borders:[]};
 function pathOf(rings,close){const p=new Path2D();for(const r of rings){for(let i=0;i<r.length;i+=2){const x=r[i]+180,y=YT-mercY(r[i+1]);i?p.lineTo(x,y):p.moveTo(x,y);}if(close)p.closePath();}return p;}
 const LANDP=pathOf(WORLD.land,true),BORDP=pathOf(WORLD.borders,false);
-const cv=$('map'),cx=cv.getContext('2d');let CW=0,CH=0,DPR=1;
+const cv=$('map');let cx=cv.getContext('2d');const MAPC=document.createElement('canvas');let MAPK='';let CW=0,CH=0,DPR=1;
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const minS=()=>CH/WH;
 function clampView(){const v=UI.view,m=minS();v.s=clamp(v.s,m,m*60);const W=WW*v.s,h=WH*v.s;v.oy=clamp(v.oy,CH-h,0);v.ox-=Math.ceil(v.ox/W)*W;}
@@ -1625,20 +1628,29 @@ function routeGeom(r){let A=APX[r.a],B=APX[r.b];if(r.a>r.b){const t=A;A=B;B=t;}l
  const dx=bx-A.x,dy=B.y-A.y;return[A.x,A.y,(A.x+bx)/2-dy*0.14,(A.y+B.y)/2+dx*0.14,bx,B.y];}
 function bez(c,t){const u=1-t;return[u*u*c[0]+2*u*t*c[2]+t*t*c[4],u*u*c[1]+2*u*t*c[3]+t*t*c[5]];}
 function drawMap(){if(!CW||!UI.view)return;const v=UI.view,s=v.s,Wp=WW*s,nk=Math.ceil((CW-v.ox)/Wp),z=s/minS();
- cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#dfe6e6';cx.fillRect(0,0,CW,CH);
- for(let k=0;k<nk;k++){cx.setTransform(DPR*s,0,0,DPR*s,DPR*(v.ox+k*Wp),DPR*v.oy);
-  cx.strokeStyle='rgba(36,86,166,.12)';cx.lineWidth=1/s;cx.beginPath();for(let lo=0;lo<=360;lo+=30){cx.moveTo(lo,0);cx.lineTo(lo,WH);}for(const la of[-40,-20,0,20,40,60]){const y=YT-mercY(la);cx.moveTo(0,y);cx.lineTo(360,y);}cx.stroke();
-  cx.fillStyle='#f6f0e3';cx.fill(LANDP);cx.strokeStyle='#cdbf9f';cx.lineWidth=0.9/s;cx.stroke(LANDP);
-  cx.strokeStyle='rgba(23,38,58,.16)';cx.lineWidth=0.7/s;cx.stroke(BORDP);}
- cx.setTransform(DPR,0,0,DPR,0,0);
  const SX=(x,k)=>(x+k*WW)*s+v.ox,SY=y=>y*s+v.oy;
- if(G){const now=G.day+(G.frac||0);
-  for(const al of G.airlines){if(al.bankrupt||UI.hide[al.id])continue;
-   for(const r0 of al.routes)for(const r of (r0.via?[{id:r0.id,a:r0.a,b:r0.via,rot:r0.rot,seats:r0.seats,planes:r0.planes},{id:r0.id+3,a:r0.via,b:r0.b,rot:r0.rot,seats:r0.seats,planes:r0.planes}]:[r0])){const g=routeGeom(r);
+ // Couche fixe (mer, terres, tracés des lignes) : redessinée seulement quand la vue ou le réseau changent
+ const mk=[s,v.ox,v.oy,CW,CH,DPR,G?G.mut:0,G?G.av:0,G?G.airlines.length:0,G?G.airlines.filter(a=>UI.hide[a.id]).map(a=>a.id).join(','):''].join('|');
+ if(mk!==MAPK){MAPK=mk;if(MAPC.width!==cv.width||MAPC.height!==cv.height){MAPC.width=cv.width;MAPC.height=cv.height;}const main=cx;cx=MAPC.getContext('2d');
+  cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#dfe6e6';cx.fillRect(0,0,CW,CH);
+  for(let k=0;k<nk;k++){cx.setTransform(DPR*s,0,0,DPR*s,DPR*(v.ox+k*Wp),DPR*v.oy);
+   cx.strokeStyle='rgba(36,86,166,.12)';cx.lineWidth=1/s;cx.beginPath();for(let lo=0;lo<=360;lo+=30){cx.moveTo(lo,0);cx.lineTo(lo,WH);}for(const la of[-40,-20,0,20,40,60]){const y=YT-mercY(la);cx.moveTo(0,y);cx.lineTo(360,y);}cx.stroke();
+   cx.fillStyle='#f6f0e3';cx.fill(LANDP);cx.strokeStyle='#cdbf9f';cx.lineWidth=0.9/s;cx.stroke(LANDP);
+   cx.strokeStyle='rgba(23,38,58,.16)';cx.lineWidth=0.7/s;cx.stroke(BORDP);}
+  cx.setTransform(DPR,0,0,DPR,0,0);
+  if(G)for(const al of G.airlines){if(al.bankrupt||UI.hide[al.id])continue;cx.strokeStyle=al.color;cx.globalAlpha=al.player?0.95:0.4;cx.lineWidth=al.player?2.2:1;cx.setLineDash(al.player?[]:[4,3]);cx.beginPath();
+   for(const r0 of al.routes)for(const r of (r0.via?[{id:r0.id,a:r0.a,b:r0.via},{id:r0.id+3,a:r0.via,b:r0.b}]:[r0])){const g=routeGeom(r);
+    for(let k=-1;k<=nk;k++){const x0=SX(g[0],k),x2=SX(g[4],k);if(Math.max(x0,x2)<-30||Math.min(x0,x2)>CW+30)continue;cx.moveTo(x0,SY(g[1]));cx.quadraticCurveTo(SX(g[2],k),SY(g[3]),x2,SY(g[5]));}}
+   cx.stroke();}
+  cx.setLineDash([]);cx.globalAlpha=1;cx=main;}
+ cx.setTransform(1,0,0,1,0,0);cx.drawImage(MAPC,0,0);cx.setTransform(DPR,0,0,DPR,0,0);
+ // Avions en mouvement : les tiens toujours ; ceux des rivales quand on zoome ou que le ciel n'est pas trop chargé
+ if(G){const now=G.day+(G.frac||0),nR=G.airlines.reduce((t,a)=>t+(a.bankrupt||a.player?0:a.routes.length),0),rivDots=z>=2.5||nR<350;
+  for(const al of G.airlines){if(al.bankrupt||UI.hide[al.id]||(!al.player&&!rivDots))continue;
+   for(const r0 of al.routes)for(const r of (r0.via?[{id:r0.id,a:r0.a,b:r0.via,rot:r0.rot,seats:r0.seats,planes:r0.planes},{id:r0.id+3,a:r0.via,b:r0.b,rot:r0.rot,seats:r0.seats,planes:r0.planes}]:[r0])){if(!(r.seats>0))continue;const g=routeGeom(r);
     for(let k=-1;k<=nk;k++){const x0=SX(g[0],k),x2=SX(g[4],k);if(Math.max(x0,x2)<-30||Math.min(x0,x2)>CW+30)continue;
-     const c=[x0,SY(g[1]),SX(g[2],k),SY(g[3]),x2,SY(g[5])];cx.beginPath();cx.moveTo(c[0],c[1]);cx.quadraticCurveTo(c[2],c[3],c[4],c[5]);
-     cx.strokeStyle=al.color;cx.globalAlpha=al.player?0.95:0.4;cx.lineWidth=al.player?2.2:1;if(!al.player)cx.setLineDash([4,3]);cx.stroke();cx.setLineDash([]);cx.globalAlpha=1;
-     if(r.seats>0){const n=al.player?Math.min(4,r.rot):(z<2.5?1:Math.min(3,r.rot)),cyc=1.5+dist(r.a,r.b)/2000;
+     const c=[x0,SY(g[1]),SX(g[2],k),SY(g[3]),x2,SY(g[5])];
+     {const n=al.player?Math.min(4,r.rot):(z<2.5?1:Math.min(3,r.rot)),cyc=1.5+dist(r.a,r.b)/2000;
       for(let i=0;i<n;i++){const u=reduceMotion?(i+1)/(n+1)/2:((now/cyc+i/n+(r.id%7)/7)%1),t=u<0.5?u*2:2-u*2,p=bez(c,t);
        if(al.player){const q=bez(c,clamp(t+(u<0.5?0.02:-0.02),0,1)),ang=Math.atan2(q[1]-p[1],q[0]-p[0]),p0=planeOf(al,r.planes[0]),im=p0&&TOP[p0.model];cx.save();cx.translate(p[0],p[1]);
         if(im&&im.complete&&im.naturalWidth){const hh=(15+MX[p0.model].seats/30)*clamp(0.65+z*0.08,0.75,1.3),ww=hh*im.naturalWidth/im.naturalHeight;cx.rotate(ang+Math.PI/2);cx.drawImage(im,-ww/2,-hh/2,ww,hh);}
@@ -2431,7 +2443,7 @@ let lastT=0,lastSave=0;
 function frame(t){const dt=Math.min(0.25,(t-lastT)/1000||0);lastT=t;resizeMap();
  if(UI.anim&&UI.view){const A=UI.anim,u=Math.min(1,(performance.now()-A.t0)/520),e=u<0.5?2*u*u:1-Math.pow(-2*u+2,2)/2,s=A.from.s*Math.pow(A.to.s/A.from.s,e),cxw=A.from.cx+(A.to.cx-A.from.cx)*e,cyw=A.from.cy+(A.to.cy-A.from.cy)*e;
   UI.view.s=s;UI.view.ox=CW/2-cxw*s;UI.view.oy=CH/2-cyw*s;clampView();if(u>=1)UI.anim=null;}
- if(G&&!G.over&&UI.speed&&!UI.modal){UI.acc+=dt*SPEEDS[UI.speed];let n=0;while(UI.acc>=1&&n<4){dayStep();UI.acc-=1;n++;if(G.over)break;}G.frac=UI.acc;
+ if(G&&!G.over&&UI.speed&&!UI.modal){UI.acc+=dt*SPEEDS[UI.speed];let n=0;const t0=performance.now();while(UI.acc>=1&&n<4&&(n===0||performance.now()-t0<12)){dayStep();UI.acc-=1;n++;if(G.over)break;}UI.acc=Math.min(UI.acc,4);G.frac=UI.acc;
   if(n){renderAll();if(G.day-lastSave>=30||G.day<lastSave){lastSave=G.day;save();}}}
  else if(G&&UI.dirty)renderAll();
  if(G&&!UI.modal&&!G.over&&G.board&&G.board.pending){UI.speed=0;openModal('board',{step:'intro'});}
