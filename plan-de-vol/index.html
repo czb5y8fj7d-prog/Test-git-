@@ -121,6 +121,9 @@ p{margin:0}
 .bar>i{display:block;height:100%;background:var(--blue)}
 .bar.goal>i{background:var(--magenta)}
 .bar .mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+.thr .bar{height:12px;margin:10px 0 6px;overflow:visible}.thr .bar>i{background:var(--magenta);border-radius:4px}
+.thrl{list-style:none;padding:0;margin:4px 0 10px;font-size:12px;color:var(--muted)}.thrl li{padding:2px 0}.thrl li.on{color:var(--ink)}.thrl li.on b{color:var(--good)}
+.stockrow{cursor:pointer;padding:8px 0;border-top:1px solid var(--line)}.stockrow:hover{background:#f4f6f3}
 table{border-collapse:collapse;width:100%}
 td,th{padding:5px 4px;text-align:left;border-bottom:1px solid #e7ebee;font-size:13px}
 td.r,th.r{text-align:right}
@@ -470,7 +473,7 @@ const PROFILES={
 const ENTRANTS=[{name:'Atlantica Air',profile:'challenger',color:'#c2410c'},{name:'Sahel Wings',profile:'regional',color:'#a16207'},{name:'Boréa Low Cost',profile:'lowcost',color:'#db2777'},{name:'Andes Connect',profile:'challenger',color:'#0e7490'},{name:'Meridia Airways',profile:'national',color:'#4338ca'},{name:'Kestrel Express',profile:'lowcost',color:'#ea580c'},{name:'Oasis Skyways',profile:'premium',color:'#0f766e'},{name:'Baltica Air',profile:'regional',color:'#6d28d9'}];
 function spawnEntrant(){const used=new Set(G.airlines.map(a=>a.name)),E=ENTRANTS.filter(e=>!used.has(e.name));if(!E.length)return;const R=E[Math.floor(rng()*E.length)],P=PROFILES[R.profile];
  const taken=new Set();for(const a of G.airlines)if(!a.bankrupt)for(const b of a.bases)taken.add(b);const H=AP.filter(a=>a.pop>=4&&!taken.has(a.code));if(!H.length)return;const hub=H[Math.floor(rng()*H.length)].code;
- const al=mkAirline({name:R.name,profile:R.profile,hub,color:R.color,cash:22e6});al.models=P.models.slice();al.entrant=true;al.artI=RIVALS.findIndex(x=>x.profile===R.profile)+1;
+ const al=mkAirline({name:R.name,profile:R.profile,hub,color:R.color,cash:22e6});al.models=P.models.slice();al.entrant=true;al.artI=RIVALS.findIndex(x=>x.profile===R.profile)+1;al.sent=0;al.pxH=[];
  for(const m of P.models.slice(0,2)){const cb=cabinFor(P,m),pl=addPlane(al,m,true,2+Math.floor(rng()*6),cb.biz,{first:cb.first});const c=aiCandidates(al,[m])[0];if(c)openRoute(al,c.a,c.b,c.price,c.rot,[pl.id]);}
  staffInit(al);G.mut=(G.mut||0)+1;news('Nouvelle concurrente : '+R.name+' ('+P.label.toLowerCase()+') s\'installe à '+APX[hub].name+'.','info','rivalbk');}
 // Modèle de coûts par profil (compagnies IA) : les low-cost volent avec des cabines denses, depuis des aéroports secondaires, en vente directe
@@ -510,9 +513,15 @@ const maxFirst=m=>firstOK(m)?2*Math.floor(maxFP(m)/8):0;
 const maxBiz=(m,f)=>2*Math.floor((maxFP(m)-4*(f||0))/4);
 const ecoSeats=(m,b,f)=>m.cat==='cargo'?0:m.seats-2*(b||0)-4*(f||0);
 // ---- Filiales : marque low-cost (cabine dense, service minimal, coûts réduits) et régionale (petits avions, coûts allégés)
-const BRANDS={lc:{label:'Low-cost',cost:12e6,fee:120e3,crew:0.75,fees:0.9,mx:1,cab:-0.35,dens:1.12,anc:1.8,maxSeats:999},reg:{label:'Régionale',cost:8e6,fee:90e3,crew:0.85,fees:0.95,mx:0.95,cab:0,dens:1,anc:1,maxSeats:100}};
+const BRANDS={lc:{label:'Low-cost',cost:12e6,fee:120e3,crew:0.75,fees:0.9,mx:1,cab:-0.35,dens:1.12,anc:1.8,maxSeats:999,prof:'lowcost',desc:'Cabine tout-éco plus dense (+12 % de sièges), équipages -25 %, redevances -10 %, recettes annexes ×1,8. Moins de confort, une image à part.'},
+ reg:{label:'Régionale',cost:8e6,fee:90e3,crew:0.85,fees:0.95,mx:0.95,cab:0,dens:1,anc:1,maxSeats:100,prof:'regional',desc:'Avions de 100 places au plus, équipages -15 %, entretien -5 %.'},
+ leis:{label:'Loisirs',cost:10e6,fee:100e3,crew:0.85,fees:0.92,mx:1,cab:-0.12,dens:1.08,anc:1.4,maxSeats:9999,seas:1,prof:'challenger',desc:'Vols vacances : cabine plus dense (+8 % de sièges), équipages -15 %, recettes annexes ×1,4, et plus attractive pendant les pics de saison.'},
+ cargo:{label:'Fret',cost:9e6,fee:90e3,crew:0.9,fees:0.85,mx:0.95,cab:0,dens:1,anc:1,maxSeats:9999,cargo:1,cy:1.1,prof:'challenger',desc:'Réservée aux avions cargo : tarifs du fret +10 %, redevances -15 %, équipages -10 %.'}};
+const BLV=[0,0.8,1.6];   // coût des niveaux 2 et 3, en multiple du coût de création
+function BR(al,k){const B=BRANDS[k],S=al.subs&&al.subs[k],l=S?(S.lv||1)-1:0;if(!l)return B;const f=1-0.05*l;return Object.assign({},B,{crew:B.crew*f,fees:B.fees*(1-0.03*l),mx:B.mx*f,anc:B.anc*(1+0.1*l),cy:(B.cy||1)*(1+0.04*l),rp:4*l});}
+const brandFee=(al,k)=>BRANDS[k].fee*(1+0.25*(((al.subs[k]||{}).lv||1)-1));
 const LCAL={svc:{meal:0,bag:1,wifi:0,ent:0,loyal:0},lounges:[]};
-const brandOK=(m,r)=>!r.brand||m.seats<=BRANDS[r.brand].maxSeats;
+const brandOK=(m,r,pl)=>!r.brand||!BRANDS[r.brand]||(BRANDS[r.brand].cargo?(pl?isFr(pl):m.cat==='cargo'):!(pl&&isFr(pl))&&m.seats<=BRANDS[r.brand].maxSeats);
 // ---- Partage de codes : chacun vend les vols de l'autre au départ de ses bases, contre 7 % de commission
 const CS_FEE=20e3,CS_COM=0.07;
 // ---- Fret : soutes des avions passagers, cargos neufs ou convertis
@@ -574,8 +583,9 @@ const awOf=(al,a,b)=>(al.aw[APX[a].reg]+al.aw[APX[b].reg])/2;
 function fuelIdx(al){const h=al.hedge;return h&&h.until>G.day?h.sh*h.idx+(1-h.sh)*G.fuel:G.fuel;}   // part couverte au prix fixé, le reste au prix du marché
 function legCost(d,m,al,pl,a,b){const fh=flightH(d,m),ag=pl?pl.age:0,age=1+Math.max(0,ag-8)*0.04;   // les vieux avions consomment et coûtent plus en entretien
  const sf=a&&!m.h2?Math.max(al.saf||0,safMin(a,b)):0,de=d+250,t=m.h2?0:m.fuel*de*0.00204*(1+ag*0.005)*(1-0.8*sf),fr=isFr(pl),V=volF(al);
- return{co2t:t,co2:a?t*G.co2*co2Cov(a,b):0,fuel:m.h2?0.42*m.fuel*de*1.05:0.42*m.fuel*de*fuelIdx(al)*(1+ag*0.005)*(1+2.2*sf)*(1-(1-V)*0.5),fees:fr?600+m.seats*8+d*0.6:400+m.seats*(8+10*apTier(a,b))+d*(0.5+m.seats*0.0022),crew:fh*(200+m.seats*(fr?0.5:3))*(d>4000?1.3:1),mx:fh*(150+m.seats*4)*age*MAKERS[m.mk].mx*(m.mxF||1)*((m.eng||2)>2?1.15:1)*famF(al,m)};}
+ return{co2t:t,co2:a?t*G.co2*co2Cov(a,b):0,fuel:m.h2?0.42*m.fuel*de*1.05:0.42*m.fuel*de*fuelIdx(al)*(1+ag*0.005)*(1+2.2*sf)*(1-(1-V)*0.5)*(1-BEN(al,'fuel')),fees:(fr?600+m.seats*8+d*0.6:400+m.seats*(8+10*apTier(a,b))+d*(0.5+m.seats*0.0022))*(1-apBen(al,a,b)),crew:fh*(200+m.seats*(fr?0.5:3))*(d>4000?1.3:1),mx:fh*(150+m.seats*4)*age*MAKERS[m.mk].mx*(m.mxF||1)*((m.eng||2)>2?1.15:1)*famF(al,m)*(1-BEN(al,'mro'))};}
 // Redevances aéroportuaires : un grand hub coûte bien plus cher qu'un aéroport régional
+const BEN=(al,k)=>al&&al.ben?al.ben[k]||0:0,apBen=(al,a,b)=>al&&al.apInv&&a?((al.apInv[a]||0)+(al.apInv[b]||0))*0.2:0;   // remise d'aéroport : 40 % de la part détenue à chaque bout
 function apTier(a,b){if(!a)return 0.8;const t=c=>clamp(APX[c].pop/10,0.2,1.3)*(0.7+0.3*clamp(APX[c].w,0.3,1.5));return (t(a)+t(b))/2;}
 // Économies d'échelle : contrats carburant, restauration, assistance au sol (selon les passagers du mois) et flotte homogène (entretien)
 function volF(al){const px=al.last?al.last.pax:0;return clamp(1.1-0.06*Math.log10(Math.max(1e4,px)/1e4),0.85,1.1);}
@@ -596,13 +606,13 @@ function routeOps(al,r,extra,mark){let left=r.rot;const o={seats:0,seatsB:0,seat
  const list=r.planes.map(id=>planeOf(al,id)).concat(extra||[]);
  for(let pl of list){if(!pl||left<=0)continue;
   if(mark&&pl.down>0){const sp=al.planes.find(s=>s.spare&&!s.route&&!s.down&&!s.flew&&canServeR(MX[s.model],r));if(!sp)continue;pl=sp;o.sub=(o.sub||0)+1;}   // un avion de réserve remplace l'avion immobilisé
-  const m=MX[pl.model];if(!canServeR(m,r)||!brandOK(m,r))continue;const k=Math.min(left,rotMax(r,m));left-=k;const b=pl.biz||0;
+  const m=MX[pl.model];if(!canServeR(m,r)||!brandOK(m,r,pl))continue;const k=Math.min(left,rotMax(r,m));left-=k;const b=pl.biz||0;
   const cab=MAKERS[m.mk].cab-0.015*clamp((pl.cabY==null?pl.age:pl.cabY)-8,0,10);   // une cabine fatiguée pèse sur le confort
   o._w=(o._w||0)+k*m.seats;o._s=(o._s||0)+k*m.seats*m.speed;o._c=(o._c||0)+k*m.seats*cab;o.fl+=k;o._cd=(o._cd||0)+k*pl.cond;
-  const fs=pl.first||0,fr=isFr(pl);if(fr){o.ct=(o.ct||0)+k*payOf(pl);o.fr=true;}else if(r.brand==='lc'||(PCOST[al.profile]&&PCOST[al.profile].dens>1)){o.seats+=k*Math.round(m.seats*(r.brand==='lc'?BRANDS.lc.dens:PCOST[al.profile].dens));o.ct=(o.ct||0)+k*bellyOf(m);}else{o.seats+=k*ecoSeats(m,b,fs);o.seatsB+=k*b;o.seatsF+=k*fs;o.ct=(o.ct||0)+k*bellyOf(m);}o.flights+=2*k;let h=0;
+  const fs=pl.first||0,fr=isFr(pl);if(fr){o.ct=(o.ct||0)+k*payOf(pl);o.fr=true;}else if((r.brand&&BRANDS[r.brand]&&BRANDS[r.brand].dens>1)||(PCOST[al.profile]&&PCOST[al.profile].dens>1)){o.seats+=k*Math.round(m.seats*(r.brand&&BRANDS[r.brand]&&BRANDS[r.brand].dens>1?BRANDS[r.brand].dens:PCOST[al.profile].dens));o.ct=(o.ct||0)+k*bellyOf(m);}else{o.seats+=k*ecoSeats(m,b,fs);o.seatsB+=k*b;o.seatsF+=k*fs;o.ct=(o.ct||0)+k*bellyOf(m);}o.flights+=2*k;let h=0;
   for(const l of L){const dl=dist(l[0],l[1]),c=legCost(dl,m,al,pl,l[0],l[1]);o.fuel+=2*k*c.fuel;o.fees+=2*k*c.fees;o.crew+=2*k*c.crew;o.mx+=2*k*c.mx;o.co2+=2*k*c.co2;o.co2t+=2*k*c.co2t;h+=2*k*flightH(dl,m);}
   if(mark){pl.flew=true;pl._h=(pl._h||0)+h;}}
- o.ct=o.ct||0;if(r.brand){const B=BRANDS[r.brand];o.crew*=B.crew;o.fees*=B.fees;o.mx*=B.mx;}const PC=PCOST[al.profile];if(PC){o.crew*=PC.crew;o.fees*=PC.fees;o.mx*=PC.mx;}const f=al.capF==null?1:al.capF;if(f<1)for(const q of['seats','seatsB','seatsF','flights','fuel','fees','crew','mx','co2','co2t','ct'])o[q]*=f;   // sous-effectif : vols annulés
+ o.ct=o.ct||0;if(r.brand&&BRANDS[r.brand]){const B=BR(al,r.brand);o.crew*=B.crew;o.fees*=B.fees;o.mx*=B.mx;}const PC=PCOST[al.profile];if(PC){o.crew*=PC.crew;o.fees*=PC.fees;o.mx*=PC.mx;}const f=al.capF==null?1:al.capF;if(f<1)for(const q of['seats','seatsB','seatsF','flights','fuel','fees','crew','mx','co2','co2t','ct'])o[q]*=f;   // sous-effectif : vols annulés
  o.spd=o._w?o._s/o._w:840;o.cab=o._w?o._c/o._w:0;o.cond=o.fl?o._cd/o.fl:90;o.cost=o.fuel+o.fees+o.crew+o.mx+o.co2;return o;}
 function maxRotRoute(al,r,extra){let n=0;for(const pl of r.planes.map(id=>planeOf(al,id)).concat(extra||[])){if(pl&&canServeR(MX[pl.model],r))n+=rotMax(r,MX[pl.model]);}return n;}
 // Partage d'une classe de cabine entre compagnies (modèle logit), avec débordement vers ceux qui ont des sièges libres
@@ -628,7 +638,7 @@ function splitMarket(a,b,E0){const d=dist(a,b),D=demandNow(a,b),O=othEntry(a,b,D
 // Recettes et coûts de service pour un jour de ligne (pax par sens)
 function paxMoney(al,d,pax,paxB,price,priceB,paxF,priceF){const L=clamp((d/820+0.5)/1.5,0.6,4),s=al.svc,P=2*pax,PB=2*paxB,PF=2*(paxF||0),m1=Math.max(1,s.meal);
  const V=(al.last?volF(al):1)*((PCOST[al.profile]||{}).pax||1),tix=P*price,tixB=PB*priceB,tixF=PF*(priceF||0);
- return{tix,tixB,tixF,anc:P*((s.bag?BAG_REV*(d>3000?1.5:1):0)+(s.wifi?WIFI_REV:0)),svc:V*(P*MEAL_E[s.meal]*L+PB*MEAL_B[m1]*L+PF*MEAL_F[m1]*L+(P+PB+PF)*(6+4))+(P+PB+PF)*LOYAL_PAX[s.loyal]+0.03*(tix+tixB+tixF)};}   // distribution et paiement : 4 € + 3 % du billet ; assistance au sol : 6 €
+ return{tix,tixB,tixF,anc:P*((s.bag?BAG_REV*(d>3000?1.5:1):0)+(s.wifi?WIFI_REV:0)),svc:V*(1-BEN(al,'cat'))*(P*MEAL_E[s.meal]*L+PB*MEAL_B[m1]*L+PF*MEAL_F[m1]*L+(P+PB+PF)*6)+(1-BEN(al,'gds'))*(V*(P+PB+PF)*4+0.03*(tix+tixB+tixF))+(P+PB+PF)*LOYAL_PAX[s.loyal]};}   // distribution et paiement : 4 € + 3 % du billet ; assistance au sol : 6 €
 let _mk={k:'',m:null};
 function marketIndex(){const k=G.day+':'+(G.mut||0)+':'+G.nid;if(_mk.k===k)return _mk.m;const m={};
  for(const o of G.airlines){if(o.bankrupt)continue;for(const r of o.routes)if(r.seats>0||r.ct>0){const q=key(r.a,r.b);(m[q]=m[q]||[]).push({al:o,r,k:'d'});if(r.via)for(const l of legsOf(r)){const ql=key(l[0],l[1]);(m[ql]=m[ql]||[]).push({al:o,r,k:'l',l});}}}
@@ -647,7 +657,7 @@ function estimateRoute(al,r,extra){const d=dist(r.a,r.b),o=routeOps(al,r,extra,f
  const run=(a,b,me)=>{const E=rivalsOn(a,b,al).map(rivEntry);let D=demandNow(a,b);if(me.seats+me.seatsB+me.seatsF>0){E.push(me);D=splitMarket(a,b,E);}return{D,n:E.length-(me.seats+me.seatsB+me.seatsF>0?1:0)};};
  const me=entryX(al,r,{al,r,spd:V?o.spd*0.8:o.spd,cab:o.cab-(V?0.3:0),price:r.price,priceB:pB,priceF:pF,seats:o.seats,seatsB:o.seatsB,seatsF:o.seatsF,rot:Math.max(1,o.flights/2),pax:0,paxB:0,paxF:0},player());
  const R0=run(r.a,r.b,me),cap=o.seats+o.seatsB+o.seatsF;let mo=paxMoney(r.brand==='lc'?LCAL:al,d,me.pax,me.paxB,me.price,me.priceB,me.paxF,me.priceF),seg=(V?2:1)*(me.pax+me.paxB+me.paxF);const legs=[];
- if(r.brand==='lc')mo.anc*=BRANDS.lc.anc;if(me.cs){const c=CS_COM*(mo.tix+mo.tixB+mo.tixF);mo.anc-=c;}
+ if(r.brand&&BRANDS[r.brand])mo.anc*=BR(al,r.brand).anc;if(me.cs){const c=CS_COM*(mo.tix+mo.tixB+mo.tixF);mo.anc-=c;}
  const R={D:R0.D,pax:me.pax,paxB:me.paxB,paxF:me.paxF,tix:mo.tix,tixB:mo.tixB,tixF:mo.tixF,anc:mo.anc,svc:mo.svc,cT:0,cD:0,cRev:0};
  if(o.ct>0){const E=rivalsOn(r.a,r.b,al).filter(x=>x.k==='d'&&x.r.ct>0).map(x=>({al:x.al,cap:x.r.ct,rate:x.al.cRate||1,fr:x.r.seats===0})),q={al,cap:o.ct,rate:al.cRate||1,fr:!!o.fr};E.push(q);R.cD=splitCargo(r.a,r.b,E);R.cT=q.t;R.cRev=2*q.t*cYield(d)*1000*q.rate*(q.fr?1.25:1);R.anc+=R.cRev;R.svc+=2*q.t*150;}
  if(V)for(const l of legsOf(r)){const dl=dist(l[0],l[1]),P=legPrices(Object.assign({},r,{priceB:pB,priceF:pF}),dl),q={al,spd:o.spd,cab:o.cab,price:P.e,priceB:P.b,priceF:P.f,seats:Math.max(0,o.seats-me.pax),seatsB:Math.max(0,o.seatsB-me.paxB),seatsF:Math.max(0,o.seatsF-me.paxF),rot:me.rot,pax:0,paxB:0,paxF:0};
@@ -657,13 +667,13 @@ function estimateRoute(al,r,extra){const d=dist(r.a,r.b),o=routeOps(al,r,extra,f
  return Object.assign(R,{ct:o.ct,fr:!!o.fr,seats:o.seats,seatsB:o.seatsB,seatsF:o.seatsF,lf:cap?seg/((V?2:1)*cap):o.ct?R.cT/o.ct:0,fly:o.cost,co2:o.co2,co2t:o.co2t,delay:comp,otp,legs,rev,cost,profit:rev-cost,rivals:R0.n});}
 
 function newM(){return{revC:0,cargoT:0,rmsG:0,obG:0,denied:0,csIn:0,csOut:0,sub:0,co2:0,co2t:0,delay:0,slots:0,revF:0,paxF:0,divIn:0,divOut:0,ally:0,hedge:0,cx:0,rev:0,revB:0,anc:0,fuel:0,crew:0,wages:0,hr:0,fees:0,mx:0,svc:0,lounge:0,loyal:0,lease:0,fixed:0,mkt:0,interest:0,pax:0,paxB:0,ask:0,rpk:0};}
-function mCosts(m){return (m.dep||0)+(m.csOut||0)+(m.sub||0)+(m.co2||0)+(m.delay||0)+m.fuel+m.crew+m.wages+m.hr+m.fees+m.mx+m.svc+m.lounge+m.loyal+m.lease+m.fixed+m.mkt+m.interest+(m.ally||0);}
+function mCosts(m){return (m.minor||0)+(m.dep||0)+(m.csOut||0)+(m.sub||0)+(m.co2||0)+(m.delay||0)+m.fuel+m.crew+m.wages+m.hr+m.fees+m.mx+m.svc+m.lounge+m.loyal+m.lease+m.fixed+m.mkt+m.interest+(m.ally||0);}
 function mProfit(m){return m.rev+m.revB+(m.revF||0)+m.anc+(m.revC||0)+(m.csIn||0)+(m.obG||0)+(m.divIn||0)-mCosts(m);}
 function mkAirline(o){const P=o.profile?PROFILES[o.profile]:null,home=APX[o.hub].reg;
  const al={id:G.airlines.length,name:o.name,color:o.color,player:!!o.player,profile:o.profile||null,cash:o.cash,debt:0,rep:50,bases:[o.hub],planes:[],routes:[],
   autoMx:true,autoHire:true,train:P?P.train:1,svc:Object.assign({meal:1,bag:0,wifi:0,ent:0,loyal:0},P?P.svc:{}),lounges:P&&P.lounge?[o.hub]:[],camp:{},aw:{},
   staff:{},m:newM(),last:null,hist:[],negDays:0,bankrupt:false,share:0,paxM:0,penalty:0,capF:1,mechStrike:0,
-  hubs:[o.hub],allies:[],hedge:null,float:0,payout:0,stakes:{},cxH:{},cxHL:{},react:{},wars:{},slots:{},slotIdle:{},saf:({premium:0.05,national:0.02})[o.profile]||0,otp:0.85,autoHeavy:true,otpH:[],co2H:[],cs:[],subs:{},rms:['premium','national','challenger'].includes(o.profile),ob:({premium:0.03,national:0.03,challenger:0.05,lowcost:0.04})[o.profile]||0,cRate:o.profile==='lowcost'?0.95:1,revH:[],shareH:[],cashH:[],paxH:[],cargoH:[]};
+  hubs:[o.hub],allies:[],hedge:null,float:0,payout:0,stakes:{},cxH:{},cxHL:{},react:{},wars:{},slots:{},slotIdle:{},saf:({premium:0.05,national:0.02})[o.profile]||0,otp:0.85,autoHeavy:true,otpH:[],co2H:[],cs:[],subs:{},rms:['premium','national','challenger'].includes(o.profile),ob:({premium:0.03,national:0.03,challenger:0.05,lowcost:0.04})[o.profile]||0,cRate:o.profile==='lowcost'?0.95:1,revH:[],shareH:[],cashH:[],paxH:[],cargoH:[],inv:{},apInv:{},cb:{},ben:{},parent:null,sent:0,pxH:[],born:G.day};
  for(const k of SK)al.staff[k]={n:0,lv:P?P.lv:2,mo:65};
  for(const k in REGIONS)al.aw[k]=0.08+(k===home?0.25:0);
  if(P&&P.camp)al.camp[home]=P.camp;
@@ -715,14 +725,14 @@ function wagesMonth(al){let w=0;for(const k of SK)w+=al.staff[k].n*STAFF[k].sal*
 function svcFixedMonth(al){let c=LOYAL_FIX[al.svc.loyal]+LOUNGE*al.lounges.length;for(const p of al.planes){if(al.svc.wifi)c+=WIFI_PLANE;if(al.svc.ent)c+=ENT_SEAT*MX[p.model].seats;}return c;}
 function campMonth(al){let c=0;for(const k in al.camp)c+=CAMP_COST[al.camp[k]||0];return c;}
 
-function newGame(o){resetWorld();_mk.k='';_cx.k='';G={v:10,prog:{},apSh:{},co2:85,slotCap:Object.assign({},SLOT_AP),init:true,evSeen:{},av:0,used:[],seed:o.seed|0,day:0,fuel:1,econ:1,mods:[],news:[],nid:1,mut:0,salon:0,airlines:[],won:false,over:false,diff:o.diff,frac:0};
+function newGame(o){resetWorld();_mk.k='';_cx.k='';G={v:11,prog:{},apSh:{},co2:85,slotCap:Object.assign({},SLOT_AP),init:true,evSeen:{},av:0,used:[],seed:o.seed|0,day:0,fuel:1,econ:1,mods:[],news:[],nid:1,mut:0,salon:0,airlines:[],won:false,over:false,diff:o.diff,frac:0};
  const p=mkAirline({name:o.name,hub:o.hub,color:'#b01f6a',cash:[14e6,9e6,6e6][o.diff],player:true});
  const p0=addPlane(p,'R100',true,8,0,{cond:88,from:'Kestrel Airways'});p0.name='Premier envol';staffInit(p);
  const list=o.diff===0?[RIVALS[0],RIVALS[2],RIVALS[3],RIVALS[5]]:RIVALS;
  for(const R of list){const al=mkAirline({name:R.name,profile:R.profile,hub:R.hub===o.hub?R.alt:R.hub,color:R.color,cash:R.cash*(o.diff===2?1.5:1)}),P=PROFILES[R.profile];al.models=R.models;
   for(const m of R.fleet){const cb=cabinFor(P,m),pl=addPlane(al,m,true,3+Math.floor(rng()*8),cb.biz,{first:cb.first});const c=aiCandidates(al,[m])[0];if(c)openRoute(al,c.a,c.b,c.price,c.rot,[pl.id]);}
   staffInit(al);}
- for(const c in G.slotCap)G.slotCap[c]=Math.max(G.slotCap[c],Math.ceil(slotsHeld(c)*1.15));delete G.init;boardInit(player());usedRefresh();news('Ta compagnie est fondée à '+APX[o.hub].name+'. Ouvre ta première ligne.','good');return G;}
+ for(const c in G.slotCap)G.slotCap[c]=Math.max(G.slotCap[c],Math.ceil(slotsHeld(c)*1.15));delete G.init;firmsInit();for(const a of G.airlines){a.sent=0;a.px=valuation(a)/SHARES;a.pxH=[];}boardInit(player());usedRefresh();news('Ta compagnie est fondée à '+APX[o.hub].name+'. Ouvre ta première ligne.','good');return G;}
 
 // ---- Actions (communes au joueur et à l'IA)
 function openRoute(al,a,b,price,rot,planeIds,priceB,priceF,via){const d=dist(a,b),r={id:G.nid++,a,b,via:via||null,price,priceB:priceB||defPriceB(al,d),priceF:priceF||defPriceF(al,d),lfF:0,sF:0,rot,planes:[],lf:0,lfB:0,paxD:0,profitD:0,profitW:0,lastW:0,lossW:0,opened:G.day,seats:0,sE:0,sB:0};
@@ -752,7 +762,8 @@ function openBase(al,code){if(al.bases.includes(code)||al.cash<CFG.baseCost)retu
  if(al.profile){const P=PROFILES[al.profile],rg=APX[code].reg;if(P.camp)al.camp[rg]=Math.max(al.camp[rg]||0,P.camp);if(P.lounge)al.lounges.push(code);}
  if(al.autoHire)staffAuto(al);return true;}
 function creditLimit(al){let v=0;for(const p of al.planes)if(p.owned)v+=planeValue(p);return (10e6+0.5*v)*(al.float>0?[0.85,1,1.15][al.payout]:1)*(al.player&&G.board?0.85+0.3*G.board.conf/100:1);}   // un conseil confiant rassure les banques
-function companyValue(al){let v=al.cash-al.debt;for(const p of al.planes)if(p.owned)v+=planeValue(p);return v;}
+function companyValue(al){let v=al.cash-al.debt;for(const p of al.planes)if(p.owned)v+=planeValue(p);if(al.player)v+=holdVal(al);return v;}
+function holdVal(p){let v=0;for(const id in p.stakes||{}){const a=G.airlines[id];if(a&&!a.bankrupt)v+=p.stakes[id]*mcap(a);}for(const id in p.inv||{})v+=p.inv[id]*firmVal(firmOf(id));for(const c in p.apInv||{})v+=p.apInv[c]*apVal(c);return v;}
 function svcRep(al){const s=al.svc;return (s.meal-1)*5+s.wifi*2+s.ent*2+s.loyal*3-s.bag*4+Math.min(4,2*al.lounges.length);}
 function campRep(al){let n=0;for(const k in al.camp)n+=al.camp[k]||0;return Math.min(12,2*n);}
 function repTarget(al){let c=0,n=0;for(const p of al.planes){c+=p.cond;n++;}const avg=n?c/n:80,gr=al.ratio?Math.min(1,al.ratio.ground):1;
@@ -763,7 +774,7 @@ function awUpdate(al){const cnt={};for(const k in REGIONS)cnt[k]=0;for(const r o
 
 // ---- Correspondances : passagers A -> hub -> B sur deux lignes de la même compagnie ou d'alliés
 const CX={share:0.3,maxDet:1.45,fareF:0.88,hubFee:150e3,directF:0.2};
-const isAlly=(a,b)=>a!==b&&!!a.allies&&a.allies.includes(b.id);
+const isAlly=(a,b)=>a!==b&&(!!a.allies&&a.allies.includes(b.id)||a.parent===b.id||b.parent===a.id||(a.parent!=null&&a.parent===b.parent));
 function modsOf(a,b){let f=1;for(const m of G.mods)if(m.ap?(m.ap===a||m.ap===b):true)f*=m.mult;return f;}
 let _cx={k:'',L:null};
 function cxOpps(){const k=(G.mut||0)+':'+(G.av||0)+':'+G.nid;if(_cx.k===k)return _cx.L;const M={},seen=new Set();
@@ -807,7 +818,7 @@ function csChance(p,al){const war=Object.values(al.wars||{}).some(t=>t>G.day);re
 function proposeCS(p,al){if(p.cs.length>=4||isAlly(p,al)||(al.csCd||0)>G.day||al.bankrupt)return null;al.csCd=G.day+60;const ok=rng()<csChance(p,al);if(ok){p.cs.push(al.id);G.av=(G.av||0)+1;}return ok;}
 function endCS(p,al){p.cs=p.cs.filter(x=>x!==al.id);G.av=(G.av||0)+1;}
 function createBrand(p,k,name,color){const B=BRANDS[k];if(p.subs[k]||p.cash<B.cost)return false;p.cash-=B.cost;p.m.fixed+=B.cost;p.subs[k]={name,color,since:G.day};return true;}
-function setBrand(p,r,k){if(k&&!p.subs[k])return false;if(k==='reg'&&r.planes.some(id=>MX[planeOf(p,id).model].seats>BRANDS.reg.maxSeats))return false;r.brand=k||null;G.mut=(G.mut||0)+1;return true;}
+function setBrand(p,r,k){if(k&&!p.subs[k])return false;if(k&&r.planes.some(id=>!brandOK(MX[planeOf(p,id).model],{brand:k},planeOf(p,id))))return false;if(k==='reg'&&r.planes.some(id=>MX[planeOf(p,id).model].seats>BRANDS.reg.maxSeats))return false;r.brand=k||null;G.mut=(G.mut||0)+1;return true;}
 const convCost=pl=>Math.max(3e6,0.08*priceNow(MX[pl.model]));
 const canConvert=pl=>!pl.cargo&&!pl.route&&!pl.down&&['narrow','narrowLR','wide','vlarge'].includes(MX[pl.model].cat);
 function convertCargo(al,pl){if(!canConvert(pl))return false;const c=convCost(pl);if(al.cash<c)return false;al.cash-=c;al.m.mx+=c;pl.cargo=true;pl.biz=0;pl.first=0;pl.down=40;pl.inCheck=true;pl.spare=false;updateCap(al);return true;}
@@ -822,7 +833,7 @@ const BOARD=[
  {id:'ind',name:'Jean-Marc Weber',role:'Administrateur indépendant',w:0.15,care:'la ponctualité et le climat'}];
 const BM=Object.fromEntries(BOARD.map(b=>[b.id,b]));
 function boardState(p){const m=p.last||newM(),reg={};for(const k in REGIONS)reg[k]=p.routes.filter(r=>APX[r.a].reg===k||APX[r.b].reg===k).length;
- return{profit:(G.board&&G.board.acc.profit)||0,share:p.share||0,otp:p.otp||0.85,rep:p.rep,fleet:p.planes.length,routes:p.routes.length,debt:p.debt,cash:p.cash,co2i:m.rpk?m.co2t*1e6/m.rpk:0,cargo:(G.board&&G.board.acc.revC)||0,reg,saf:p.saf||0};}
+ return{profit:(G.board&&G.board.acc.profit)||0,share:groupShare(p)||0,otp:p.otp||0.85,rep:p.rep,fleet:p.planes.length,routes:p.routes.length,debt:p.debt,cash:p.cash,co2i:m.rpk?m.co2t*1e6/m.rpk:0,cargo:(G.board&&G.board.acc.revC)||0,reg,saf:p.saf||0};}
 const GOALS={
  profit:{care:['fund','chair'],mk:(S,a)=>({t:Math.round(Math.max(5e5,(S.profit>0?S.profit:1.5e6)*(a?1.35:1)+(a?1e6:0))/1e5)*1e5,lbl:t=>'Bénéfice du trimestre d\'au moins '+sM(t)}),ok:(S,t)=>S.profit>=t},
  share:{care:['chair','fund'],mk:(S,a)=>({t:S.share+(a?0.008:0.002),lbl:t=>'Part de marché d\'au moins '+sN(t*100,1)+' %'}),ok:(S,t)=>S.share>=t},
@@ -877,30 +888,120 @@ const SHARES=10e6,PAYOUT=[0,0.25,0.5];
 const DIVR={lowcost:0.2,national:0.4,challenger:0.1,regional:0.3,premium:0.35};
 const sum=a=>(a||[]).reduce((x,y)=>x+y,0);
 const div12=al=>sum(al.divH);
+const divRate=al=>al.parent!=null&&al.dir?[0,DIVR[al.profile],0.8][al.dir.pay]:DIVR[al.profile];
+const divCush=(al,m)=>al.parent!=null&&al.dir&&al.dir.pay===2?1.5*(m.lease+m.wages+m.fixed):PROFILES[al.profile].reserve*2+1.5e6*al.planes.length+2*(m.lease+m.wages+m.fixed);
 // Valorisation : actifs nets + 12 mois de résultat moyen + prime de rendement de 12 mois de dividende moyen
 function valuation(al){const h=al.hist.slice(-6),avg=h.length?h.reduce((a,b)=>a+b,0)/h.length:0,dh=(al.divH||[]).slice(-6),dv=dh.length?sum(dh)/dh.length:0,cv=companyValue(al);return Math.max(2e6,0.3*Math.max(0,cv),cv+12*avg+12*dv)*(al.player&&G.board?0.9+0.2*G.board.conf/100:1);}
 const divYield=al=>{const v=valuation(al);return v?div12(al)/v:0;};
 const ipoOpen=p=>G.day>=360&&valuation(p)>=40e6;
-function sellShares(p,tr){if(!ipoOpen(p)||p.float+tr>0.49+1e-9)return false;const c=tr*valuation(p)*0.95;p.cash+=c;p.float=Math.round((p.float+tr)*100)/100;return c;}
-function buyBack(p){const tr=Math.min(0.1,p.float),c=tr*valuation(p)*1.05;if(!tr||p.cash<c)return false;p.cash-=c;p.float=Math.round((p.float-tr)*100)/100;return c;}
+function sellShares(p,tr){if(!ipoOpen(p)||p.float+tr>0.49+1e-9)return false;const c=tr*mcap(p)*0.95;p.cash+=c;p.float=Math.round((p.float+tr)*100)/100;nudge(p,-0.4*tr);return c;}
+function buyBack(p){const tr=Math.min(0.1,p.float),c=tr*mcap(p)*1.05;if(!tr||p.cash<c)return false;p.cash-=c;p.float=Math.round((p.float-tr)*100)/100;nudge(p,0.4*tr);return c;}
 const inTrouble=al=>al.cash<0||(al.last&&al.last.profit<0);
-function stakeCost(al){return 0.1*valuation(al);}
-function buyStake(p,al){const s=p.stakes[al.id]||0,c=stakeCost(al);if(al.bankrupt||s>=0.9||p.cash<c)return false;p.cash-=c;p.stakes[al.id]=Math.round((s+0.1)*10)/10;return c;}
-function sellStake(p,al){const s=p.stakes[al.id]||0;if(!s)return false;const c=0.1*valuation(al)*0.95;p.cash+=c;p.stakes[al.id]=Math.round((s-0.1)*10)/10;if(p.stakes[al.id]<=0)delete p.stakes[al.id];return c;}
-function takeoverCost(p,al){return (1-(p.stakes[al.id]||0))*valuation(al)*(inTrouble(al)?1:1.3);}
-function absorb(p,al){const c=takeoverCost(p,al);if(p.cash<c)return false;p.cash-=c;
+function stakeCost(al){return 0.1*mcap(al)*1.04;}
+function buyStake(p,al){return tradeStake(p,al,0.1);}
+function sellStake(p,al){return tradeStake(p,al,-0.1);}
+function takeoverCost(p,al){const s=p.stakes[al.id]||0;if(s>=0.5-1e-9)return (1-s)*mcap(al)*1.1+0.02*mcap(al);return (1-s)*valuation(al)*(inTrouble(al)?1:1.3);}
+function absorb(p,al,cost){const c=cost!=null?cost:takeoverCost(p,al);if(p.cash<c)return false;p.cash-=c;
  for(const pl of al.planes)p.planes.push(pl);
  for(const r of al.routes){if(p.routes.some(q=>key(q.a,q.b)===key(r.a,r.b))){for(const id of r.planes){const pl=planeOf(p,id);if(pl)pl.route=null;}continue;}r.lossW=0;r.h=[];p.routes.push(r);}
  for(const b of al.bases)if(!p.bases.includes(b))p.bases.push(b);
  for(const k of SK)p.staff[k].n+=al.staff[k].n;
  p.cash+=al.cash;p.debt+=al.debt;for(const c in al.slots||{})p.slots[c]=(p.slots[c]||0)+al.slots[c];al.slots={};
  for(const id of al.allies.slice())leaveAlly(al,G.airlines[id]);
- al.bankrupt=true;al.merged=true;al.routes=[];al.planes=[];delete p.stakes[al.id];G.mut=(G.mut||0)+1;updateCap(p);return c;}
+ al.bankrupt=true;al.merged=true;al.routes=[];al.planes=[];delete p.stakes[al.id];al.parent=null;for(const q of G.airlines){if(q.cs)q.cs=q.cs.filter(x=>x!==al.id);if(q.parent===al.id)q.parent=null;}G.mut=(G.mut||0)+1;G.av=(G.av||0)+1;updateCap(p);return c;}
+
+// ---- Bourse : le cours suit la valeur fondamentale, écartée par une humeur de marché qui se résorbe avec le temps
+const pxOf=al=>al.bankrupt?0:valuation(al)/SHARES*Math.exp(al.sent||0),mcap=al=>pxOf(al)*SHARES;   // cours en continu : valeur du jour × humeur du marché
+const gss=()=>(rng()+rng()+rng()+rng()-2)*1.22;   // à peu près gaussien
+function nudge(al,x){al.sent=clamp((al.sent||0)+x,-0.6,0.6);al.px=valuation(al)/SHARES*Math.exp(al.sent);}
+function stockStep(){let cap=0;
+ for(const al of G.airlines){if(al.bankrupt)continue;al.sent=clamp((al.sent||0)*0.9+gss()*0.06,-0.6,0.6);al.px=valuation(al)/SHARES*Math.exp(al.sent);(al.pxH=al.pxH||[]).push(Math.round(al.px*100)/100);if(al.pxH.length>104)al.pxH.shift();cap+=al.px*SHARES;}
+ for(const F of G.firms||[]){F.sent=clamp(F.sent*0.9+gss()*0.04,-0.5,0.5);F.pxH.push(Math.round(firmVal(F)/1e5)/10);if(F.pxH.length>104)F.pxH.shift();}
+ if(!G.idx)G.idx={b:cap,h:[]};G.idx.h.push(Math.round(cap/G.idx.b*1000)/10);if(G.idx.h.length>104)G.idx.h.shift();}
+const annProfit=al=>{const h=(al.hist||[]).slice(-12);return h.length?sum(h)/h.length*12:0;};
+// Seuils de détention : 5 % déclaration, 20 % siège au conseil, un tiers minorité de blocage, 50 % contrôle
+const OPA_T=0.3,THR=[[0.05,'Seuil de 5 %','ta participation est rendue publique.'],[0.2,'Siège au conseil','elle ne lance plus de guerre des prix contre toi.'],[1/3,'Minorité de blocage','personne ne peut la racheter sans toi, et elle n\'ouvre plus de ligne face aux tiennes.'],[0.5,'Contrôle','elle rejoint ton groupe : tu fixes sa stratégie et sa part de marché compte dans la tienne.']];
+function cbAdd(p,k,c){p.cb=p.cb||{};p.cb[k]=(p.cb[k]||0)+c;}
+function cbSell(p,k,fr){if(p.cb&&p.cb[k]!=null){p.cb[k]*=Math.max(0,1-fr);if(p.cb[k]<1)delete p.cb[k];}}
+function setStake(p,al,v){v=Math.round(v*1000)/1000;const o=p.stakes[al.id]||0;if(v<=0.0005)delete p.stakes[al.id];else p.stakes[al.id]=v;
+ for(const [t,l,x] of THR){if(o<t-1e-9&&v>=t-1e-9)news(al.name+' · '+l+' : '+x,'good','takeover');else if(o>=t-1e-9&&v<t-1e-9)news(al.name+' : ta participation repasse sous '+Math.round(t*100)+' %.','info');}
+ if(v>=0.5-1e-9){if(al.parent!==p.id){al.parent=p.id;al.dir=al.dir||{coop:1,grow:1,pay:1};for(const id of al.allies.slice())leaveAlly(al,G.airlines[id]);p.cs=p.cs.filter(x=>x!==al.id);}}else if(al.parent===p.id)al.parent=null;
+ G.av=(G.av||0)+1;G.mut=(G.mut||0)+1;}
+// Achat ou vente en bourse : le prix monte (ou baisse) à mesure qu'on achète (ou vend) ; au-delà de 30 %, il faut une OPA
+const buyCost=(al,q)=>q*mcap(al)*(1+0.4*q)*1.003,sellGet=(al,q)=>q*mcap(al)*(1-0.4*q)*0.997;
+function tradeStake(p,al,q){const s=p.stakes[al.id]||0;
+ if(q>0){q=Math.min(q,OPA_T-s);if(q<0.005||al.bankrupt||(al.parent!=null&&al.parent!==p.id))return false;const c=buyCost(al,q);if(p.cash<c)return false;p.cash-=c;cbAdd(p,'a'+al.id,c);setStake(p,al,s+q);nudge(al,0.6*q);return c;}
+ q=Math.min(-q,s);if(q<=0)return false;const c=sellGet(al,q);p.cash+=c;cbSell(p,'a'+al.id,q/s);setStake(p,al,s-q);nudge(al,-0.6*q);return c;}
+// Offre publique d'achat : une prime sur le cours, une chance de succès selon la défense de la cible
+const DEFN={national:0.35,premium:0.3,challenger:0.2,lowcost:0.2,regional:0.15},PREMS=[0.15,0.3,0.45],TGTS=[0.51,1];
+function opaCost(p,al,prem,tg){return Math.max(0,tg-(p.stakes[al.id]||0))*mcap(al)*(1+prem);}
+function opaChance(p,al,prem,tg){if(al.bankrupt||(al.parent!=null&&al.parent!==p.id))return 0;const s=p.stakes[al.id]||0;return clamp(0.45+(prem-DEFN[al.profile]+(inTrouble(al)?0.15:0))*2.5+s*0.8-(tg>=1?0.2:0)-((al.sent||0)>0.1?0.1:0),0.05,0.95);}
+function launchOPA(p,al,prem,tg){const c=opaCost(p,al,prem,tg);if(c<=0||p.cash<c||(al.opaCd||0)>G.day)return null;
+ if(rng()<opaChance(p,al,prem,tg)){p.cash-=c;cbAdd(p,'a'+al.id,c);setStake(p,al,tg);nudge(al,0.1);return{ok:true,c};}
+ const fee=0.01*c;p.cash-=fee;p.m.fixed+=fee;al.opaCd=G.day+90;nudge(al,0.08);return{ok:false,c:fee};}
+const groupShare=p=>p.share+G.airlines.reduce((s,a)=>s+(a.parent===p.id&&!a.bankrupt?a.share:0),0);
+function injectCash(p,al,x){if(p.cash<x||al.parent!==p.id)return false;p.cash-=x;al.cash+=x;return true;}
+// Consolidation : une rivale riche rachète une rivale en difficulté, sauf si le joueur tient une minorité de blocage
+function aiMA(){const p=player();if(rng()>0.3)return;
+ for(const t of G.airlines){if(t.player||t.bankrupt||t.parent!=null||!t.planes.length||G.day-(t.born||0)<180||!(t.negDays>=20||(t.hist.length>=2&&t.hist[t.hist.length-1]<0&&t.hist[t.hist.length-2]<0)))continue;
+  const price=mcap(t)*1.25,B=G.airlines.filter(a=>!a.player&&!a.bankrupt&&a!==t&&a.parent==null&&a.cash>price+PROFILES[a.profile].reserve+4e5*a.planes.length);if(!B.length)continue;
+  const b=B[Math.floor(rng()*B.length)],ps=p.stakes[t.id]||0;
+  if(ps>=1/3-1e-9){news(b.name+' voulait racheter '+t.name+' : ta minorité de blocage ('+Math.round(ps*100)+' %) l\'en empêche.','info','takeover');return;}
+  if(ps){const pay=ps*price;p.cash+=pay;cbSell(p,'a'+t.id,1);delete p.stakes[t.id];news(b.name+' rachète '+t.name+'. Tu apportes tes '+Math.round(ps*100)+' % à l\'offre : +'+sM(pay)+'.','good','takeover');}
+  else news(b.name+' rachète '+t.name+' et intègre sa flotte.','info','takeover');
+  absorb(b,t,price*(1-ps));return;}}
+
+// ---- Participations stratégiques : sociétés du secteur, et concessions des aéroports de tes bases
+const FIRMS=[
+ {id:'mro',name:'Hélios Aéro-Services',kind:'Maintenance',v:900e6,y:0.035,max:0.15,img:'fm-mro.jpg',fb:'staff-mech.jpg',ben:'Remise sur l\'entretien'},
+ {id:'cat',name:'Gourmet Altitude',kind:'Restauration',v:450e6,y:0.04,max:0.15,img:'fm-cater.jpg',fb:'svc-meal.jpg',ben:'Remise sur la restauration et l\'assistance'},
+ {id:'fuel',name:'PetroJet Avitaillement',kind:'Carburant',v:1.4e9,y:0.05,max:0.06,img:'fm-fuel.jpg',fb:'ev-fuelup.jpg',ben:'Remise sur le kérosène',note:'Ses dividendes montent avec le prix du pétrole : une couverture naturelle.'},
+ {id:'lease',name:'Atlas Lease Capital',kind:'Location d\'avions',v:2.2e9,y:0.045,max:0.12,img:'fm-lease.jpg',fb:'ev-delivery.jpg',ben:'Remise sur tes loyers'},
+ {id:'gds',name:'SkyRes Systems',kind:'Réservation',v:650e6,y:0.03,max:0.3,img:'fm-gds.jpg',fb:'svc-checkin.jpg',ben:'Remise sur la distribution des billets'}];
+const FIRMX=Object.fromEntries(FIRMS.map(f=>[f.id,f]));
+function firmsInit(){G.firms=FIRMS.map(f=>({id:f.id,g:1,sent:0,pxH:[]}));}
+const firmOf=id=>G.firms.find(f=>f.id===id);
+const firmVal=F=>FIRMX[F.id].v*F.g*Math.exp(F.sent)*(F.id==='fuel'?0.6+0.4*G.fuel:1);
+const firmYield=id=>FIRMX[id].y*(id==='fuel'?G.fuel*G.fuel:1);
+const apVal=c=>450e6*Math.pow(APX[c].pop,0.9)*clamp(APX[c].w,0.5,1.5)*(G.econ||1);
+function benCalc(p){p.ben={};for(const id in p.inv||{})p.ben[id]=FIRMX[id].max*Math.min(1,p.inv[id]/0.5);}
+function firmTrade(p,id,q){const F=firmOf(id);p.inv=p.inv||{};const s=p.inv[id]||0,V=firmVal(F);
+ if(q>0){if(s+q>0.5+1e-9)return false;const c=q*V*1.01;if(p.cash<c)return false;p.cash-=c;cbAdd(p,'f'+id,c);p.inv[id]=Math.round((s+q)*100)/100;F.sent=clamp(F.sent+0.3*q,-0.5,0.5);}
+ else{q=Math.min(-q,s);if(!q)return false;p.cash+=q*V*0.99;cbSell(p,'f'+id,q/s);p.inv[id]=Math.round((s-q)*100)/100;if(!p.inv[id])delete p.inv[id];F.sent=clamp(F.sent-0.3*q,-0.5,0.5);}
+ benCalc(p);G.mut=(G.mut||0)+1;return true;}
+function apTrade(p,c,q){p.apInv=p.apInv||{};const s=p.apInv[c]||0,V=apVal(c);
+ if(q>0){if(s+q>0.5+1e-9)return false;const x=q*V*1.01;if(p.cash<x)return false;p.cash-=x;cbAdd(p,'p'+c,x);p.apInv[c]=Math.round((s+q)*100)/100;}
+ else{q=Math.min(-q,s);if(!q)return false;p.cash+=q*V*0.99;cbSell(p,'p'+c,q/s);p.apInv[c]=Math.round((s-q)*100)/100;if(!p.apInv[c])delete p.apInv[c];}
+ G.mut=(G.mut||0)+1;return true;}
+function firmDivs(p){let d=0;for(const id in p.inv||{})d+=p.inv[id]*firmVal(firmOf(id))*firmYield(id)/12;for(const c in p.apInv||{})d+=p.apInv[c]*apVal(c)*0.045/12;return d;}
+
+// ---- Filiales : niveaux, bourse, cession
+const brandRoutes=(p,k)=>p.routes.filter(r=>r.brand===k);
+// Charges propres à la filiale chaque mois : loyer ou amortissement de ses avions, équipages et structure au sol
+function brandOH(p,k){let c=0;for(const r of brandRoutes(p,k))for(const id of r.planes){const pl=planeOf(p,id);if(!pl)continue;const m=MX[pl.model];c+=(pl.owned?priceNow(m)/300:leaseOf(pl)*(1-BEN(p,'lease')))+planeOH(p,m)*30;}return c+brandFee(p,k);}
+function brandUp(p,k){const S=p.subs[k],B=BRANDS[k];if(!S||(S.lv||1)>=3)return false;const c=B.cost*BLV[S.lv||1];if(p.cash<c)return false;p.cash-=c;p.m.fixed+=c;S.lv=(S.lv||1)+1;G.mut=(G.mut||0)+1;return c;}
+function subVal(p,k){const S=p.subs[k],B=BRANDS[k],h=(S.ph||[]).slice(-6),avg=h.length?sum(h)/h.length:0,cur=brandRoutes(p,k).reduce((s,r)=>s+(r.profitD||0),0)*30-brandOH(p,k);return Math.max(B.cost*(1+0.5*((S.lv||1)-1)),8*12*(h.length?(avg+cur)/2:cur));}
+function brandIPO(p,k,q){const S=p.subs[k];if(!S)return false;
+ if(q>0){if((S.float||0)+q>0.49+1e-9)return false;const c=q*subVal(p,k)*0.95;p.cash+=c;S.float=Math.round(((S.float||0)+q)*100)/100;return c;}
+ q=Math.min(-q,S.float||0);if(!q)return false;const c=q*subVal(p,k)*1.05;if(p.cash<c)return false;p.cash-=c;S.float=Math.round((S.float-q)*100)/100;return c;}
+function closeBrand(p,k){for(const r of brandRoutes(p,k))r.brand=null;delete p.subs[k];G.mut=(G.mut||0)+1;}
+function brandSaleValue(p,k){let pv=0;for(const r of brandRoutes(p,k))for(const id of r.planes){const pl=planeOf(p,id);if(pl&&pl.owned)pv+=planeValue(pl);}return subVal(p,k)+pv;}
+const brandSaleCash=(p,k,keep)=>brandSaleValue(p,k)*(1-(p.subs[k].float||0))*(1-keep)*0.97;
+// Cession : la filiale devient une compagnie indépendante avec ses avions, ses lignes et ses créneaux ; tu peux garder une part
+function sellBrand(p,k,keep){const S=p.subs[k],B=BRANDS[k],R=brandRoutes(p,k);if(!S||!R.length)return null;const V=brandSaleValue(p,k),cash=brandSaleCash(p,k,keep);
+ const cnt={};for(const r of R)for(const c of [r.a,r.b])cnt[c]=(cnt[c]||0)+1;const hub=Object.keys(cnt).sort((x,y)=>(p.bases.includes(y)-p.bases.includes(x))||cnt[y]-cnt[x])[0];
+ const al=mkAirline({name:S.name,profile:B.prof,hub,color:S.color,cash:Math.max(15e6,0.2*V)});al.models=(PROFILES[B.prof].models||[]).slice();al.entrant=true;al.artI=RIVALS.findIndex(x=>x.profile===B.prof)+1;al.spin=true;
+ const sa=new Set();for(const r of R)for(const c of slotAps(r))sa.add(c);const u0={};for(const c of sa)u0[c]=slotsUsed(p,c);
+ for(const r of R){r.brand=null;r.lossW=0;for(const id of r.planes){const i=p.planes.findIndex(x=>x.id===id);if(i>=0)al.planes.push(p.planes.splice(i,1)[0]);}}
+ p.routes=p.routes.filter(x=>!R.includes(x));al.routes.push(...R);
+ for(const c of sa){const d=Math.max(0,Math.min(p.slots[c]||0,u0[c]-slotsUsed(p,c)));p.slots[c]=(p.slots[c]||0)-d;al.slots[c]=(al.slots[c]||0)+d;}
+ staffInit(al);al.sent=0;al.px=valuation(al)/SHARES;al.pxH=[];
+ delete p.subs[k];p.cash+=cash;if(keep){p.stakes[al.id]=keep;cbAdd(p,'a'+al.id,keep*V);}updateCap(p);G.mut=(G.mut||0)+1;G.av=(G.av||0)+1;return{al,cash};}
 
 // ---- Boucle de temps
 function csPartner(al,r,P){if(!P||!P.cs||!P.cs.length)return null;const T=x=>x.bases.includes(r.a)||x.bases.includes(r.b)||x.hubs.includes(r.a)||x.hubs.includes(r.b);
  if(al.player){for(const id of P.cs){const q=G.airlines[id];if(q&&!q.bankrupt&&T(q))return q;}return null;}return P.cs.includes(al.id)&&T(P)?P:null;}
-function entryX(al,r,e,P){if(r.brand==='lc'){e.svcAl=LCAL;e.rep=al.rep*0.8+12;e.cab=(e.cab||0)+BRANDS.lc.cab;}e.cs=csPartner(al,r,P);return e;}
+function entryX(al,r,e,P){if(r.brand&&BRANDS[r.brand]){const B=BR(al,r.brand);if(r.brand==='lc'){e.svcAl=LCAL;e.rep=al.rep*0.8+12;}e.cab=(e.cab||0)+B.cab;let rp=B.rp||0;if(B.seas&&seasonF(r.a,r.b)>1.05)rp+=12;if(rp)e.rep=(e.rep!=null?e.rep:al.rep)+rp;}e.cs=csPartner(al,r,P);return e;}
 function dayStep(){G.day++;const mk={},cmk={},P0=player();
  for(const al of G.airlines){if(al.bankrupt)continue;staffTick(al);let nsp=0;for(const pl of al.planes){pl.flew=false;pl._h=0;if(pl.spare&&!pl.route&&!pl.down)nsp++;}al._sp=nsp;let ow=0,on=0;
   for(const r of al.routes){const o=routeOps(al,r,null,true);r.sE=o.seats;r.sB=o.seatsB;r.sF=o.seatsF;r.spd=o.spd;r.cab=o.cab;r.seats=o.seats+o.seatsB+o.seatsF;r._o=o;
@@ -910,7 +1011,7 @@ function dayStep(){G.day++;const mk={},cmk={},P0=player();
     if(V){const T=thrOf(r);for(const l of legsOf(r)){const dl=dist(l[0],l[1]),P=legPrices(r,dl),kl=key(l[0],l[1]);
      (mk[kl]=mk[kl]||[]).push(entryX(al,r,{al,r,kind:'leg',dl,price:P.e,priceB:P.b,priceF:P.f,seats:Math.max(0,o.seats-T.e),seatsB:Math.max(0,o.seatsB-T.b),seatsF:Math.max(0,o.seatsF-T.f),rot:o.flights/2,spd:o.spd,cab:o.cab},P0));}}}
    else if(!o.ct){r.paxD=0;r.lf*=0.8;r.profitD*=0.8;}
-   r.ct=o.ct;if(o.ct>0){const kc=key(r.a,r.b);(cmk[kc]=cmk[kc]||[]).push({al,r,cap:o.ct,rate:al.cRate||1,fr:!!o.fr,costed:r.seats===0});}}
+   r.ct=o.ct;if(o.ct>0){const kc=key(r.a,r.b);(cmk[kc]=cmk[kc]||[]).push({al,r,cap:o.ct,rate:(al.cRate||1)*(r.brand==='cargo'&&al.subs&&al.subs.cargo?BR(al,'cargo').cy:1),fr:!!o.fr,costed:r.seats===0});}}
   if(on)al.otp=al.otp*0.95+(ow/on)*0.05;}
  for(const k in cmk){const E=cmk[k],ab=k.split('-'),d=dist(ab[0],ab[1]),y=cYield(d)*1000;splitCargo(ab[0],ab[1],E);   // fret : t par sens, payé au kg
   for(const e of E){const t=e.t*(0.95+rng()*0.1),r=e.r,al=e.al,o=r._o,rev=2*t*y*e.rate*(e.fr?1.25:1),hand=2*t*150,pf=rev-hand-(e.costed?o.cost:0);al.cash+=pf;const m=al.m;m.revC+=rev;m.fees+=hand;m.cargoT+=2*t;
@@ -921,7 +1022,7 @@ function dayStep(){G.day++;const mk={},cmk={},P0=player();
    if(al.rms){if(tau>=0.8){const up=Math.min(0.12,(tau-0.8)*0.25);pE*=1+up;pB*=1+up*0.7;al.m.rmsG+=2*(pax*e.price*up+paxB*e.priceB*up*0.7);}   // revenue management : tarifs qui montent quand l'avion se remplit
     else{const x=Math.min(e.seats-pax,pax*Math.min(0.1,(0.8-tau)*0.2));if(x>0){pE=(pax*pE+x*0.85*pE)/(pax+x);pax+=x;al.m.rmsG+=2*x*0.85*e.price;}}}   // ... et promotions ciblées quand il reste de la place
    if(al.ob&&e.seats>0&&pax>=0.97*e.seats){const ns=0.04+rng()*0.05,den=Math.max(0,e.seats*(1+al.ob)*(1-ns)-e.seats);xtra=2*e.seats*al.ob*pE-2*den*(pE+compOf(ab[0],ab[1],d));al.m.obG+=xtra;al.m.denied+=2*den;}   // surréservation
-   const mo=paxMoney(r.brand==='lc'?LCAL:al,d,pax,paxB,pE,pB,paxF,e.priceF),pt=pax+paxB+paxF,dly=2*pt*(1-o.otp)*0.12*compOf(ab[0],ab[1],d);if(r.brand==='lc')mo.anc*=BRANDS.lc.anc;
+   const mo=paxMoney(r.brand==='lc'?LCAL:al,d,pax,paxB,pE,pB,paxF,e.priceF),pt=pax+paxB+paxF,dly=2*pt*(1-o.otp)*0.12*compOf(ab[0],ab[1],d);if(r.brand&&BRANDS[r.brand])mo.anc*=BR(al,r.brand).anc;
    let com=0;if(e.cs){com=CS_COM*(mo.tix+mo.tixB+mo.tixF);e.cs.cash+=com;e.cs.m.csIn+=com;al.m.csOut+=com;}
    const pf=mo.tix+mo.tixB+mo.tixF+mo.anc-mo.svc-dly+xtra-com-(leg?0:o.cost);
    al.cash+=pf;const m=al.m;m.rev+=mo.tix;m.revB+=mo.tixB;m.revF+=mo.tixF;m.paxF+=2*paxF;m.anc+=mo.anc;m.svc+=mo.svc;m.delay+=dly;
@@ -953,24 +1054,27 @@ function dayStep(){G.day++;const mk={},cmk={},P0=player();
  if(G.day%7===0)weekStep();
  if(G.day%30===0)monthStep();
  const p=player();if(!G.over&&p.negDays>=CFG.graceDays){G.over=true;news('Faillite : la trésorerie est restée négative '+CFG.graceDays+' jours.','bad');}}
-function weekStep(){for(const al of G.airlines){if(al.bankrupt)continue;if(al.autoHire)staffAuto(al);if(al.player){for(const r of al.routes){if(r.lf>0.98&&!r.rec&&r.seats>0){r.rec=1;news('Record : '+r.a+' - '+r.b+' vole complet.','good','record');}r.h=r.h||[];r.h.push({lf:Math.round(r.lf*100),pf:Math.round(r.profitW/7),cx:Math.round((r.cxW||0)/7)});if(r.h.length>26)r.h.shift();r.lastW=r.profitW;r.profitW=0;r.cxW=0;}}else{for(const r of al.routes)r.cxW=0;aiWeek(al);}}}
+function weekStep(){stockStep();for(const al of G.airlines){if(al.bankrupt)continue;if(al.autoHire)staffAuto(al);if(al.player){for(const r of al.routes){if(r.lf>0.98&&!r.rec&&r.seats>0){r.rec=1;news('Record : '+r.a+' - '+r.b+' vole complet.','good','record');}r.h=r.h||[];r.h.push({lf:Math.round(r.lf*100),pf:Math.round(r.profitW/7),cx:Math.round((r.cxW||0)/7)});if(r.h.length>26)r.h.shift();if(r.brand&&al.subs[r.brand])al.subs[r.brand].pw=(al.subs[r.brand].pw||0)+r.profitW;r.lastW=r.profitW;r.profitW=0;r.cxW=0;}}else{for(const r of al.routes)r.cxW=0;aiWeek(al);}}}
 function strikes(al){for(const k of SK){const s=al.staff[k];if(s.mo>=35||!s.n||rng()>=(35-s.mo)/50)continue;al.penalty+=6;
   if(k==='mech'){al.mechStrike=10;news('Grève des mécaniciens chez '+al.name+' : révisions bloquées 10 jours.',al.player?'bad':'info','strike');}
   else{for(const pl of al.planes)if(!pl.down)pl.down=3;news('Grève du '+(k==='pilot'?'personnel navigant technique':k==='cabin'?'personnel de cabine':'personnel au sol')+' chez '+al.name+' : flotte clouée au sol 3 jours.',al.player?'bad':'info','strike');}
   s.mo=Math.min(100,s.mo+12);return;}}
 function monthStep(){let tot=0;
- for(const al of G.airlines.slice(1).concat([G.airlines[0]])){if(al.bankrupt)continue;const m=al.m;let lease=0;for(const p of al.planes)if(!p.owned)lease+=leaseOf(p);   // le joueur en dernier : il encaisse les dividendes du mois
+ for(const al of G.airlines.slice(1).concat([G.airlines[0]])){if(al.bankrupt)continue;const m=al.m;let lease=0;for(const p of al.planes)if(!p.owned)lease+=leaseOf(p);lease*=1-BEN(al,'lease');   // le joueur en dernier : il encaisse les dividendes du mois
   const fixed=60e3+20e3*al.planes.length+80e3*(al.bases.length-1)+0.05*(m.rev+m.revB+(m.revF||0)+m.anc+(m.revC||0)),interest=al.debt*0.006,wages=wagesMonth(al),train=staffCount(al)*TRAIN_PP[al.train];
   let wifi=0;for(const p of al.planes){if(al.svc.wifi)wifi+=WIFI_PLANE;if(al.svc.ent)wifi+=ENT_SEAT*MX[p.model].seats;}
   const lounge=LOUNGE*al.lounges.length,loyal=LOYAL_FIX[al.svc.loyal],mkt=campMonth(al),hubF=al.player?CX.hubFee*Math.max(0,al.hubs.length-1):0,ally=ALLY_FEE*al.allies.length;
   const divIn=al.m.divIn||0;
-  let subF=0;for(const k in al.subs||{})subF+=BRANDS[k].fee;subF+=CS_FEE*(al.cs||[]).length+(al.rms&&al.player?RMS_FEE:0);m.sub+=subF;
+  if(al.player){const fd=firmDivs(al);al.cash+=fd;m.divIn+=fd;
+   for(const k in al.subs){const S=al.subs[k],pf=(S.pw||0)-brandOH(al,k);(S.ph=S.ph||[]).push(Math.round(pf));if(S.ph.length>24)S.ph.shift();S.pw=0;if(S.float&&pf>0){const mi=S.float*pf;al.cash-=mi;m.minor=(m.minor||0)+mi;}
+    if(S.auto)for(const r of al.routes)if(r.brand===k&&r.planes.length&&r.seats>0){const o=optimizeRoute(al,r.a,r.b,r.planes,null,r.via,r.id);if(o){r.price=o.price;r.priceB=o.priceB;r.priceF=o.priceF;if(o.rot<r.rot||!slotAps(r).length)r.rot=o.rot;}}}}
+  let subF=0;for(const k in al.subs||{})subF+=brandFee(al,k);subF+=CS_FEE*(al.cs||[]).length+(al.rms&&al.player?RMS_FEE:0);m.sub+=subF;
   al.cash-=(lease+fixed+hubF+interest+wages+train+wifi+lounge+loyal+mkt+ally+subF);m.ally+=ally;if(m.denied)al.penalty+=Math.min(4,m.denied/400);
   {let dep=0;for(const p of al.planes)if(p.owned&&!p.deliv)dep+=priceNow(MX[p.model])/(25*12);m.dep=dep;}m.lease+=lease;m.fixed+=fixed+hubF;m.interest+=interest;m.wages+=wages;m.hr+=train;m.svc+=wifi;m.lounge+=lounge;m.loyal+=loyal;m.mkt+=mkt;m.profit=mProfit(m);
   // Dividendes : le joueur déclare une part de son bénéfice (seuls les actionnaires extérieurs sont payés) ; une rivale verse le taux de son profil si sa trésorerie le permet
   let decl=0;
   if(al.player){if(m.profit>0&&al.float>0){decl=m.profit*PAYOUT[al.payout];const dv=decl*al.float;al.cash-=dv;m.divOut=dv;}}
-  else if(m.profit>0&&al.cash>PROFILES[al.profile].reserve*2+1.5e6*al.planes.length+2*(m.lease+m.wages+m.fixed)){decl=DIVR[al.profile]*m.profit;al.cash-=decl;m.divOut=decl;
+  else if(m.profit>0&&divRate(al)>0&&al.cash>divCush(al,m)){decl=divRate(al)*m.profit;al.cash-=decl;m.divOut=decl;
    const pp=player(),st=pp.stakes[al.id]||0;if(st){const mine=decl*st;pp.cash+=mine;pp.m.divIn+=mine;pp.divRecv=pp.divRecv||{};(pp.divRecv[al.id]=pp.divRecv[al.id]||[]).push(Math.round(mine));if(pp.divRecv[al.id].length>12)pp.divRecv[al.id].shift();}}
   al.divH=al.divH||[];al.divH.push(Math.round(decl));if(al.divH.length>12)al.divH.shift();
   al.cxHL=al.cxH;al.cxH={};
@@ -983,7 +1087,7 @@ function monthStep(){let tot=0;
     if(al.slotIdle[c]>=3){const n=Math.ceil(idle/2);al.slots[c]-=n;al.slotIdle[c]=0;if(al.player)news(n+' créneau'+(n>1?'x':'')+' inutilisé'+(n>1?'s':'')+' à '+APX[c].name+' retourne'+(n>1?'nt':'')+' au coordinateur.','bad');}}else al.slotIdle[c]=0;}
   awUpdate(al);strikes(al);}
  for(const al of G.airlines){al.share=al.bankrupt||!tot?0:al.paxM/tot;(al.shareH=al.shareH||[]).push(Math.round(al.share*1e4));if(al.shareH.length>72)al.shareH.shift();
-  if(!al.bankrupt&&!al.player&&al.negDays>=CFG.graceDays&&al.cash<-(8e6+2e6*al.planes.length)){al.bankrupt=true;al.routes=[];al.planes=[];G.mut=(G.mut||0)+1;news(al.name+' fait faillite et quitte le marché.','info','rivalbk');}}
+  if(!al.bankrupt&&!al.player&&al.negDays>=CFG.graceDays&&al.cash<-(8e6+2e6*al.planes.length)){al.bankrupt=true;al.routes=[];al.planes=[];G.mut=(G.mut||0)+1;news(al.name+' fait faillite et quitte le marché.','info','rivalbk');{const pp=player(),st=pp.stakes[al.id]||0;if(st){delete pp.stakes[al.id];cbSell(pp,'a'+al.id,1);news('Ta participation de '+Math.round(st*100)+' % dans '+al.name+' est perdue.','bad');}al.parent=null;for(const q of G.airlines)if(q.parent===al.id)q.parent=null;}}}
  const pl0=player();for(const id of pl0.allies.slice()){const al=G.airlines[id];const ch=0.02+({lowcost:0.04,challenger:0.03}[al.profile]||0)+(pl0.share>al.share*1.5?0.03:0);
   if(rng()<ch){leaveAlly(pl0,al);al.allyCd=G.day+180;news(al.name+' quitte l\'alliance et redevient ta concurrente.','bad','allyoff');}}
  for(const id of (pl0.cs||[]).slice()){const al=G.airlines[id];if(al.bankrupt||(Object.values(al.wars||{}).some(t=>t>G.day)&&rng()<0.3)||rng()<0.01){endCS(pl0,al);news(al.name+' met fin au partage de codes.','bad','allyoff');}}
@@ -995,7 +1099,8 @@ function monthStep(){let tot=0;
  for(const E of EVENTS){if(!G.evSeen[E.id]&&G.day>=E.from-120&&G.day<E.from){G.evSeen[E.id]=1;news('À venir : '+E.name+' ('+dShort(E.from)+'). Demande jusqu\'à +'+Math.round((E.mult-1)*100)+' % vers '+E.aps.slice(0,4).join(', ')+'.','info','boom');}}
  {const y=Math.floor(G.day/360),hd=hajjDay(y);if(G.evSeen['hajj'+y]!==1&&G.day%360>=hd-60&&G.day%360<hd){G.evSeen['hajj'+y]=1;news('Le Hajj approche ('+dShort(y*360+hd)+') : forte demande vers Djeddah et Médine depuis les pays musulmans.','info','boom');}}
  if(rng()<0.5)rollEvent();
- const p=player();if(!G.won&&p.share>=CFG.goalShare){G.won=true;news('Objectif atteint : '+Math.round(p.share*100)+' % de part de marché.','good');}}
+ for(const F of G.firms||[])F.g*=1+0.003+(rng()-0.5)*0.01;aiMA();
+ const p=player();if(!G.won&&groupShare(p)>=CFG.goalShare){G.won=true;news('Objectif atteint : '+Math.round(groupShare(p)*100)+' % de part de marché pour ton groupe.','good');}}
 function rollEvent(){const x=rng(),ap=AP[Math.floor(rng()*AP.length)];
  if(x<0.2){G.fuel=clamp(G.fuel*1.25,0.75,1.5);news('Flambée du carburant : +25 % sur le kérosène.','bad','fuelup');}
  else if(x<0.35){G.fuel=clamp(G.fuel*0.85,0.75,1.5);news('Le cours du kérosène recule de 15 %.','good','fueldown');}
@@ -1011,8 +1116,8 @@ function rollEvent(){const x=rng(),ap=AP[Math.floor(rng()*AP.length)];
 // Coût journalier d'un avion hors vols : équipages, mécaniciens, sol et frais de structure (pour juger une ligne à coût complet)
 function planeOH(al,m){const sl=SALLV[(al.staff&&al.staff.pilot)?al.staff.pilot.lv:2]||1,pil=m.cat==='turbo'?6:m.range>7000?18:10,cab=4*Math.ceil(m.seats/50);return (sl*(pil*STAFF.pilot.sal+cab*STAFF.cabin.sal+(3+m.seats/30)*STAFF.mech.sal+(3+m.seats/40+4)*STAFF.ground.sal)+20e3)/30;}
 function aiModels(al){return (al.models||PROFILES[al.profile].models).filter(id=>MX[id]&&avail(MX[id])&&MX[id].cat!=='cargo');}
-function aiCandidates(al,models){const P=PROFILES[al.profile],out=[];G._ds=1;try{
- for(const a of al.bases)for(const B of AP){const b=B.code;if(b===a)continue;const k=key(a,b);if(al.routes.some(r=>key(r.a,r.b)===k))continue;const d=dist(a,b);if(d<250)continue;
+function aiCandidates(al,models){const P=PROFILES[al.profile],out=[],pp=G.airlines[0],noK=pp&&pp!==al&&((al.parent===pp.id&&al.dir&&al.dir.coop)||(pp.stakes[al.id]||0)>=1/3-1e-9)?new Set(pp.routes.map(r=>key(r.a,r.b))):null;G._ds=1;try{
+ for(const a of al.bases)for(const B of AP){const b=B.code;if(b===a)continue;const k=key(a,b);if(al.routes.some(r=>key(r.a,r.b)===k)||(noK&&noK.has(k)))continue;const d=dist(a,b);if(d<250)continue;
   const sa=[a,b].filter(isSlot);let slotC=0,blocked=false;for(const c of sa){const room=(al.slots[c]||0)-slotsUsed(al,c);if(room<1){if(slotFree(c)<1)blocked=true;else slotC+=slotPrice(c);}}if(blocked)continue;
   for(const mid of models){const m=MX[mid];if(!canServe(m,a,b))continue;const cb=cabinFor(P,mid),fake={model:mid,age:0,cond:100,down:0,biz:cb.biz,first:cb.first},price=pref(d)*P.bias;let best=null;
    for(let rot=1;rot<=Math.max(1,Math.floor(maxRot(d,m)));rot++){const e=estimateRoute(al,{a,b,price,rot,planes:[]},[fake]);if(!best||e.profit>best.profit)best={profit:e.profit,rot};}
@@ -1033,7 +1138,7 @@ function aiWeek(al){const P=PROFILES[al.profile],L=al.last,reserve=Math.max(P.re
  if(al.cash>reserve&&rng()<0.5){const mods=aiModels(al),o=G.used.find(x=>mods.includes(x.model)&&x.cond>=65&&x.age<14&&x.price<0.6*priceNow(MX[x.model])&&al.cash>x.price+reserve);   // bonnes affaires d'occasion
   if(o){const c=aiCandidates(al,[o.model])[0];if(c&&c.score>3000){const pl=buyUsed(al,o.id);if(pl)openRoute(al,c.a,c.b,c.price,c.rot,[pl.id]);}}}
  let lf=0;for(const r of al.routes)lf+=r.lf;lf=al.routes.length?lf/al.routes.length:1;
- if(al.cash>reserve&&lf>0.66&&(!al.routes.length||!al.last||al.last.profit>0||al.planes.length<=3)&&rng()<P.appetite*(al.planes.length<=3?2:1)){const c=aiCandidates(al,aiModels(al)).slice(0,3),pick=c[Math.floor(rng()*c.length)];
+ if(al.cash>reserve&&lf>0.66&&(!al.routes.length||!al.last||al.last.profit>0||al.planes.length<=3)&&rng()<P.appetite*(al.planes.length<=3?2:1)*(al.parent!=null&&al.dir?[0.4,1,1.8][al.dir.grow]:1)){const c=aiCandidates(al,aiModels(al)).slice(0,3),pick=c[Math.floor(rng()*c.length)];
   if(pick&&pick.score>3000){const m=MX[pick.mid],buy=al.cash>priceNow(m)+reserve;
    if(buy||al.cash>reserve+CFG.leaseFee*m.price){const cb=cabinFor(P,pick.mid),pl=acquire(al,pick.mid,!buy,cb.biz,null,cb.first);if(pl){openRoute(al,pick.a,pick.b,pick.price,pick.rot,[pl.id]);
     if(rivalsOn(pick.a,pick.b,al).some(x=>x.al.player))news(al.name+' ouvre '+pick.a+' - '+pick.b+' face à toi.','bad');}}}}
@@ -1044,7 +1149,7 @@ function aiWeek(al){const P=PROFILES[al.profile],L=al.last,reserve=Math.max(P.re
   cand.sort((x,y)=>y.pop*y.w-x.pop*x.w);const pick=cand[Math.floor(rng()*Math.min(6,cand.length))];
   if(pick&&openBase(al,pick.code))news(al.name+' ouvre une base à '+pick.name+'.','info');}}
 // Réaction quand le joueur ouvre une ligne depuis ou vers une base de la rivale : guerre des prix ou contre-attaque
-function aiReact(al,P,reserve){const p=player();if(isAlly(al,p))return;
+function aiReact(al,P,reserve){const p=player();if(isAlly(al,p)||(p.stakes[al.id]||0)>=0.2-1e-9)return;
  for(const r of p.routes){if(G.day-r.opened>21||al.react[r.id])continue;if(!al.bases.includes(r.a)&&!al.bases.includes(r.b))continue;al.react[r.id]=1;
   if(rng()>AGGR[al.profile])continue;const k=key(r.a,r.b);let mine=al.routes.find(q=>key(q.a,q.b)===k),opened=false;
   if(!mine){const base=al.bases.includes(r.a)?r.a:r.b,dest=base===r.a?r.b:r.a,d=dist(base,dest);
@@ -1092,7 +1197,7 @@ function writeSlot(slot,quiet){if(!G)return false;let data;try{data=JSON.stringi
  if(ok){lsSet(svM(slot),meta);UI.savedAt=Date.now();}else if(!quiet)toast('Espace de stockage plein dans ce navigateur. Exporte ta partie dans un fichier, puis libère un emplacement.');
  return ok;}
 function parseSave(txt){const g=JSON.parse(txt);if(!g||typeof g!=='object'||!Array.isArray(g.airlines)||!g.airlines.length)throw new Error('format');
- if(g.v===7)migrate8(g);if(g.v===8)migrate9(g);if(g.v===9)migrate10(g);if(g.v!==10)throw new Error('version');return g;}
+ if(g.v===7)migrate8(g);if(g.v===8)migrate9(g);if(g.v===9)migrate10(g);if(g.v===10)migrate11(g);if(g.v!==11)throw new Error('version');return g;}
 function readSlot(slot){const t=lsGet(svK(slot));if(!t)return null;try{return parseSave(t);}catch(e){return null;}}
 function slotMeta(slot){const t=lsGet(svM(slot));if(!t||!lsGet(svK(slot)))return null;try{return JSON.parse(t);}catch(e){return null;}}
 function migrateLegacy(){const old=lsGet('plan-de-vol-save-v7');if(!old)return;if(!lsGet(svK('auto'))){try{const g=parseSave(old),G0=G;G=g;restoreWorld();writeSlot('auto',true);G=G0;}catch(e){}}lsDel('plan-de-vol-save-v7');}
@@ -1112,6 +1217,10 @@ const slugify=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
 const ago=t=>{if(!t)return '';const m=Math.round((Date.now()-t)/60000);return m<1?'à l\'instant':m<60?'il y a '+m+' min':m<1440?'il y a '+Math.round(m/60)+' h':'il y a '+Math.round(m/1440)+' j';};
 // Partie de la version précédente : créneaux attribués selon l'usage, nouveaux compteurs initialisés
 // Passage à l'économie réaliste : loyers recalculés aux nouveaux prix, effectifs complétés pour éviter des vols annulés
+function migrate11(g){const G0=G;G=g;g.v=11;if(!g.firms)firmsInit();const p=g.airlines[0];Object.assign(p,{inv:p.inv||{},apInv:p.apInv||{},cb:p.cb||{}});benCalc(p);
+ for(const al of g.airlines){al.sent=al.sent||0;al.pxH=al.pxH||[];if(al.parent===undefined)al.parent=null;for(const k in al.subs||{}){const S=al.subs[k];S.lv=S.lv||1;S.ph=S.ph||[];S.pw=S.pw||0;S.float=S.float||0;}}
+ for(const al of g.airlines)if(!al.bankrupt)al.px=valuation(al)/SHARES;
+ for(const id in p.stakes){const a=g.airlines[id];if(!a||a.bankrupt){delete p.stakes[id];continue;}p.cb['a'+id]=p.cb['a'+id]||p.stakes[id]*mcap(a);if(p.stakes[id]>=0.5){a.parent=p.id;a.dir=a.dir||{coop:1,grow:1,pay:1};}}G=G0;}
 function migrate10(g){const G0=G;G=g;g.v=10;for(const al of g.airlines){for(const pl of al.planes)if(!pl.owned){const L=LESSORS.find(x=>x.id===pl.lessor);pl.rate=MX[pl.model].price*(L?L.rate:CFG.leaseRate);}
  if(!al.bankrupt){const need=staffNeed(al);for(const k of SK)al.staff[k].n=Math.max(al.staff[k].n,Math.ceil(need[k]*1.02));}al.m=Object.assign(newM(),al.m);}G=G0;}
 function migrate9(g){const G0=G;G=g;g.v=9;g.prog=g.prog||{};g.apSh=g.apSh||{};
@@ -1248,7 +1357,7 @@ function alerts(){const p=player(),out=[];
  const idle=p.planes.filter(x=>!x.route).length;if(idle&&p.routes.length)out.push('<div class="alert">'+plur(idle,'avion')+' au sol sans ligne : il coûte sans rapporter.</div>');
  const bad=p.routes.filter(r=>G.day-r.opened>14&&r.profitD<0);if(bad.length)out.push('<div class="alert">'+plur(bad.length,'ligne')+' à perte : '+bad.slice(0,6).map(r=>r.a+'-'+r.b).join(', ')+'. Baisse la fréquence ou revois le prix.</div>');
  return out.join('');}
-function goalCard(){const p=player(),sh=p.share;return '<div class="card"><div class="row"><h3 class="grow" style="margin:0"><img class="ico" src="art/ic-trophy.png" alt="">Objectif : '+GOAL+' % du marché mondial</h3><span class="num">'+nf(sh*100,1)+' %</span></div>'+
+function goalCard(){const p=player(),sh=groupShare(p);return '<div class="card"><div class="row"><h3 class="grow" style="margin:0"><img class="ico" src="art/ic-trophy.png" alt="">Objectif : '+GOAL+' % du marché mondial</h3><span class="num">'+nf(sh*100,1)+' %</span></div>'+
  '<div class="bar goal"><i style="width:'+clamp(sh/CFG.goalShare*75,0,100)+'%"></i><span class="mark" style="left:75%"></span></div>'+
  '<p class="muted" style="font-size:12px">Part des passagers transportés le mois dernier, toutes compagnies confondues. Réputation : <span class="num">'+Math.round(p.rep)+'/100</span></p></div>';}
 // meilleures destinations pour un avion donné depuis une base
@@ -1338,11 +1447,11 @@ function panelFlotte(){const p=player();let h='<img class="tabhero" src="art/'+(
 const DIS=why=>' aria-disabled="true" data-why="'+esc(why)+'"';
 function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.setAttribute('role','status');document.body.appendChild(el);}el.textContent=t;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('on'),3800);}
 function seg(k,cur,labels){return '<div class="seg">'+labels.map((l,i)=>'<button data-act="policy" data-k="'+k+'" data-v="'+i+'" aria-pressed="'+(cur===i)+'">'+l+'</button>').join('')+'</div>';}
-const SUBS=[['dash','Tableau de bord'],['fin','Finances'],['ops','Opérations'],['staff','Personnel'],['svc','Services'],['mkt','Marketing'],['group','Groupe']];
+const SUBS=[['dash','Tableau de bord'],['fin','Finances'],['ops','Opérations'],['staff','Personnel'],['svc','Services'],['mkt','Marketing'],['group','Groupe'],['bourse','Bourse']];
 const tile=(l,v,c)=>'<div class="tile"><small>'+l+'</small><b class="'+(c||'')+'">'+v+'</b></div>';
 function panelGestion(){const p=player();if(!UI.sub)UI.sub='dash';
  const n=p.planes.length,stage=n<5?1:n<15?2:n<40?3:4;
- return '<img class="tabhero" src="art/grow-'+stage+'.jpg" alt="" title="Ta compagnie grandit avec ta flotte"><h2>'+esc(p.name)+'</h2><div class="chips">'+SUBS.map(x=>'<button class="chip" data-act="setf" data-k="sub" data-v="'+x[0]+'" aria-pressed="'+(UI.sub===x[0])+'">'+x[1]+'</button>').join('')+'</div>'+{dash:subDash,fin:subFin,ops:subOps,staff:subStaff,svc:subSvc,mkt:subMkt,group:subGroup}[UI.sub](p);}
+ return '<img class="tabhero" src="art/grow-'+stage+'.jpg" alt="" title="Ta compagnie grandit avec ta flotte"><h2>'+esc(p.name)+'</h2><div class="chips">'+SUBS.map(x=>'<button class="chip" data-act="setf" data-k="sub" data-v="'+x[0]+'" aria-pressed="'+(UI.sub===x[0])+'">'+x[1]+'</button>').join('')+'</div>'+{dash:subDash,fin:subFin,ops:subOps,staff:subStaff,svc:subSvc,mkt:subMkt,group:subGroup,bourse:subBourse}[UI.sub](p);}
 
 // ---- Graphiques du tableau de bord (SVG, une seule échelle, survol par title)
 function animGauges(root){setTimeout(()=>root.querySelectorAll('.gauge .ndl[data-to]').forEach(n=>{n.style.transform='rotate('+n.dataset.to+'deg)';}),80);}
@@ -1351,8 +1460,8 @@ function lineChart(series,o){o=o||{};const W=320,H=o.h||130,pl=40,pr=8,pt=8,pb=1
  let g='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(hi)+'" y2="'+Y(hi)+'" stroke="#e3e6e2"/><line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(lo)+'" y2="'+Y(lo)+'" stroke="#c9cfcb"/>'+(lo<0&&hi>0?'<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(0)+'" y2="'+Y(0)+'" stroke="#9aa5a0" stroke-dasharray="3 3"/>':'')+
   '<text x="'+(pl-4)+'" y="'+(Y(hi)+4)+'" text-anchor="end" font-size="9" fill="#6b7a80">'+f(hi)+'</text><text x="'+(pl-4)+'" y="'+(Y(lo))+'" text-anchor="end" font-size="9" fill="#6b7a80">'+f(lo)+'</text>';
  for(const S of series){const off=n-S.v.length,pts=S.v.map((v,i)=>X(i+off).toFixed(1)+','+Y(v).toFixed(1)).join(' ');g+='<polyline fill="none" stroke="'+S.c+'" stroke-width="'+(S.me?2.5:1.6)+'" stroke-linejoin="round" stroke-linecap="round" points="'+pts+'"'+(S.me?'':' opacity=".75"')+'><title>'+esc(S.n)+'</title></polyline>';
-  S.v.forEach((v,i)=>{g+='<circle cx="'+X(i+off)+'" cy="'+Y(v)+'" r="6" fill="transparent"><title>'+esc(S.n)+' · il y a '+(S.v.length-1-i)+' mois : '+f(v)+'</title></circle>';});}
- g+='<text x="'+pl+'" y="'+(H-4)+'" font-size="9" fill="#6b7a80">il y a '+(n-1)+' mois</text><text x="'+(W-pr)+'" y="'+(H-4)+'" text-anchor="end" font-size="9" fill="#6b7a80">dernier mois</text>';
+  S.v.forEach((v,i)=>{g+='<circle cx="'+X(i+off)+'" cy="'+Y(v)+'" r="6" fill="transparent"><title>'+esc(S.n)+' · il y a '+(S.v.length-1-i)+' '+(o.unit||'mois')+' : '+f(v)+'</title></circle>';});}
+ g+='<text x="'+pl+'" y="'+(H-4)+'" font-size="9" fill="#6b7a80">il y a '+(n-1)+' '+(o.unit||'mois')+'</text><text x="'+(W-pr)+'" y="'+(H-4)+'" text-anchor="end" font-size="9" fill="#6b7a80">'+(o.unit?'cette semaine':'dernier mois')+'</text>';
  return '<div class="chart"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.label||'Graphique')+'">'+g+'</svg>'+(series.length>1?'<div class="lg">'+series.map(S=>'<span><i style="background:'+S.c+'"></i>'+esc(S.n)+'</span>').join('')+'</div>':'')+'</div>';}
 function barChart(vals,o){o=o||{};const W=320,H=o.h||110,pl=40,pb=16,pt=6,n=vals.length;if(!n)return '';const hi=Math.max(0,...vals),lo=Math.min(0,...vals),r=hi-lo||1,Y=v=>pt+(H-pt-pb)*(hi-v)/r,bw=(W-pl-6)/n,f=o.fmt||(v=>nf(v));
  let g='<line x1="'+pl+'" x2="'+(W-2)+'" y1="'+Y(0)+'" y2="'+Y(0)+'" stroke="#9aa5a0"/><text x="'+(pl-4)+'" y="'+(Y(hi)+8)+'" text-anchor="end" font-size="9" fill="#6b7a80">'+f(hi)+'</text>'+(lo<0?'<text x="'+(pl-4)+'" y="'+Y(lo)+'" text-anchor="end" font-size="9" fill="#6b7a80">'+f(lo)+'</text>':'');
@@ -1411,7 +1520,7 @@ function subFin(p){const m=p.last,lim=creditLimit(p);
  if(p.hist.length){const mx=Math.max(1,...p.hist.map(Math.abs));h+='<div class="card"><h3>Résultat mensuel'+(p.hist.length>1?', '+p.hist.length+' derniers mois':'')+'</h3><div class="spark" role="img" aria-label="Résultat mensuel">'+p.hist.map(v=>'<i class="'+(v<0?'n':'')+'" style="height:'+Math.max(4,Math.abs(v)/mx*100)+'%" title="'+money(v)+'"></i>').join('')+'</div><div class="row muted num" style="font-size:11px"><span class="grow">échelle : '+money(mx)+'</span><span>dernier : '+signed(p.hist[p.hist.length-1])+'</span></div></div>';}
  if(m){const row=(l,v,neg)=>v?'<tr><td>'+l+'</td><td class="r num">'+(neg?'-':'')+money(v)+'</td></tr>':'',sec=t=>'<tr><th colspan="2">'+t+'</th></tr>';
   h+='<div class="card"><h3>Compte de résultat du mois dernier</h3><table>'+sec('Produits')+row('Billets classe éco',m.rev)+row('Billets classe affaires',m.revB)+row('Billets Première',m.revF)+row('Revenus annexes (bagages, Wi-Fi)',m.anc)+row('Dividendes reçus de tes participations',m.divIn)+
-  sec('Coûts des vols')+row('Carburant',m.fuel,1)+row('Frais d\'équipage en vol',m.crew,1)+row('Taxes d\'aéroport',m.fees,1)+row('Maintenance',m.mx,1)+row('Carbone (quotas et taxes)',m.co2,1)+row('Indemnités de retard',m.delay,1)+row('Restauration, assistance au sol et distribution',m.svc,1)+
+  sec('Coûts des vols')+row('Carburant',m.fuel,1)+row('Frais d\'équipage en vol',m.crew,1)+row('Taxes d\'aéroport',m.fees,1)+row('Maintenance',m.mx,1)+row('Carbone (quotas et taxes)',m.co2,1)+row('Indemnités de retard',m.delay,1)+row('Restauration, assistance au sol et distribution',m.svc,1)+row('Part des actionnaires minoritaires des filiales',m.minor||0,1)+
   sec('Coûts de structure')+row('Salaires',m.wages,1)+row('Recrutement et formation',m.hr,1)+row('Salons',m.lounge,1)+row('Programme de fidélité',m.loyal,1)+row('Loyers d\'avions',m.lease,1)+row('Frais de structure (siège, ventes, informatique)',m.fixed,1)+row('Amortissement des avions en propriété',m.dep,1)+row('Cotisations d\'alliance',m.ally,1)+row('Campagnes de marketing',m.mkt,1)+row('Intérêts',m.interest,1)+
   '<tr class="total"><td>Résultat</td><td class="r num '+cls(m.profit)+'">'+signed(m.profit)+'</td></tr>'+(m.slots?'<tr><td>Achats nets de créneaux</td><td class="r num">'+(m.slots>0?'-':'+')+money(Math.abs(m.slots))+'</td></tr>':'')+(m.divOut?'<tr><td>Dividendes versés aux actionnaires</td><td class="r num">-'+money(m.divOut)+'</td></tr>':'')+(Math.abs(m.hedge||0)>1e3?'<tr><td>Dont effet de la couverture carburant</td><td class="r num '+cls(m.hedge)+'">'+signed(m.hedge)+'</td></tr>':'')+'</table><p class="muted" style="font-size:12px">'+nf(m.pax)+' passagers transportés, dont '+nf(m.paxB)+' en affaires'+(m.paxF?' et '+nf(m.paxF)+' en Première':'')+'.</p></div>';}
  else h+='<p class="muted">Le premier compte de résultat arrive à la fin du mois.</p>';
@@ -1453,30 +1562,72 @@ function subSvc(p){const sv=p.svc,c=comfortRaw(sv,1,p.lounges.length?1:0),ce=Mat
  h+=card('loyal','Programme de fidélité','Classique : 120 k€ par mois + 0,80 € par passager. Premium : 350 k€ par mois + 2 € par passager. Retient surtout la clientèle affaires.',['Aucun','Classique','Premium']);
  h+='<div class="card"><img class="banner" src="art/svc-lounge.jpg" alt=""><div class="row">'+svcIcon('lounge')+'<b class="grow">Salons d\'aéroport</b></div><p class="muted" style="font-size:12px">90 k€ par mois et par base. Attire la clientèle affaires sur les lignes qui partent de la base ou y arrivent.</p><div class="chips">'+p.bases.map(b=>'<button class="chip" data-act="lounge" data-v="'+b+'" aria-pressed="'+p.lounges.includes(b)+'">'+esc(APX[b].name)+'</button>').join('')+'</div></div>';
  return h;}
-function subGroup(p){const V=valuation(p),riv=G.airlines.filter(a=>!a.player&&!a.bankrupt);
- let h='<img class="tabhero" src="art/tab-direction.jpg" alt="">'+'<div class="card"><h3><img class="ico" src="art/ic-bank.png" alt="">Bourse</h3><div class="kv"><span>Valorisation de ta compagnie</span><b>'+money(V)+'</b><span>Cours de l\'action ('+nf(SHARES/1e6)+' M d\'actions)</span><b>'+nf(V/SHARES,2)+' €</b><span>Capital coté en bourse</span><b>'+Math.round(p.float*100)+' %</b><span>Dividende déclaré sur 12 mois</span><b>'+money(div12(p))+'</b><span>Dividende par action</span><b>'+nf(div12(p)/SHARES,3)+' €</b><span>Rendement</span><b>'+nf(divYield(p)*100,1)+' %</b><span>Versé à tes actionnaires (12 mois)</span><b>'+money(div12(p)*p.float)+'</b></div><p class="muted" style="font-size:12px">La valorisation compte tes actifs nets, tes résultats récents et tes dividendes : verser des dividendes fait monter ton cours, donc le prix de tes futures cessions d\'actions.</p>';
- if(!ipoOpen(p))h+='<p class="muted" style="font-size:12px">L\'introduction en bourse ouvre après un an d\'activité et à partir de 40 M€ de valorisation.</p>';
- else{h+='<div class="row">'+(p.float<0.49?'<button class="btn small primary" data-act="ipo" data-v="0.1">Céder 10 % (+'+money(0.1*V*0.95)+')</button>':'')+(p.float<=0.29?'<button class="btn small" data-act="ipo" data-v="0.2">Céder 20 % (+'+money(0.2*V*0.95)+')</button>':'')+(p.float>0?'<button class="btn small" data-act="buyback"'+(p.cash<0.1*V*1.05?DIS('Trésorerie insuffisante : il faut '+money(0.1*V*1.05)+'.'):'')+'>Racheter 10 % (-'+money(Math.min(0.1,p.float)*V*1.05)+')</button>':'')+'</div><p class="muted" style="font-size:12px">Tu gardes toujours la majorité (51 % au moins).</p>';
-  if(p.float>0)h+='<div><b>Dividendes</b> <span class="muted" style="font-size:12px">part du bénéfice mensuel versée aux actionnaires extérieurs. Les banques prêtent plus aux compagnies qui en versent.</span>'+seg('payout',p.payout,['Aucun (plafond de prêt -15 %)','25 %','50 % (plafond +15 %)'])+'</div>';}
- h+='</div><div class="card">'+IMG('br-lc.jpg','tab-lignes.jpg','banner')+'<h3>Filiales</h3><p class="muted" style="font-size:12px">Une filiale vole sous sa propre marque, avec les avions et la trésorerie du groupe. Tu choisis la marque de chaque ligne.</p>';
- for(const k in BRANDS){const B=BRANDS[k],S=p.subs[k],n=p.routes.filter(r=>r.brand===k);
-  h+='<div class="row" style="align-items:flex-start">'+(S?'<span style="flex:0 0 18px;height:18px;border-radius:5px;background:'+S.color+'"></span>':'')+'<div class="grow"><b>'+(S?esc(S.name)+' · ':'')+B.label+'</b><div class="muted" style="font-size:12px">'+(k==='lc'?'Cabine tout-éco plus dense (+12 % de sièges), équipages -25 %, redevances -10 %, recettes annexes ×1,8. Moins de confort, une image à part.':'Avions de 100 places au plus, équipages -15 %, entretien -5 %.')+(S?' · '+plur(n.length,'ligne')+' · '+signed(n.reduce((s,r)=>s+(r.profitD||0),0))+'/j':' Création '+money(B.cost)+', puis '+money(B.fee)+'/mois.')+'</div></div>'+(S?'':'<button class="btn small" data-act="newbrand" data-v="'+k+'"'+(p.cash<B.cost?DIS('Trésorerie insuffisante : il manque '+money(B.cost-p.cash)+'.'):'')+'>Créer</button>')+'</div>';}
- h+='</div><div class="card">'+IMG('cs-hand.jpg','ev-allyon.jpg','banner')+'<h3>Partage de codes</h3><p class="muted" style="font-size:12px">Plus léger qu\'une alliance : chacun vend les vols de l\'autre au départ de ses bases. Les lignes concernées gagnent 8 % d\'attractivité, et le vendeur touche 7 % du prix des billets. '+money(CS_FEE)+'/mois par accord, 4 accords au plus. Une rivale en guerre des prix avec toi peut rompre l\'accord.</p>'+
+function subGroup(p){const riv=G.airlines.filter(a=>!a.player&&!a.bankrupt),ctl=riv.filter(a=>a.parent===p.id),gs=groupShare(p);
+ let h='<img class="tabhero" src="art/tab-direction.jpg" alt="">';
+ h+='<div class="card"><h3><img class="ico" src="art/ic-rank.png" alt="">Ton groupe</h3><div class="tiles">'+tile('Part du groupe',nf(gs*100,1)+' %')+tile('Compagnies contrôlées',ctl.length)+tile('Filiales',Object.keys(p.subs).length)+tile('Portefeuille',money(holdVal(p)))+'</div><p class="muted" style="font-size:12px">La part de marché du groupe additionne la tienne et celle des compagnies dont tu détiens au moins 50 %. C\'est elle qui compte pour l\'objectif et pour le conseil.</p></div>';
+ h+='<div class="card">'+IMG('br-lc.jpg','tab-lignes.jpg','banner')+'<h3>Filiales</h3><p class="muted" style="font-size:12px">Une filiale vole sous sa propre marque, avec les avions et la trésorerie du groupe. Tu choisis la marque de chaque ligne. Chaque filiale monte jusqu\'au niveau 3, peut entrer en bourse ou être cédée.</p></div>';
+ for(const k in BRANDS){const B=BRANDS[k],S=p.subs[k];
+  if(!S){h+='<div class="card" style="padding:10px 12px"><div class="row" style="align-items:flex-start">'+IMG('br-'+k+'.jpg',BFB[k],'','width:72px;height:54px;object-fit:cover;border-radius:6px;flex:none')+'<div class="grow"><b>'+B.label+'</b><div class="muted" style="font-size:12px">'+B.desc+' Création '+money(B.cost)+', puis '+money(B.fee)+'/mois.</div></div><button class="btn small" data-act="newbrand" data-v="'+k+'"'+(p.cash<B.cost?DIS('Trésorerie insuffisante : il manque '+money(B.cost-p.cash)+'.'):'')+'>Créer</button></div></div>';continue;}
+  const R=brandRoutes(p,k),np=R.reduce((s,r)=>s+r.planes.length,0),lv=S.lv||1,pd=R.reduce((s,r)=>s+(r.profitD||0),0),V=subVal(p,k),uc=lv<3?B.cost*BLV[lv]:0,fl=S.float||0,last=S.ph&&S.ph.length?S.ph[S.ph.length-1]:null;
+  h+='<div class="card" style="border-left:6px solid '+S.color+'">'+IMG('br-'+k+'.jpg',BFB[k],'banner')+'<div class="row"><b class="grow" style="font-size:17px">'+esc(S.name)+'</b><span class="pill">'+B.label+' · niveau '+lv+'/3</span></div><p class="muted" style="font-size:12px">'+B.desc+'</p>'+
+   '<div class="kv"><span>Lignes · avions</span><b>'+R.length+' · '+np+'</b><span>Résultat des lignes</span><b class="'+cls(pd)+'">'+signed(pd)+'/j</b>'+(last!=null?'<span>Résultat complet du mois dernier</span><b class="'+cls(last)+'">'+signed(last)+'</b>':'')+'<span>Charges propres (avions, équipages, marque)</span><b>'+money(brandOH(p,k))+'/mois</b><span>Valeur estimée</span><b>'+money(V)+'</b><span>Capital en bourse</span><b>'+Math.round(fl*100)+' %</b></div>'+
+   (S.ph&&S.ph.length>1?barChart(S.ph.slice(-12),{fmt:mFmt,label:'Résultat mensuel de '+S.name}):'')+
+   '<div class="row" style="flex-wrap:wrap">'+(lv<3?'<button class="btn small primary" data-act="brandup" data-v="'+k+'"'+(p.cash<uc?DIS('Trésorerie insuffisante : il manque '+money(uc-p.cash)+'.'):'')+'>Passer au niveau '+(lv+1)+' ('+money(uc)+')</button>':'<span class="pill good">Niveau maximal</span>')+'<button class="btn small" data-act="bauto" data-v="'+k+'" aria-pressed="'+!!S.auto+'">Prix automatiques : '+(S.auto?'oui':'non')+'</button></div>'+
+   '<p class="muted" style="font-size:12px">Chaque niveau : équipages et entretien -5 %, redevances -3 %, recettes annexes +10 %, et la marque gagne en notoriété. Avec les prix automatiques, la filiale applique chaque mois les prix et rotations optimaux sur ses lignes.</p>'+
+   '<div class="row" style="flex-wrap:wrap">'+(fl+0.25<=0.49+1e-9?'<button class="btn small" data-act="bipo" data-k="'+k+'" data-v="0.25"'+(!R.length?DIS('Une filiale sans ligne ne peut pas entrer en bourse.'):'')+'>Coter 25 % (+'+money(0.25*V*0.95)+')</button>':'')+(fl?'<button class="btn small" data-act="bipo" data-k="'+k+'" data-v="-'+fl+'"'+(p.cash<fl*V*1.05?DIS('Trésorerie insuffisante : il faut '+money(fl*V*1.05)+'.'):'')+'>Racheter les minoritaires (-'+money(fl*V*1.05)+')</button>':'')+'</div>'+
+   (fl?'<p class="muted" style="font-size:12px">Les actionnaires minoritaires touchent '+Math.round(fl*100)+' % du résultat mensuel de la filiale.</p>':'')+
+   '<div class="row" style="flex-wrap:wrap"><button class="btn small" data-act="bsell" data-k="'+k+'" data-v="0.3"'+(!R.length?DIS('Rien à céder : la filiale n\'a pas de ligne.'):'')+'>Céder en gardant 30 %</button><button class="btn small" data-act="bsell" data-k="'+k+'" data-v="0"'+(!R.length?DIS('Rien à céder : la filiale n\'a pas de ligne.'):'')+'>Céder entièrement</button><button class="btn small" data-act="bclose" data-v="'+k+'">Dissoudre la marque</button></div></div>';}
+ h+='<div class="card">'+IMG('opa.jpg','ev-takeover.jpg','banner')+'<h3>Compagnies de ton groupe</h3>';
+ if(!ctl.length)h+='<p class="muted" style="font-size:12px">Aucune pour l\'instant. Prends 50 % du capital d\'une rivale (onglet Bourse, offre publique d\'achat) : elle garde sa marque et sa direction, mais tu fixes sa stratégie et elle compte dans la part de ton groupe.</p>';
+ for(const a of ctl){const st=p.stakes[a.id],D=a.dir||{coop:1,grow:1,pay:1},tc=takeoverCost(p,a);
+  h+='<div class="card" style="padding:10px 12px"><div class="row">'+logo(a,28)+'<b class="grow">'+esc(a.name)+'</b><span class="pill good">'+Math.round(st*100)+' %</span></div>'+
+  '<div class="kv"><span>Part de marché</span><b>'+nf(a.share*100,1)+' %</b><span>Flotte · lignes</span><b>'+a.planes.length+' · '+a.routes.length+'</b><span>Résultat du mois dernier</span><b class="'+(a.last?cls(a.last.profit):'')+'">'+(a.last?signed(a.last.profit):'-')+'</b><span>Trésorerie</span><b class="'+cls(a.cash)+'">'+money(a.cash)+'</b><span>Valeur de ta part</span><b>'+money(st*mcap(a))+'</b><span>Dividendes reçus (12 mois)</span><b class="pos">'+money(sum((p.divRecv||{})[a.id]))+'</b></div>'+
+  '<div><b>Réseau</b>'+dseg(a,'coop',D.coop,['Autonome','Coopération'])+'<p class="muted" style="font-size:12px">En coopération, elle n\'ouvre plus de ligne face aux tiennes. Dans tous les cas, vos lignes communes bénéficient du partage de codes et des correspondances, comme dans une alliance.</p></div>'+
+  '<div><b>Stratégie</b>'+dseg(a,'grow',D.grow,['Rentabilité','Équilibre','Croissance'])+'</div>'+
+  '<div><b>Dividendes</b>'+dseg(a,'pay',D.pay,['Aucun','Normal ('+Math.round(DIVR[a.profile]*100)+' %)','Maximum (80 %)'])+'</div>'+
+  '<div class="row" style="flex-wrap:wrap"><button class="btn small" data-act="inject" data-v="'+a.id+'"'+(p.cash<10e6?DIS('Il faut 10 M€ de trésorerie.'):'')+'>Injecter 10 M€</button><button class="btn small" data-act="stock" data-v="'+a.id+'">Fiche boursière</button><button class="btn small primary" data-act="takeover" data-v="'+a.id+'"'+(p.cash<tc?DIS('Trésorerie insuffisante : il manque '+money(tc-p.cash)+' pour la fusion.'):'')+'>Fusionner ('+money(tc)+')</button></div></div>';}
+ h+='</div>';
+ h+='<div class="card">'+IMG('cs-hand.jpg','ev-allyon.jpg','banner')+'<h3>Partage de codes</h3><p class="muted" style="font-size:12px">Plus léger qu\'une alliance : chacun vend les vols de l\'autre au départ de ses bases. Les lignes concernées gagnent 8 % d\'attractivité, et le vendeur touche 7 % du prix des billets. '+money(CS_FEE)+'/mois par accord, 4 accords au plus. Une rivale en guerre des prix avec toi peut rompre l\'accord.</p>'+
   (p.last&&(p.last.csIn||p.last.csOut)?'<div class="kv"><span>Commissions reçues (mois)</span><b class="pos">'+money(p.last.csIn)+'</b><span>Commissions versées (mois)</span><b class="neg">'+money(p.last.csOut)+'</b></div>':'');
- for(const al of riv){const on=p.cs.includes(al.id),cd=(al.csCd||0)>G.day,ally=isAlly(p,al);
+ for(const al of riv.filter(x=>x.parent!==p.id)){const on=p.cs.includes(al.id),cd=(al.csCd||0)>G.day,ally=isAlly(p,al);
   h+='<div class="row">'+logo(al,24)+'<div class="grow"><b>'+esc(al.name)+'</b><div class="muted" style="font-size:12px">'+(ally?'déjà alliée':on?'accord en cours':cd?'refus récent':'chance d\'accord ~'+Math.round(csChance(p,al)*100)+' %')+'</div></div>'+
   (on?'<span class="pill good">Codes partagés</span><button class="btn small" data-act="endcs" data-v="'+al.id+'">Arrêter</button>':'<button class="btn small" data-act="cs" data-v="'+al.id+'"'+(ally||cd||p.cs.length>=4?DIS(ally?'Déjà alliée : le partage de codes est inclus dans l\'alliance.':cd?'Refus récent : réessaie dans quelques semaines.':'Maximum de 4 accords atteint.'):'')+'>Proposer</button>')+'</div>';}
  h+='</div><div class="card"><h3>Alliance</h3><p class="muted" style="font-size:12px">Jusqu\'à 3 alliées. Partage de codes : +12 % d\'attractivité sur les lignes que vous desservez tous les deux, et tes passagers peuvent prendre leurs lignes en correspondance dans tes hubs. Cotisation : 100 k€ par mois et par alliée. Une alliée peut te quitter, surtout si tu deviens beaucoup plus grande qu\'elle.</p>';
- for(const al of riv){const ally=isAlly(p,al),cd=(al.allyCd||0)>G.day;
+ for(const al of riv.filter(x=>x.parent!==p.id)){const ally=isAlly(p,al),cd=(al.allyCd||0)>G.day;
   h+='<div class="row">'+logo(al,24)+'<div class="grow"><b>'+esc(al.name)+'</b><div class="muted" style="font-size:12px">'+PROFILES[al.profile].label+(ally?'':cd?' · refus récent, réessaie le '+shortDate(al.allyCd):' · chance d\'accord ~'+Math.round(allyChance(p,al)*100)+' %')+'</div></div>'+
   (ally?'<span class="pill good">Alliée</span><button class="btn small" data-act="leaveally" data-v="'+al.id+'">Quitter</button>':'<button class="btn small" data-act="ally" data-v="'+al.id+'"'+(cd||p.allies.length>=3?DIS(cd?'Refus récent : réessaie dans quelques semaines.':'Maximum de 3 alliances atteint.'):'')+'>Proposer</button>')+'</div>';}
- h+='</div><div class="card"><h3>Participations et rachats</h3><p class="muted" style="font-size:12px">Achète des parts de 10 % au prix de la valorisation. Chaque mois, une rivale bien en trésorerie verse une part de son bénéfice en dividendes, selon sa politique ; tu en touches ta part. Une rivale qui verse beaucoup coûte plus cher à acheter. À 50 %, ou si elle est en difficulté, tu peux la racheter entièrement : sa flotte, ses lignes, ses bases, son personnel, sa trésorerie et ses dettes rejoignent ta compagnie.</p>';
- for(const al of riv){const st=p.stakes[al.id]||0,canT=st>=0.5||inTrouble(al),tc=takeoverCost(p,al);
-  h+='<div class="card" style="padding:10px 12px"><img class="banner" style="width:calc(100% + 24px);margin:-10px -12px 0;height:96px" src="art/riv-'+(al.entrant?al.artI:RIVALS.findIndex(x=>x.name===al.name)+1)+'.jpg" alt=""><div class="row">'+logo(al,24)+'<b class="grow">'+esc(al.name)+'</b>'+(inTrouble(al)?'<span class="pill bad">En difficulté</span>':'')+'</div>'+
-  '<div class="kv"><span>Valorisation</span><b>'+money(valuation(al))+'</b><span>Ta participation</span><b>'+Math.round(st*100)+' %</b><span>Résultat du mois dernier</span><b class="'+(al.last?cls(al.last.profit):'')+'">'+(al.last?signed(al.last.profit):'-')+'</b><span>Politique de dividende</span><b>'+Math.round(DIVR[al.profile]*100)+' % du bénéfice'+(al.divH&&al.divH.length&&!al.divH[al.divH.length-1]?' (suspendu)':'')+'</b><span>Dividendes versés (12 mois)</span><b>'+money(div12(al))+'</b><span>Rendement</span><b>'+nf(divYield(al)*100,1)+' %</b>'+(st?'<span>Tes dividendes reçus (12 mois)</span><b class="pos">'+money(sum((p.divRecv||{})[al.id]))+'</b>':'')+'</div>'+
-  '<div class="row"><button class="btn small" data-act="stake" data-v="'+al.id+'"'+(p.cash<stakeCost(al)||st>=0.9?DIS(st>=0.9?'Participation maximale atteinte.':'Trésorerie insuffisante : il manque '+money(stakeCost(al)-p.cash)+'.'):'')+'>+10 % ('+money(stakeCost(al))+')</button>'+(st?'<button class="btn small" data-act="unstake" data-v="'+al.id+'">-10 %</button>':'')+
-  (canT?'<button class="btn small primary" data-act="takeover" data-v="'+al.id+'"'+(p.cash<tc?DIS('Trésorerie insuffisante : il manque '+money(tc-p.cash)+' pour le rachat.'):'')+'>Racheter ('+money(tc)+')</button>':'')+'</div></div>';}
  return h+'</div>';}
+const BFB={lc:'tab-lignes.jpg',reg:'tab-lignes.jpg',leis:'ev-boom.jpg',cargo:'ev-cargo.jpg'};
+function dseg(a,k,cur,labels){return '<div class="seg">'+labels.map((l,i)=>'<button data-act="cdir" data-id="'+a.id+'" data-k="'+k+'" data-v="'+i+'" aria-pressed="'+(cur===i)+'">'+l+'</button>').join('')+'</div>';}
+const chgN=(h,n)=>h&&h.length>n?h[h.length-1]/h[h.length-1-n]-1:null,pctS=x=>x==null?'-':(x>=0?'+':'')+nf(x*100,1)+' %';
+function opin(al){const f=valuation(al)/SHARES,r=pxOf(al)/f;return r<0.93?'Sous-évaluée':r>1.07?'Surévaluée':'Bien valorisée';}
+function perOf(al){const a=annProfit(al);return a>0?nf(mcap(al)/a,1):'-';}
+function thrLadder(st){return '<div class="thr"><div class="bar"><i style="width:'+Math.min(100,st*100)+'%"></i>'+[5,20,33.3,50].map(t=>'<span class="mark" style="left:'+t+'%"></span>').join('')+'</div><ul class="thrl">'+THR.map(([t,l,x])=>'<li class="'+(st>=t-1e-9?'on':'')+'"><b>'+(st>=t-1e-9?'✓ ':'')+Math.round(t*100)+' % · '+l+'</b> : '+x+'</li>').join('')+'</ul></div>';}
+function subBourse(p){const V=mcap(p),riv=G.airlines.filter(a=>!a.player&&!a.bankrupt),ix=G.idx&&G.idx.h||[],ph=p.pxH||[];
+ let h=IMG('bourse.jpg','ev-ipo.jpg','tabhero');
+ h+='<div class="card"><h3><img class="ico" src="art/ic-bank.png" alt="">Indice aérien</h3><div class="tiles">'+tile('Indice',ix.length?nf(ix[ix.length-1],1):'100')+tile('Sur 3 mois',pctS(chgN(ix,13)),cls(chgN(ix,13)||0))+tile('Kérosène',nf(G.fuel*90)+' $/baril')+'</div>'+(ix.length>1?lineChart([{n:'Indice',c:'#2f6f8f',v:ix.slice(-52),me:1}],{fmt:v=>nf(v,1),unit:'sem.',label:'Indice des compagnies cotées'}):'<p class="muted" style="font-size:12px">La courbe apparaît après deux semaines.</p>')+'<p class="muted" style="font-size:12px">Capitalisation totale des compagnies, base 100 au début de la partie. Les cours suivent la valeur des compagnies, mais l\'humeur du marché les en écarte souvent de 5 à 15 % : achète quand une compagnie est sous-évaluée.</p></div>';
+ h+='<div class="card"><h3>Ton action</h3><div class="row">'+logo(p,32)+'<div class="grow"><b class="num" style="font-size:22px">'+nf(pxOf(p),2)+' €</b> <span class="'+cls(chgN(ph,4)||0)+'" style="font-size:13px">'+pctS(chgN(ph,4))+' sur 4 semaines</span></div><span class="pill">'+opin(p)+'</span></div>'+(ph.length>1?lineChart([{n:'Cours',c:p.color,v:ph.slice(-52),me:1}],{fmt:v=>nf(v,2)+' €',unit:'sem.',label:'Cours de ton action'}):'')+
+  '<div class="kv"><span>Capitalisation ('+nf(SHARES/1e6)+' M d\'actions)</span><b>'+money(V)+'</b><span>Valeur fondamentale</span><b>'+money(valuation(p))+'</b><span>PER (cours / bénéfice annuel)</span><b>'+perOf(p)+'</b><span>Capital coté en bourse</span><b>'+Math.round(p.float*100)+' %</b><span>Dividende déclaré sur 12 mois</span><b>'+money(div12(p))+'</b><span>Rendement</span><b>'+nf(divYield(p)*100,1)+' %</b><span>Versé à tes actionnaires (12 mois)</span><b>'+money(div12(p)*p.float)+'</b></div><p class="muted" style="font-size:12px">La valeur fondamentale compte tes actifs nets (portefeuille compris), tes résultats récents et tes dividendes. Le conseil d\'administration pèse aussi : sa confiance fait monter ou baisser la valorisation.</p>';
+ if(!ipoOpen(p))h+='<p class="muted" style="font-size:12px">L\'introduction en bourse ouvre après un an d\'activité et à partir de 40 M€ de valorisation.</p>';
+ else{h+='<div class="row">'+(p.float<0.49?'<button class="btn small primary" data-act="ipo" data-v="0.1">Céder 10 % (+'+money(0.1*V*0.95)+')</button>':'')+(p.float<=0.29?'<button class="btn small" data-act="ipo" data-v="0.2">Céder 20 % (+'+money(0.2*V*0.95)+')</button>':'')+(p.float>0?'<button class="btn small" data-act="buyback"'+(p.cash<Math.min(0.1,p.float)*V*1.05?DIS('Trésorerie insuffisante : il faut '+money(Math.min(0.1,p.float)*V*1.05)+'.'):'')+'>Racheter 10 % (-'+money(Math.min(0.1,p.float)*V*1.05)+')</button>':'')+'</div><p class="muted" style="font-size:12px">Tu gardes toujours la majorité (51 % au moins). Céder des actions fait un peu baisser le cours, en racheter le fait monter.</p>';
+  if(p.float>0)h+='<div><b>Dividendes</b> <span class="muted" style="font-size:12px">part du bénéfice mensuel versée aux actionnaires extérieurs. Les banques prêtent plus aux compagnies qui en versent.</span>'+seg('payout',p.payout,['Aucun (plafond de prêt -15 %)','25 %','50 % (plafond +15 %)'])+'</div>';}
+ h+='</div>';
+ const pos=[];for(const id in p.stakes){const a=G.airlines[id];if(a&&!a.bankrupt)pos.push({n:a.name,s:p.stakes[id],v:p.stakes[id]*mcap(a),k:'a'+id});}
+ for(const id in p.inv||{})pos.push({n:FIRMX[id].name,s:p.inv[id],v:p.inv[id]*firmVal(firmOf(id)),k:'f'+id});
+ for(const c in p.apInv||{})pos.push({n:'Aéroport '+APX[c].name,s:p.apInv[c],v:p.apInv[c]*apVal(c),k:'p'+c});
+ if(pos.length){const tv=sum(pos.map(x=>x.v)),tc=sum(pos.map(x=>(p.cb||{})[x.k]||0));h+='<div class="card"><h3>Ton portefeuille</h3><div class="tiles">'+tile('Valeur',money(tv))+tile('Plus-value latente',signed(tv-tc),cls(tv-tc))+tile('Dividendes reçus (mois)',money(p.last?p.last.divIn||0:0),'pos')+'</div><div style="overflow-x:auto"><table><tr><th>Ligne</th><th class="r">Part</th><th class="r">Valeur</th><th class="r">+/-</th></tr>'+pos.map(x=>{const c=(p.cb||{})[x.k]||0;return '<tr><td>'+esc(x.n)+'</td><td class="r num">'+Math.round(x.s*100)+' %</td><td class="r num">'+sM(x.v)+'</td><td class="r num '+cls(x.v-c)+'">'+(c?(x.v>=c?'+':'')+nf((x.v/c-1)*100)+' %':'-')+'</td></tr>';}).join('')+'</table></div></div>';}
+ h+='<div class="card">'+IMG('opa.jpg','ev-takeover.jpg','banner')+'<h3>Compagnies cotées</h3><p class="muted" style="font-size:12px">Achète en bourse jusqu\'à 30 % du capital ; au-delà, la loi impose une offre publique d\'achat (OPA) pour monter à 51 % ou 100 %. Seuils : 5 % déclaration, 20 % siège au conseil, 33 % minorité de blocage, 50 % contrôle. Touche une compagnie pour ouvrir sa fiche.</p>';
+ for(const a of riv){const st=p.stakes[a.id]||0,c4=chgN(a.pxH,4);
+  h+='<div class="row stockrow" data-act="stock" data-v="'+a.id+'" role="button" tabindex="0">'+logo(a,30)+'<div class="grow"><b>'+esc(a.name)+'</b>'+(a.parent===p.id?' <span class="pill good">Ton groupe</span>':st?' <span class="pill">'+Math.round(st*100)+' %</span>':'')+(inTrouble(a)?' <span class="pill bad">En difficulté</span>':'')+'<div class="muted" style="font-size:12px">'+PROFILES[a.profile].label+' · '+sM(mcap(a))+' · '+opin(a)+'</div></div><div style="text-align:right"><b class="num">'+nf(pxOf(a),2)+' €</b><div class="'+cls(c4||0)+'" style="font-size:12px">'+pctS(c4)+'</div></div></div>';}
+ h+='</div><div class="card"><h3>Participations stratégiques</h3><p class="muted" style="font-size:12px">Des sociétés du secteur, par tranches de 5 % jusqu\'à 50 %. Elles versent des dividendes chaque mois et te font une remise qui grandit avec ta part (remise maximale à 50 %).</p></div>';
+ for(const f of FIRMS){const F=firmOf(f.id),s=(p.inv||{})[f.id]||0,FV=firmVal(F),c5=0.05*FV*1.01,c4=chgN(F.pxH,4);
+  h+='<div class="card" style="padding:10px 12px">'+IMG(f.img,f.fb,'banner','width:calc(100% + 24px);margin:-10px -12px 8px;height:100px')+'<div class="row"><b class="grow">'+f.name+'</b><span class="pill">'+f.kind+'</span></div><div class="kv"><span>Valeur</span><b>'+money(FV)+' <small class="'+cls(c4||0)+'">'+pctS(c4)+'</small></b><span>Rendement</span><b>'+nf(firmYield(f.id)*100,1)+' %</b><span>Ta part</span><b>'+Math.round(s*100)+' %'+(s?' · '+money(s*FV):'')+'</b><span>'+f.ben+'</span><b class="'+(s?'pos':'')+'">'+nf(BEN(p,f.id)*100,1)+' % (max '+nf(f.max*100)+' %)</b></div>'+(f.note?'<p class="muted" style="font-size:12px">'+f.note+'</p>':'')+
+  '<div class="row"><button class="btn small" data-act="fbuy" data-v="'+f.id+'"'+(s>=0.5?DIS('Part maximale de 50 % atteinte.'):p.cash<c5?DIS('Trésorerie insuffisante : il manque '+money(c5-p.cash)+'.'):'')+'>+5 % ('+money(c5)+')</button>'+(s?'<button class="btn small" data-act="fsell" data-v="'+f.id+'">-5 % (+'+money(0.05*FV*0.99)+')</button>':'')+'</div></div>';}
+ h+='<div class="card">'+IMG('fm-airport.jpg','apt-l.jpg','banner')+'<h3>Concessions d\'aéroports</h3><p class="muted" style="font-size:12px">Entre au capital de la société qui exploite l\'aéroport d\'une de tes bases. Elle verse 4,5 % par an sur ta part, et tes taxes y baissent (jusqu\'à -20 % avec 50 %).</p>';
+ for(const c of p.bases){const s=(p.apInv||{})[c]||0,AV=apVal(c),c5=0.05*AV*1.01;
+  h+='<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><div class="grow"><b>'+esc(APX[c].name)+'</b> <span class="muted">('+c+')</span><div class="muted" style="font-size:12px">valeur '+sM(AV)+' · ta part '+Math.round(s*100)+' % · remise sur tes taxes '+nf(s*40)+' %</div></div><button class="btn small" data-act="apbuy" data-v="'+c+'"'+(s>=0.5?DIS('Part maximale de 50 % atteinte.'):p.cash<c5?DIS('Trésorerie insuffisante : il manque '+money(c5-p.cash)+'.'):'')+'>+5 % ('+sM(c5)+')</button>'+(s?'<button class="btn small" data-act="apsell" data-v="'+c+'">-5 %</button>':'')+'</div>';}
+ return h+'</div>';}
+
 function subMkt(p){const best={};for(const k in REGIONS)best[k]=Math.max(0,...G.airlines.filter(a=>!a.player&&!a.bankrupt).map(a=>a.aw[k]));
  let h='<div class="card"><img class="banner" src="art/reg-WORLD.jpg" alt=""><div class="kv"><span><img class="ico" src="art/ic-camp.png" alt="">Budget des campagnes</span><b>'+money(campMonth(p))+'/mois</b><span>Effet sur la réputation</span><b>+'+campRep(p)+'</b></div><p class="muted" style="font-size:12px">La notoriété d\'une région augmente ta part de marché sur les lignes qui la touchent. Elle monte avec tes lignes, tes bases et tes campagnes, et se met à jour chaque mois. Le trait noir marque le concurrent le plus connu dans la région.</p></div>';
  for(const k in REGIONS){const a=p.aw[k],lv=p.camp[k]||0,cnt=p.routes.filter(r=>APX[r.a].reg===k||APX[r.b].reg===k).length;
@@ -1486,9 +1637,9 @@ function subMkt(p){const best={};for(const k in REGIONS)best[k]=Math.max(0,...G.
  return h;}
 function panelMarche(){const banner='<img class="tabhero" src="art/tab-marche.jpg" alt="">',als=G.airlines.slice().sort((x,y)=>y.share-x.share),top=Math.max(0.25,...als.map(a=>a.share));
  let h=banner+'<h2>Marché mondial</h2><div class="card"><h3>Classement par passagers (mois dernier)</h3>';
- for(const al of als){h+='<div class="row">'+logo(al)+'<div class="grow"><div class="row" style="gap:6px"><b class="grow">'+esc(al.name)+'</b><span class="num">'+(al.bankrupt?'faillite':nf(al.share*100,1)+' %')+'</span></div>'+
+ for(const al of als){h+='<div class="row">'+logo(al)+'<div class="grow"><div class="row" style="gap:6px"><b class="grow">'+esc(al.name)+'</b><span class="num">'+(al.merged?'rachetée':al.bankrupt?'faillite':nf(al.share*100,1)+' %')+'</span></div>'+
   '<div class="bar"><i style="width:'+clamp(al.share/top*100,0,100)+'%;background:'+al.color+'"></i></div>'+
-  '<div class="muted" style="font-size:12px">'+(al.player?'Ta compagnie':(isAlly(player(),al)?'<b style="color:var(--good)">Alliée</b> · ':'')+PROFILES[al.profile].label+((player().stakes[al.id]||0)?' · '+Math.round(player().stakes[al.id]*100)+' % à toi':''))+' · base '+al.bases.join(', ')+' · '+plur(al.planes.length,'avion')+' · '+plur(al.routes.length,'ligne')+(al.last?' · résultat '+signed(al.last.profit):'')+'</div></div>'+
+  '<div class="muted" style="font-size:12px">'+(al.player?'Ta compagnie':(isAlly(player(),al)?'<b style="color:var(--good)">Alliée</b> · ':'')+PROFILES[al.profile].label+(al.parent===player().id?' · <b style="color:var(--good)">ton groupe</b>':'')+((player().stakes[al.id]||0)?' · '+Math.round(player().stakes[al.id]*100)+' % à toi':''))+' · base '+al.bases.join(', ')+' · '+plur(al.planes.length,'avion')+' · '+plur(al.routes.length,'ligne')+(al.last?' · résultat '+signed(al.last.profit):'')+'</div></div>'+
   (al.bankrupt?'':'<button class="btn small" data-act="goto" data-v="'+al.bases[0]+'">Voir</button>')+'</div>';}
  h+='</div><div class="card"><h3>Comparatif des compagnies</h3><div style="overflow-x:auto"><table><tr><th>Compagnie</th><th class="r">Rép.</th><th class="r">Éco</th><th class="r">Aff.</th><th class="r">Moral</th></tr>'+als.filter(a=>!a.bankrupt).map(a=>{const c=comfortRaw(a.svc,1,a.lounges.length?1:0);return '<tr><td>'+esc(a.name)+'</td><td class="r num">'+Math.round(a.rep)+'</td><td class="r num">'+Math.round(clamp((c.e+0.15)/0.73,0,1)*100)+'</td><td class="r num">'+(a.planes.some(x=>x.biz)?Math.round(clamp(c.b/0.99,0,1)*100):'-')+'</td><td class="r num">'+Math.round(avgMorale(a))+'</td></tr>';}).join('')+'</table></div><p class="muted" style="font-size:12px">Confort sur 100 pour un vol de 3 000 km. « - » : pas de classe affaires.</p></div><div class="card"><h3>Conjoncture</h3><div class="kv"><span>Kérosène</span><b class="'+(G.fuel>1.15?'neg':G.fuel<0.9?'pos':'')+'">'+nf(G.fuel*90)+' $/baril · '+nf(G.fuel*650)+' €/t</b><span>Prix du carbone</span><b>'+Math.round(G.co2)+' €/t</b><span>Croissance du marché</span><b>'+nf(G.econ*100)+'</b></div>'+
  (function(){const y=Math.floor(G.day/360),hd=y*360+hajjDay(y)<G.day?(y+1)*360+hajjDay(y+1):y*360+hajjDay(y);const L=EVENTS.filter(E=>E.to>=G.day).map(E=>({d:E.from,t:E.name,s:E.aps.slice(0,5).join(', '),m:E.mult,on:E.from<=G.day})).concat([{d:hd,t:'Hajj',s:'JED, MED',m:3.2,on:false}]).sort((a,b)=>a.d-b.d).slice(0,6);
@@ -1503,6 +1654,7 @@ addEventListener('pointerup',()=>{setTimeout(()=>{UI.holding=false;},60);});
 addEventListener('pointercancel',()=>{UI.holding=false;});
 
 // ---- Fenêtres
+function reAll(){renderAll(true);if(UI.modal&&!$('modal').hidden){const st=$('sheet').scrollTop;renderModal();$('sheet').scrollTop=st;}}
 function openModal(kind,data){UI.modal=Object.assign({kind,resume:UI.modal?UI.modal.resume:UI.speed},data||{});UI.speed=0;renderModal();$('modal').hidden=false;$('modal').classList.toggle('top',!$('start').hidden);$('sheet').scrollTop=0;if(G)header();}
 function closeModal(){const m=UI.modal;UI.modal=null;$('modal').hidden=true;if(!G||!$('start').hidden){if(!$('start').hidden)showStart();return;}if(m&&m.resume&&!G.over)UI.speed=m.resume;renderAll(true);}
 const IMG=(src,fb,cls,st)=>'<img'+(cls?' class="'+cls+'"':'')+(st?' style="'+st+'"':'')+' src="art/'+src+'" alt="" onerror="this.onerror=null;this.src=\'art/'+fb+'\'">';
@@ -1543,7 +1695,7 @@ function renderModal(){const M=UI.modal,p=G?player():null,S=$('sheet');let h='';
   const selP=idle.length?'<label class="f" for="mP"><span>Avion libre</span><select id="mP" data-f="plane">'+idle.map(x=>'<option value="'+x.id+'"'+(x.id===M.plane?' selected':'')+'>'+plLabel(x)+' · '+MX[x.model].seats+' sièges · '+nf(MX[x.model].range)+' km'+(x.deliv||x.ferry?' · arrive dans '+x.down+' j':'')+'</option>').join('')+'</select></label>':
    '<div class="alert">Tous tes avions sont déjà affectés. Tu peux explorer les destinations, mais il faut un avion libre pour ouvrir la ligne.</div><div class="row"><button class="btn primary" data-act="shop">Acheter ou louer un avion</button></div>';
   if(M.b&&pl){const m=MX[pl.model];M.vias=bestVias(M.a,M.b,m,4);if(!canServe(m,M.a,M.b)&&!M.via&&M.vias.length)M.via=M.vias[0].v;if(M.via&&!canServeR(m,{a:M.a,b:M.b,via:M.via}))M.via=M.vias.length?M.vias[0].v:null;}
-  if(M.step==='tune'&&M.b&&pl&&canServeR(MX[pl.model],{a:M.a,b:M.b,via:M.via||null})){const d=dist(M.a,M.b),RR={a:M.a,b:M.b,via:M.via||null},mr=Math.max(1,Math.min(rotMax(RR,MX[pl.model]),slotLimit(p,RR)));const direct=canServe(MX[pl.model],M.a,M.b),frP=isFr(pl);if(frP)M.brand=null;
+  if(M.step==='tune'&&M.b&&pl&&canServeR(MX[pl.model],{a:M.a,b:M.b,via:M.via||null})){const d=dist(M.a,M.b),RR={a:M.a,b:M.b,via:M.via||null},mr=Math.max(1,Math.min(rotMax(RR,MX[pl.model]),slotLimit(p,RR)));const direct=canServe(MX[pl.model],M.a,M.b),frP=isFr(pl);if(M.brand&&p.subs[M.brand]&&!!BRANDS[M.brand].cargo!==frP)M.brand=null;
    if(M.price==null)M.price=Math.round(pref(d));
    if(!M.rot){let bp=-1e15;for(let k=1;k<=mr;k++){const e=estimateRoute(p,{a:M.a,b:M.b,via:M.via||null,price:M.price,rot:k,planes:[pl.id]});if(e.profit>bp){bp=e.profit;M.rot=k;}}}
    M.rot=clamp(M.rot,1,mr);if(M.priceB==null)M.priceB=defPriceB(p,d);if(M.priceF==null)M.priceF=defPriceF(p,d);const hasB=(pl.biz||0)>0,hasF=(pl.first||0)>0;
@@ -1553,7 +1705,7 @@ function renderModal(){const M=UI.modal,p=G?player():null,S=$('sheet');let h='';
    '<div class="f"><span class="lbl">Rotations par jour (aller-retour)</span><div class="stepper"><button data-act="rot" data-v="-1" aria-label="Moins">&minus;</button><b id="mRot">'+M.rot+'</b><button data-act="rot" data-v="1" aria-label="Plus">+</button><span class="muted" style="font-size:12px">max '+mr+'</span></div></div>'+
    '<label class="f" for="mPrice"'+(frP?' hidden':'')+'><span>Prix du billet : <b id="mPriceV" class="num" style="color:var(--ink)">'+M.price+' €</b></span><input type="range" id="mPrice" min="'+Math.round(pref(d)*0.5)+'" max="'+Math.round(pref(d)*2)+'" step="1" value="'+M.price+'"></label>'+
    (hasB?'<label class="f" for="mPriceB"><span>Prix du billet affaires : <b id="mPriceBV" class="num" style="color:var(--ink)">'+M.priceB+' €</b></span><input type="range" id="mPriceB" min="'+Math.round(prefB(d)*0.5)+'" max="'+Math.round(prefB(d)*2)+'" step="5" value="'+M.priceB+'"></label>':'')+
-   '<div class="row"><button class="btn small" data-act="optimize">Prix et rotations optimaux</button>'+(M.opt!=null?'<span class="muted" style="font-size:12px">réglage optimal : '+signed(M.opt)+'/j estimé</span>':'')+'</div>'+(hasF?'<label class="f" for="mPriceF"><span>Prix du billet Première : <b id="mPriceFV" class="num" style="color:var(--ink)">'+M.priceF+' €</b></span><input type="range" id="mPriceF" min="'+Math.round(prefF(d)*0.5)+'" max="'+Math.round(prefF(d)*2)+'" step="10" value="'+M.priceF+'"></label>':'')+(Object.keys(p.subs).length&&!frP?'<div class="f"><span class="lbl">Marque</span><div class="chips"><button class="chip" data-act="mset" data-k="brand" data-v="" aria-pressed="'+!M.brand+'">'+esc(p.name)+'</button>'+Object.keys(p.subs).map(k=>'<button class="chip" data-act="mset" data-k="brand" data-v="'+k+'" aria-pressed="'+(M.brand===k)+'"'+(k==='reg'&&MX[pl.model].seats>100?DIS('La marque régionale n\'accepte que des avions de 100 places au plus.'):'')+'><i style="background:'+p.subs[k].color+'"></i>'+esc(p.subs[k].name)+'</button>').join('')+'</div></div>':'')+'<div id="mEst">'+estHTML(p,{a:M.a,b:M.b,via:M.via||null,brand:M.brand||null,price:M.price,priceB:M.priceB,priceF:M.priceF,rot:M.rot,planes:[M.plane]})+'</div>'+
+   '<div class="row"><button class="btn small" data-act="optimize">Prix et rotations optimaux</button>'+(M.opt!=null?'<span class="muted" style="font-size:12px">réglage optimal : '+signed(M.opt)+'/j estimé</span>':'')+'</div>'+(hasF?'<label class="f" for="mPriceF"><span>Prix du billet Première : <b id="mPriceFV" class="num" style="color:var(--ink)">'+M.priceF+' €</b></span><input type="range" id="mPriceF" min="'+Math.round(prefF(d)*0.5)+'" max="'+Math.round(prefF(d)*2)+'" step="10" value="'+M.priceF+'"></label>':'')+(Object.keys(p.subs).some(k=>!!BRANDS[k].cargo===frP)?'<div class="f"><span class="lbl">Marque</span><div class="chips"><button class="chip" data-act="mset" data-k="brand" data-v="" aria-pressed="'+!M.brand+'">'+esc(p.name)+'</button>'+Object.keys(p.subs).filter(k=>!!BRANDS[k].cargo===frP).map(k=>'<button class="chip" data-act="mset" data-k="brand" data-v="'+k+'" aria-pressed="'+(M.brand===k)+'"'+(k==='reg'&&MX[pl.model].seats>100?DIS('La marque régionale n\'accepte que des avions de 100 places au plus.'):'')+'><i style="background:'+p.subs[k].color+'"></i>'+esc(p.subs[k].name)+'</button>').join('')+'</div></div>':'')+'<div id="mEst">'+estHTML(p,{a:M.a,b:M.b,via:M.via||null,brand:M.brand||null,price:M.price,priceB:M.priceB,priceF:M.priceF,rot:M.rot,planes:[M.plane]})+'</div>'+
    '<div class="row"><button class="btn primary" data-act="confirmroute">Ouvrir la ligne</button></div>';}
   else{M.step='pick';
    h='<div class="row"><h2 class="grow">Nouvelle ligne</h2><button class="btn small" data-act="close">Fermer</button></div>'+selA+selP+
@@ -1565,14 +1717,14 @@ function renderModal(){const M=UI.modal,p=G?player():null,S=$('sheet');let h='';
    '<div class="dlist" id="mList">'+destListHTML(M)+'</div>'+
    '<p class="muted" style="font-size:12px">Profit estimé par jour au prix de référence, avec le meilleur nombre de rotations pour l\'avion choisi.</p>';}}
  else if(M.kind==='edit'){const r=p.routes.find(x=>x.id===M.rid);if(!r){closeModal();return;}const d=dist(r.a,r.b);if(M.price==null){M.price=Math.round(r.price);M.priceB=Math.round(r.priceB||prefB(d));M.priceF=Math.round(r.priceF||prefF(d));M.rot=r.rot;}const hasF=r.planes.some(id=>(planeOf(p,id)||{}).first>0),hasB=r.planes.some(id=>(planeOf(p,id)||{}).biz>0);
-  const mr=Math.max(1,Math.min(maxRotRoute(p,r),slotLimit(p,r,r))),frP=r.planes.some(id=>isFr(planeOf(p,id)));M.rot=clamp(M.rot,1,mr);const idle=p.planes.filter(x=>!x.route&&canServeR(MX[x.model],r)&&isFr(x)===frP&&brandOK(MX[x.model],r));
+  const mr=Math.max(1,Math.min(maxRotRoute(p,r),slotLimit(p,r,r))),frP=r.planes.some(id=>isFr(planeOf(p,id)));M.rot=clamp(M.rot,1,mr);const idle=p.planes.filter(x=>!x.route&&canServeR(MX[x.model],r)&&isFr(x)===frP&&brandOK(MX[x.model],r,x));
   h='<div class="row"><h2 class="grow">'+esc(APX[r.a].name)+(r.via?' · '+esc(APX[r.via].name):'')+' - '+esc(APX[r.b].name)+'</h2><button class="btn small" data-act="close">Fermer</button></div>'+
   '<div class="kv"><span>Remplissage constaté</span><b>'+Math.round(r.lf*100)+' %</b><span>Profit constaté</span><b class="'+cls(r.profitD)+'">'+signed(r.profitD)+'/j</b><span>Semaine dernière</span><b class="'+cls(r.lastW)+'">'+signed(r.lastW)+'</b><span>Ponctualité</span><b>'+Math.round((r.otp||0.85)*100)+' %</b>'+(r.via?'<span>Passagers locaux par jour</span><b>'+nf(r.legD||0)+'</b>':'')+'</div>'+
   '<div class="f"><span class="lbl">Rotations par jour</span><div class="stepper"><button data-act="rot" data-v="-1" aria-label="Moins">&minus;</button><b id="mRot">'+M.rot+'</b><button data-act="rot" data-v="1" aria-label="Plus">+</button><span class="muted" style="font-size:12px">max '+mr+'</span></div></div>'+
   '<label class="f" for="mPrice"'+(frP?' hidden':'')+'><span>Prix du billet : <b id="mPriceV" class="num" style="color:var(--ink)">'+M.price+' €</b></span><input type="range" id="mPrice" min="'+Math.round(pref(d)*0.5)+'" max="'+Math.round(pref(d)*2)+'" step="1" value="'+M.price+'"></label>'+
   (hasB?'<label class="f" for="mPriceB"><span>Prix du billet affaires : <b id="mPriceBV" class="num" style="color:var(--ink)">'+M.priceB+' €</b></span><input type="range" id="mPriceB" min="'+Math.round(prefB(d)*0.5)+'" max="'+Math.round(prefB(d)*2)+'" step="5" value="'+M.priceB+'"></label>':'')+
   '<div class="row"><button class="btn small" data-act="optimize">Prix et rotations optimaux</button>'+(M.opt!=null?'<span class="muted" style="font-size:12px">réglage optimal : '+signed(M.opt)+'/j estimé</span>':'')+'</div>'+(hasF?'<label class="f" for="mPriceF"><span>Prix du billet Première : <b id="mPriceFV" class="num" style="color:var(--ink)">'+M.priceF+' €</b></span><input type="range" id="mPriceF" min="'+Math.round(prefF(d)*0.5)+'" max="'+Math.round(prefF(d)*2)+'" step="10" value="'+M.priceF+'"></label>':'')+'<div id="mEst">'+estHTML(p,{a:r.a,b:r.b,via:r.via,brand:r.brand,rid:r.id,price:M.price,priceB:M.priceB,priceF:M.priceF,rot:M.rot,planes:r.planes})+'</div>'+
-  (Object.keys(p.subs).length&&!frP?'<div class="f"><span class="lbl">Marque</span><div class="chips"><button class="chip" data-act="setbrand" data-v="" aria-pressed="'+!r.brand+'">'+esc(p.name)+'</button>'+Object.keys(p.subs).map(k=>'<button class="chip" data-act="setbrand" data-v="'+k+'" aria-pressed="'+(r.brand===k)+'"><i style="background:'+p.subs[k].color+'"></i>'+esc(p.subs[k].name)+'</button>').join('')+'</div></div>':'')+
+  (Object.keys(p.subs).some(k=>!!BRANDS[k].cargo===frP)?'<div class="f"><span class="lbl">Marque</span><div class="chips"><button class="chip" data-act="setbrand" data-v="" aria-pressed="'+!r.brand+'">'+esc(p.name)+'</button>'+Object.keys(p.subs).filter(k=>!!BRANDS[k].cargo===frP).map(k=>'<button class="chip" data-act="setbrand" data-v="'+k+'" aria-pressed="'+(r.brand===k)+'"><i style="background:'+p.subs[k].color+'"></i>'+esc(p.subs[k].name)+'</button>').join('')+'</div></div>':'')+
   '<div class="row"><button class="btn primary" data-act="applyroute">Appliquer</button><button class="btn" data-act="showroute">Voir sur la carte</button></div>'+routeDash(r)+
   '<div class="card"><h3>Avions affectés</h3>'+r.planes.map(id=>{const pl=planeOf(p,id);return '<div class="row"><span class="grow">'+plLabel(pl)+' · '+MX[pl.model].seats+' sièges</span><button class="btn small" data-act="unassign" data-v="'+id+'"'+(r.planes.length<2?DIS('Une ligne garde au moins un avion. Ferme la ligne pour libérer le dernier.'):'')+'>Retirer</button></div>';}).join('')+
   (idle.length?'<div class="row"><select id="mAdd" class="grow" style="width:auto" aria-label="Avion à ajouter">'+idle.map(x=>'<option value="'+x.id+'">'+plLabel(x)+'</option>').join('')+'</select><button class="btn small" data-act="assign">Ajouter</button></div>':'<p class="muted" style="font-size:12px">Aucun avion libre à ajouter.</p>')+'</div>'+
@@ -1636,7 +1788,19 @@ function renderModal(){const M=UI.modal,p=G?player():null,S=$('sheet');let h='';
   if(M.code)h+='<textarea class="code" id="svCodeOut" readonly>'+M.code+'</textarea><div class="row"><button class="btn small primary" data-act="svcopy">Copier le code</button><span class="muted" style="font-size:12px">'+nf(M.code.length/1024)+' Ko</span></div>';
   h+='<div class="row"><label class="btn small" style="cursor:pointer">Importer un fichier<input type="file" id="svFile" accept=".json,application/json,text/plain" hidden></label><button class="btn small" data-act="svpaste">Coller un code</button></div>';
   if(M.paste)h+='<textarea class="code" id="svCodeIn" placeholder="Colle ici le code PDV1:… ou le contenu du fichier"></textarea><div class="row"><button class="btn small primary" data-act="svimport">Charger ce code</button></div>';}
- else if(M.kind==='brand'){const B=BRANDS[M.k];h='<div class="row"><h2 class="grow">Nouvelle filiale '+B.label.toLowerCase()+'</h2><button class="btn small" data-act="close">Fermer</button></div>'+IMG('br-'+M.k+'.jpg','tab-lignes.jpg','hero')+
+ else if(M.kind==='stock'){const a=G.airlines[M.id];if(!a||a.bankrupt){closeModal();return;}const st=p.stakes[a.id]||0,pi=+(M.prem==null?1:M.prem),ti=+(M.tg==null?0:M.tg),pr=PREMS[pi],tg=TGTS[ti],oc=opaCost(p,a,pr,tg),ch=opaChance(p,a,pr,tg),ctl=a.parent===p.id,ann=annProfit(a),ph=a.pxH||[],cd=(a.opaCd||0)>G.day;
+  h='<div class="row">'+logo(a,32)+'<h2 class="grow">'+esc(a.name)+'</h2><button class="btn small" data-act="close">Fermer</button></div><img class="hero" src="art/riv-'+(a.entrant?a.artI:RIVALS.findIndex(x=>x.name===a.name)+1)+'.jpg" alt="">'+
+  '<div class="row"><b class="num" style="font-size:24px">'+nf(pxOf(a),2)+' €</b><span class="'+cls(chgN(ph,4)||0)+'">'+pctS(chgN(ph,4))+' sur 4 semaines</span><span class="grow"></span><span class="pill">'+opin(a)+'</span>'+(ctl?'<span class="pill good">Ton groupe</span>':'')+'</div>'+
+  (ph.length>1?lineChart([{n:'Cours',c:a.color,v:ph.slice(-52),me:1}],{fmt:v=>nf(v,2)+' €',unit:'sem.',label:'Cours de '+a.name}):'<p class="muted" style="font-size:12px">La courbe du cours apparaît après deux semaines.</p>')+
+  '<div class="kv"><span>Capitalisation</span><b>'+money(mcap(a))+'</b><span>Valeur fondamentale</span><b>'+money(valuation(a))+'</b><span>PER</span><b>'+perOf(a)+'</b><span>Résultat sur 12 mois</span><b class="'+cls(ann)+'">'+signed(ann)+'</b><span>Dividende</span><b>'+Math.round(divRate(a)*100)+' % du bénéfice · rendement '+nf(divYield(a)*100,1)+' %</b><span>Profil · flotte</span><b>'+PROFILES[a.profile].label+' · '+plur(a.planes.length,'avion')+'</b><span>Part de marché</span><b>'+nf(a.share*100,1)+' %</b><span>Ta participation</span><b>'+Math.round(st*100)+' %'+(st?' · '+money(st*mcap(a)):'')+'</b></div>'+thrLadder(st)+
+  (st<OPA_T-0.004&&!ctl?'<h3>Acheter en bourse</h3><div class="row" style="flex-wrap:wrap">'+[0.01,0.05,0.1].map(q=>{const qq=Math.min(q,OPA_T-st),c=buyCost(a,qq);return '<button class="btn small" data-act="sbuy" data-v="'+a.id+'" data-k="'+q+'"'+(p.cash<c?DIS('Trésorerie insuffisante : il manque '+money(c-p.cash)+'.'):'')+'>+'+nf(qq*100)+' % ('+money(c)+')</button>';}).join('')+'</div>':'')+
+  (st?'<div class="row" style="flex-wrap:wrap"><button class="btn small" data-act="ssell" data-v="'+a.id+'" data-k="'+Math.min(0.05,st)+'">Vendre '+nf(Math.min(0.05,st)*100)+' % (+'+money(sellGet(a,Math.min(0.05,st)))+')</button>'+(st>0.05?'<button class="btn small" data-act="ssell" data-v="'+a.id+'" data-k="'+st+'">Tout vendre (+'+money(sellGet(a,st))+')</button>':'')+'</div>':'')+
+  '<p class="muted" style="font-size:12px">Acheter fait monter le cours, vendre le fait baisser : les gros ordres coûtent plus cher.'+(ctl?' Revendre sous 50 % te fait perdre le contrôle.':'')+'</p>'+
+  (st<1-1e-9?'<h3>Offre publique d\'achat</h3><div class="f"><span class="lbl">Objectif</span><div class="chips">'+TGTS.map((t,i)=>'<button class="chip" data-act="mset" data-k="tg" data-v="'+i+'" aria-pressed="'+(ti===i)+'"'+(t<=st+1e-9?DIS('Tu détiens déjà '+Math.round(st*100)+' %.'):'')+'>'+(t<1?'51 % (contrôle)':'100 % (retrait de la cote)')+'</button>').join('')+'</div></div><div class="f"><span class="lbl">Prime sur le cours</span><div class="chips">'+PREMS.map((x,i)=>'<button class="chip" data-act="mset" data-k="prem" data-v="'+i+'" aria-pressed="'+(pi===i)+'">+'+Math.round(x*100)+' %</button>').join('')+'</div></div>'+
+   '<div class="kv"><span>Prix offert par action</span><b>'+nf(pxOf(a)*(1+pr),2)+' €</b><span>Coût total</span><b>'+money(oc)+'</b><span>Chance de succès</span><b class="'+(ch>=0.6?'pos':ch<0.35?'neg':'')+'">~'+Math.round(ch*100)+' %</b></div><p class="muted" style="font-size:12px">Les compagnies nationales défendent leur indépendance et demandent une prime d\'au moins 35 %, les régionales beaucoup moins. Une compagnie en difficulté cède plus facilement, et ta participation actuelle aide. Une offre à 100 % est plus dure à faire accepter. En cas d\'échec, tu paies 1 % de frais de conseil et dois attendre 3 mois.</p>'+
+   '<button class="btn primary" data-act="opa" data-v="'+a.id+'"'+(tg<=st+1e-9?DIS('Choisis un objectif au-dessus de ta participation.'):cd?DIS('Offre refusée récemment : réessaie le '+shortDate(a.opaCd)+'.'):p.cash<oc?DIS('Trésorerie insuffisante : il manque '+money(oc-p.cash)+'.'):'')+'>Lancer l\'OPA</button>':'')+
+  (ctl?'<p class="muted" style="font-size:12px">Sa stratégie, ses dividendes et la fusion se règlent dans Gestion › Groupe.</p>':inTrouble(a)?'<div class="row" style="margin-top:10px"><button class="btn small" data-act="takeover" data-v="'+a.id+'"'+(p.cash<takeoverCost(p,a)?DIS('Trésorerie insuffisante : il manque '+money(takeoverCost(p,a)-p.cash)+'.'):'')+'>Racheter en sauvetage et fusionner ('+money(takeoverCost(p,a))+')</button></div>':'');}
+ else if(M.kind==='brand'){const B=BRANDS[M.k];h='<div class="row"><h2 class="grow">Nouvelle filiale '+B.label.toLowerCase()+'</h2><button class="btn small" data-act="close">Fermer</button></div>'+IMG('br-'+M.k+'.jpg',BFB[M.k]||'tab-lignes.jpg','hero')+
   '<label class="f"><span>Nom de la marque</span><input type="text" data-f="bname" maxlength="24" value="'+esc(M.bname)+'"></label><div class="f"><span class="lbl">Couleur</span><div class="chips">'+['#F28C28','#E5C100','#1E8C8C','#6A3FA0','#2E9E4F','#D6336C'].map(c=>'<button class="chip" data-act="mset" data-k="color" data-v="'+c+'" aria-pressed="'+(M.color===c)+'"><i style="background:'+c+'"></i>'+c+'</button>').join('')+'</div></div>'+
   '<div class="kv"><span>Création</span><b>'+money(B.cost)+'</b><span>Frais fixes</span><b>'+money(B.fee)+'/mois</b></div><div class="row"><button class="btn primary" data-act="brandok"'+(p.cash<B.cost?DIS('Trésorerie insuffisante : il manque '+money(B.cost-p.cash)+'.'):'')+'>Créer la filiale</button></div>';}
  else if(M.kind==='board'){const B=G.board,P=B.pending;if(!P){closeModal();return;}const step=M.step,S=P.S;
@@ -1721,7 +1885,7 @@ const ACT={
  buyback(){const p=player(),c=buyBack(p);if(c)news('Rachat de 10 % de tes actions pour '+money(c)+'.','info');renderAll(true);},
  stake(d){const p=player(),al=G.airlines[+d.v],c=buyStake(p,al);if(c)news('Tu prends 10 % de '+al.name+' pour '+money(c)+'.','info');renderAll(true);},
  unstake(d){const p=player(),al=G.airlines[+d.v],c=sellStake(p,al);if(c)news('Tu revends 10 % de '+al.name+' pour '+money(c)+'.','info');renderAll(true);},
- takeover(d){const p=player(),al=G.airlines[+d.v],c=takeoverCost(p,al);openModal('confirm',{title:'Racheter '+al.name+' ?',text:'Coût : '+money(c)+'. Tu récupères '+plur(al.planes.length,'avion')+', '+plur(al.routes.length,'ligne')+' et '+plur(al.bases.length,'base')+', ainsi que sa trésorerie ('+money(al.cash)+') et ses dettes ('+money(al.debt)+'). Les lignes en doublon avec les tiennes sont fermées.',ok:'Racheter',yes(){if(absorb(p,al))news('Tu rachètes '+al.name+' : sa flotte et son réseau rejoignent ta compagnie.','good','takeover');}});},
+ takeover(d){const p=player(),al=G.airlines[+d.v],c=takeoverCost(p,al);openModal('confirm',{title:((p.stakes[al.id]||0)>=0.5?'Fusionner ':'Racheter ')+al.name+' ?',text:'Coût : '+money(c)+((p.stakes[al.id]||0)>=0.5?' (rachat des minoritaires et frais d\'intégration)':'')+'. Tu récupères '+plur(al.planes.length,'avion')+', '+plur(al.routes.length,'ligne')+' et '+plur(al.bases.length,'base')+', ainsi que sa trésorerie ('+money(al.cash)+') et ses dettes ('+money(al.debt)+'). Les lignes en doublon avec les tiennes sont fermées.',ok:'Racheter',yes(){if(absorb(p,al))news('Tu rachètes '+al.name+' : sa flotte et son réseau rejoignent ta compagnie.','good','takeover');}});},
  lounge(d){const p=player(),i=p.lounges.indexOf(d.v);if(i>=0)p.lounges.splice(i,1);else p.lounges.push(d.v);renderAll(true);},
  camp(d){const p=player(),old=p.camp[d.k]||0;p.camp[d.k]=+d.v;if(+d.v>old)news('Nouvelle campagne publicitaire en '+REGIONS[d.k]+' : '+money(CAMP_COST[+d.v])+' par mois.','good','ad');renderAll(true);},
  sallv(d){player().staff[d.k].lv=+d.v;renderAll(true);},
@@ -1730,7 +1894,24 @@ const ACT={
  cabin(d){openModal('cabin',{pid:+d.v,biz:null});},
  setbrand(d){const p=player(),r=p.routes.find(x=>x.id===UI.modal.rid);if(r&&setBrand(p,r,d.v||null)){renderModal();}else toast('Cette marque n\'accepte que des avions de 100 places au plus.');},
  convert(d){const p=player(),pl=planeOf(p,+d.v);openModal('confirm',{title:'Convertir en cargo ?',text:plLabel(pl)+' : '+money(convCost(pl))+', 40 jours au sol. L\'avion perd ses sièges et emporte '+Math.round(MX[pl.model].seats*0.16)+' t de fret. Conversion définitive.',ok:'Convertir',yes(){if(convertCargo(p,pl))news(pl.reg+' part en conversion cargo.','info','delivery');}});},
- newbrand(d){const p=player();openModal('brand',{k:d.v,bname:d.v==='lc'?p.name.split(' ')[0]+' Go':p.name.split(' ')[0]+' Connect',color:d.v==='lc'?'#F28C28':'#1E8C8C'});},
+ newbrand(d){const p=player(),w=p.name.split(' ')[0];openModal('brand',{k:d.v,bname:w+' '+({lc:'Go',reg:'Connect',leis:'Soleil',cargo:'Cargo'})[d.v],color:({lc:'#F28C28',reg:'#1E8C8C',leis:'#E5C100',cargo:'#6A3FA0'})[d.v]});},
+ stock(d){openModal('stock',{id:+d.v,prem:1,tg:0});},
+ sbuy(d){const p=player(),a=G.airlines[+d.v],c=tradeStake(p,a,+d.k);if(c)toast('Achat de '+esc(a.name)+' : '+money(c)+'.');reAll();},
+ ssell(d){const p=player(),a=G.airlines[+d.v],c=tradeStake(p,a,-(+d.k));if(c)toast('Vente de '+esc(a.name)+' : +'+money(c)+'.');reAll();},
+ opa(d){const p=player(),a=G.airlines[+d.v],M=UI.modal,tg=TGTS[+M.tg],r=launchOPA(p,a,PREMS[+M.prem],tg);if(!r)return;
+  if(r.ok)news('OPA réussie sur '+a.name+' : tu détiens désormais '+Math.round(tg*100)+' % du capital ('+money(r.c)+').','good','takeover');else news('OPA sur '+a.name+' : les actionnaires refusent ton offre. Frais de conseil : '+money(r.c)+'.','bad','takeover');reAll();},
+ fbuy(d){if(firmTrade(player(),d.v,0.05))toast('Tu montes à '+Math.round(player().inv[d.v]*100)+' % de '+FIRMX[d.v].name+'.');reAll();},
+ fsell(d){if(firmTrade(player(),d.v,-0.05))toast('Tu revends 5 % de '+FIRMX[d.v].name+'.');reAll();},
+ apbuy(d){if(apTrade(player(),d.v,0.05))toast('Tu détiens '+Math.round(player().apInv[d.v]*100)+' % de l\'aéroport '+APX[d.v].name+'.');reAll();},
+ apsell(d){if(apTrade(player(),d.v,-0.05))toast('Tu revends 5 % de l\'aéroport '+APX[d.v].name+'.');reAll();},
+ brandup(d){const p=player(),c=brandUp(p,d.v);if(c)news(p.subs[d.v].name+' passe au niveau '+p.subs[d.v].lv+'.','good','brand');reAll();},
+ bauto(d){const S=player().subs[d.v];S.auto=!S.auto;reAll();},
+ bipo(d){const p=player(),S=p.subs[d.k],c=brandIPO(p,d.k,+d.v);if(c)news(+d.v>0?S.name+' entre en bourse : '+Math.round(+d.v*100)+' % cédés pour '+money(c)+'.':'Tu rachètes les actionnaires minoritaires de '+S.name+' pour '+money(c)+'.','good','ipo');reAll();},
+ bsell(d){const p=player(),k=d.k,keep=+d.v,S=p.subs[k],R=brandRoutes(p,k),cash=brandSaleCash(p,k,keep),np=R.reduce((s,r)=>s+r.planes.length,0);
+  openModal('confirm',{title:'Céder '+S.name+' ?',text:S.name+' devient une compagnie indépendante avec '+plur(np,'avion')+', '+plur(R.length,'ligne')+' et ses créneaux. Tu encaisses '+money(cash)+(keep?' et gardes '+Math.round(keep*100)+' % de son capital (dividendes, et tu pourras la reprendre par OPA).':'.')+' Les avions loués partent avec leurs loyers. Elle deviendra une concurrente.',ok:'Céder',yes(){const r=sellBrand(p,k,keep);if(r)news('Tu cèdes '+r.al.name+' pour '+money(r.cash)+'. Elle vole désormais seule'+(keep?', et tu en gardes '+Math.round(keep*100)+' %.':'.'),'good','brand');}});},
+ bclose(d){const p=player(),S=p.subs[d.v];openModal('confirm',{title:'Dissoudre '+S.name+' ?',text:'Ses lignes repassent sous ta marque principale et les frais de marque s\'arrêtent. Le coût de création et des niveaux est perdu.',ok:'Dissoudre',yes(){closeBrand(p,d.v);news('La marque '+S.name+' est dissoute.','info');}});},
+ cdir(d){const a=G.airlines[+d.id];a.dir=a.dir||{coop:1,grow:1,pay:1};a.dir[d.k]=+d.v;G.mut=(G.mut||0)+1;reAll();},
+ inject(d){const p=player(),a=G.airlines[+d.v];if(injectCash(p,a,10e6))news('Tu injectes 10 M€ dans '+a.name+'.','info');reAll();},
  brandok(){const M=UI.modal,p=player();if(createBrand(p,M.k,(M.bname||'').trim()||BRANDS[M.k].label,M.color)){news('Filiale '+M.bname+' créée.','good','brand');closeModal();UI.tab='gestion';UI.sub='group';renderAll(true);}},
  cs(d){const p=player(),al=G.airlines[+d.v],ok=proposeCS(p,al);news(ok?'Accord de partage de codes signé avec '+al.name+'.':al.name+' décline le partage de codes.',ok?'good':'bad',ok?'allyon':null);renderAll(true);},
  endcs(d){endCS(player(),G.airlines[+d.v]);renderAll(true);},
