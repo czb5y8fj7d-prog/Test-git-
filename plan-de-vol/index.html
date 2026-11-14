@@ -422,29 +422,48 @@ details.lines[open] summary::before{transform:rotate(45deg)}
 }
 .bpow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fbf7ef;display:flex;flex-direction:column;gap:6px}.bpow small{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold3)}.bpow b{font-family:var(--serif);font-size:22px;font-weight:600}.bpow .bar{position:relative;overflow:visible}.bpow.t2,.bpow.t3{background:#fbeeea;border-color:#efcfc8}
 
-/* ---- Ordinateur : sections en pleine largeur, lecture confortable ---- */
+/* ---- Ordinateur : sections en pleine largeur, mises en page dédiées ---- */
 @media (min-width:900px){
  body{font-size:15px}
  body:not([data-tab="carte"]) #app{grid-template-areas:"nav board board" "nav panel panel"}
  body:not([data-tab="carte"]) #mapwrap{display:none!important}
- body:not([data-tab="carte"]) #panel{border-left:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));align-content:start;align-items:start;gap:20px 22px;padding:26px max(32px,calc((100% - 1500px)/2)) 48px}
- body:not([data-tab="carte"]) #panel>*{grid-column:1/-1;min-width:0}
- body:not([data-tab="carte"]) #panel>.card{grid-column:auto}
- body:not([data-tab="carte"]) #panel>.tabhero:first-child{width:100%;margin:-26px 0 0;height:clamp(170px,24vh,260px);border-radius:0 0 18px 18px}
+ body:not([data-tab="carte"]) #panel{border-left:0;padding:26px max(36px,calc((100% - 1460px)/2)) 56px}
+ body:not([data-tab="carte"]) #panel>.tabhero:first-child{width:100%;margin:-26px 0 0;height:clamp(170px,24vh,250px);border-radius:0 0 18px 18px}
  body:not([data-tab="carte"]) #panel>.tabhero:first-child+h2,body:not([data-tab="carte"]) #panel>.tabhero:first-child+.row{margin-top:-74px;padding:0 6px}
- body:not([data-tab="carte"]) .subnav{margin:0;padding:10px 0;top:-26px}
- body:not([data-tab="carte"]) h2{font-size:36px}
+ body:not([data-tab="carte"]) .subnav{margin:0;padding:12px 0;top:-26px}
+ body:not([data-tab="carte"]) h2{font-size:38px}
+ /* Listes homogènes (lignes, avions) : grille régulière */
+ body[data-tab="lignes"] #panel,body[data-tab="flotte"] #panel{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));align-content:start;gap:18px 20px}
+ body[data-tab="lignes"] #panel>*,body[data-tab="flotte"] #panel>*{grid-column:1/-1;min-width:0}
+ body[data-tab="lignes"] #panel>.card.route,body[data-tab="flotte"] #panel>.card.pcard{grid-column:auto;height:100%}
+ body[data-tab="flotte"] #panel>.card:not(.pcard){max-width:720px}
+ /* Pages de gestion et de marché : deux colonnes équilibrées, en-têtes sur toute la largeur */
+ #panel .flow{display:block;column-count:2;column-gap:24px}
+ #panel .flow>*{column-span:all;margin:0 0 20px;break-inside:avoid}
+ #panel .flow>.card{column-span:none;display:flex;width:100%;break-inside:avoid;-webkit-column-break-inside:avoid}
+ #panel .flow>.subnav{margin-bottom:22px;position:static}
+ #panel .flow>.tabhero:not(:first-child){height:150px;width:100%;object-fit:cover}
+ #panel .flow>.tabhero:first-child{width:100%;margin:-26px 0 20px;height:clamp(170px,24vh,250px);border-radius:0 0 18px 18px}
+ #panel .flow>.tabhero:first-child+h2{margin-top:-94px;padding:0 6px}
+ #panel .flow>h2{font-size:38px}
+ #panel .tiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
  #panel .chips{flex-wrap:wrap;overflow:visible}
  .subnav{-webkit-mask-image:none;mask-image:none}
  .sheet{width:min(780px,100%);padding:24px 28px 30px}
  .sheet .hero{max-height:250px;object-fit:cover;width:100%}
  .chart svg,.card svg{max-height:260px}
  .kv{font-size:14px}
- .chips{cursor:grab}
 }
+@media (min-width:1800px){#panel .flow{column-count:3}}
 @media (min-width:900px) and (max-width:1250px){#app{grid-template-columns:200px minmax(0,1fr) clamp(380px,38vw,480px)}}
 /* barres de puces défilantes à la souris : barre fine visible */
 @media (hover:hover) and (pointer:fine){.chips{scrollbar-width:thin;scrollbar-color:var(--line2) transparent;padding-bottom:4px}.chips::-webkit-scrollbar{display:block;height:6px}.chips::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}.chips::-webkit-scrollbar-track{background:transparent}}
+.flow{display:flex;flex-direction:column;gap:16px;min-width:0}
+.flow>.tabhero:first-child{width:calc(100% + 36px);max-width:none;margin:-18px -18px 0;height:clamp(150px,24vh,220px);border-radius:0;-webkit-mask-image:linear-gradient(#000 30%,transparent 90%);mask-image:linear-gradient(#000 30%,transparent 90%)}
+.flow>.tabhero:first-child+h2,.flow>.tabhero:first-child+.row{margin-top:-56px;position:relative}
+.flow>h2:first-child{margin-top:6px}
+.flow>.tabhero:first-child+h2::after,.flow>h2:first-child::after{content:"";display:block;width:44px;height:2px;background:var(--gold);margin-top:10px}
+.flow.fadein>*{animation:pin .5s var(--ease) both}.flow.fadein>*:nth-child(2){animation-delay:.05s}.flow.fadein>*:nth-child(3){animation-delay:.1s}.flow.fadein>*:nth-child(n+4){animation-delay:.15s}
 .cheatgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .devbadge{position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:7;background:var(--gold2);color:#14213a;font:700 10px var(--body);letter-spacing:.14em;padding:3px 10px;border-radius:99px;box-shadow:var(--sh);pointer-events:none}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
@@ -1700,7 +1719,7 @@ function panelFlotte(){const p=player();let h='<img class="tabhero" src="art/'+(
  h+=chipRow('ff',UI.ff,[['all','Tous · '+n('all')],['idle','Sans ligne · '+n('idle')],['order','En livraison · '+n('order')],['down','Au sol · '+n('down')],['worn','Usés · '+n('worn')],['spare','En réserve · '+n('spare')],['cargo','Cargo · '+n('cargo')]]);
  const L=p.planes.filter(F[UI.ff]);const rk=x=>x.route?3:x.deliv?2:x.down>0?1.5:x.spare?1:0;L.sort((a,b)=>rk(a)-rk(b));if(!L.length)h+='<p class="muted">Aucun avion dans ce filtre.</p>';
  for(const pl of L){const m=MX[pl.model],M=MAKERS[m.mk],r=p.routes.find(x=>x.id===pl.route),rl=relLabel(M.rel),Ls=pl.lessor&&LESSORS.find(x=>x.id===pl.lessor);
-  h+='<div class="card">'+planeHero(pl.model,1,pl.reg)+'<div class="row"><div class="grow"><b class="num" style="font-size:15px">'+esc(pl.reg)+'</b>'+(pl.name?'<div style="font-size:13px;font-style:italic">'+esc(pl.name)+'</div>':'')+'<div style="font-size:13px">'+m.name+'</div><div class="muted" style="font-size:12px">'+mkLogo(m.mk)+M.name+' · '+M.country+' · '+m.kind+'</div></div></div>'+
+  h+='<div class="card pcard">'+planeHero(pl.model,1,pl.reg)+'<div class="row"><div class="grow"><b class="num" style="font-size:15px">'+esc(pl.reg)+'</b>'+(pl.name?'<div style="font-size:13px;font-style:italic">'+esc(pl.name)+'</div>':'')+'<div style="font-size:13px">'+m.name+'</div><div class="muted" style="font-size:12px">'+mkLogo(m.mk)+M.name+' · '+M.country+' · '+m.kind+'</div></div></div>'+
   '<div class="muted" style="font-size:12px">'+planePill(pl,r)+' '+nf(m.range)+' km · '+nf(pl.age,1)+' ans · '+(pl.owned?'en propriété':'loué chez '+(Ls?Ls.name:'un loueur')+', '+money(leaseOf(pl))+'/mois')+(pl.from?' · ex-'+esc(pl.from):'')+' · fiabilité '+rl[0].toLowerCase()+'</div>'+
   '<div class="row" style="font-size:12px"><span class="grow">Cabine : '+cabinTxt(m,pl.biz,pl.first)+'</span><button class="btn small" data-act="cabin" data-v="'+pl.id+'"'+(pl.deliv?DIS('Avion pas encore livré.'):'')+'>Cabine</button><button class="btn small" data-act="regedit" data-v="'+pl.id+'">Immatriculation</button></div>'+
   '<div class="row"><span class="muted" style="font-size:12px;flex:0 0 62px">État '+Math.round(pl.cond)+' %</span><div class="bar grow"><i style="width:'+pl.cond+'%;background:'+(pl.cond<55?'var(--bad)':pl.cond<70?'var(--warn)':'var(--good)')+'"></i></div></div>'+
@@ -1938,10 +1957,10 @@ function morphNode(a,b){const tag=a.tagName;
 const lazyImg=h=>h.replace(/<img (?!loading)/g,'<img loading="lazy" decoding="async" ');
 function renderAll(force){if(!G)return;const now=performance.now();if(!force&&(UI.holding||now-UI.lastRender<450||(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.amt!=null&&$('panel').contains(document.activeElement)))){UI.dirty=true;return;}
  UI.lastRender=now;UI.dirty=false;header();legend();
- const P=$('panel'),key=UI.tab+(UI.tab==='gestion'?':'+UI.sub:'');
- if(UI.pkey!==key){if(UI.pkey)UI.scr[UI.pkey]=P.scrollTop;P.innerHTML=lazyImg({carte:panelCarte,lignes:panelLignes,flotte:panelFlotte,gestion:panelGestion,marche:panelMarche}[UI.tab]());P.scrollTop=UI.scr[key]||0;P.classList.remove('fadein');void P.offsetWidth;P.classList.add('fadein');
-  const on=P.querySelector('.subnav [aria-pressed="true"]');if(on)on.scrollIntoView({inline:'center',block:'nearest'});UI.pkey=key;}
- else morph(P,lazyImg({carte:panelCarte,lignes:panelLignes,flotte:panelFlotte,gestion:panelGestion,marche:panelMarche}[UI.tab]()));}
+ const P=$('panel'),key=UI.tab+(UI.tab==='gestion'?':'+UI.sub:''),wrap=h=>UI.tab==='gestion'||UI.tab==='marche'?'<div class="flow">'+h+'</div>':h;
+ if(UI.pkey!==key){if(UI.pkey)UI.scr[UI.pkey]=P.scrollTop;P.innerHTML=wrap(lazyImg({carte:panelCarte,lignes:panelLignes,flotte:panelFlotte,gestion:panelGestion,marche:panelMarche}[UI.tab]()));P.scrollTop=UI.scr[key]||0;P.classList.remove('fadein');void P.offsetWidth;P.classList.add('fadein');
+  const on=P.querySelector('.subnav [aria-pressed="true"]');if(P.firstElementChild&&P.firstElementChild.classList.contains('flow'))P.firstElementChild.classList.add('fadein');if(on)on.scrollIntoView({inline:'center',block:'nearest'});UI.pkey=key;}
+ else morph(P,wrap(lazyImg({carte:panelCarte,lignes:panelLignes,flotte:panelFlotte,gestion:panelGestion,marche:panelMarche}[UI.tab]())));}
 $('panel').addEventListener('pointerdown',()=>{UI.holding=true;});
 addEventListener('pointerup',()=>{setTimeout(()=>{UI.holding=false;},60);});
 addEventListener('pointercancel',()=>{UI.holding=false;});
