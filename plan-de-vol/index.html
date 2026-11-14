@@ -290,7 +290,7 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
 "use strict";
 //SIM-START ====================================================================
 // Moteur de simulation : aucune dépendance à l'interface. Tout l'état vit dans G (JSON).
-const CFG={K:80,elasticity:1.1,elasticityB:0.6,shareSens:5,baseCost:3e6,goalShare:0.15,leaseRate:0.011,leaseFee:0.06,graceDays:60};
+const CFG={K:447,elasticity:1.1,elasticityB:0.6,shareSens:9,baseCost:3e6,goalShare:0.15,leaseRate:0.0078,leaseFee:0.06,graceDays:60};
 const REGIONS={EU:'Europe',AF:'Afrique',ME:'Moyen-Orient',AS:'Asie',NA:'Amérique du Nord',LA:'Amérique latine',OC:'Océanie'};
 // code, ville, lat, lon, bassin de population (M), indice de pouvoir d'achat, région
 const AP=[
@@ -338,52 +338,52 @@ const MAKERS={
 const CATS={turbo:'Turbopropulseur',regional:'Jet régional',narrow:'Monocouloir',narrowLR:'Monocouloir long rayon',wide:'Gros-porteur',vlarge:'Très gros-porteur',dd:'Double pont géant',sst:'Supersonique',cargo:'Cargo'};
 // eng : nombre de réacteurs ; fp : part maximale de la cabine en classes avant ; mxF : surcoût d'entretien propre au modèle
 const MODELS=[
-{id:'S50',mk:'SEV',name:'Sever S-50',cat:'turbo',seats:50,range:1400,speed:480,fuel:1.9,price:12e6},
-{id:'T50',mk:'AER',name:'Aéris T-50',cat:'turbo',seats:50,range:1500,speed:500,fuel:1.7,price:17e6},
-{id:'T70',mk:'AER',name:'Aéris T-70',cat:'turbo',seats:70,range:1600,speed:510,fuel:2.1,price:22e6},
-{id:'C80',mk:'CER',name:'Cerrado C-80',cat:'turbo',seats:80,range:1900,speed:520,fuel:2.4,price:25e6},
-{id:'T90',mk:'AER',name:'Aéris T-90',cat:'turbo',seats:90,range:2100,speed:530,fuel:2.6,price:30e6},
-{id:'H70',mk:'HOS',name:'Hoshi H-70',cat:'regional',seats:70,range:3000,speed:800,fuel:2.5,price:33e6},
-{id:'R75',mk:'BOR',name:'Boréal R-75',cat:'regional',seats:76,range:2900,speed:790,fuel:2.8,price:30e6},
-{id:'H90',mk:'HOS',name:'Hoshi H-90',cat:'regional',seats:90,range:3400,speed:810,fuel:2.9,price:37e6},
-{id:'R100',mk:'BOR',name:'Boréal R-100',cat:'regional',seats:100,range:3300,speed:800,fuel:3.4,price:38e6},
-{id:'C120',mk:'CER',name:'Cerrado C-120',cat:'regional',seats:120,range:4000,speed:820,fuel:3.9,price:45e6},
-{id:'M140',mk:'MER',name:'Méridien M-140',cat:'narrow',seats:140,range:5200,speed:830,fuel:4.4,price:78e6},
-{id:'R140',mk:'BOR',name:'Boréal R-140',cat:'narrow',seats:140,range:5900,speed:830,fuel:4.0,price:82e6},
-{id:'S150',mk:'SEV',name:'Sever S-150',cat:'narrow',seats:150,range:4600,speed:830,fuel:5.4,price:52e6},
-{id:'C150',mk:'CER',name:'Cerrado C-150',cat:'narrow',seats:150,range:4800,speed:830,fuel:4.5,price:60e6},
-{id:'LW170',mk:'LON',name:'Longwei LW-170',cat:'narrow',seats:170,range:5000,speed:820,fuel:5.4,price:74e6},
-{id:'M180',mk:'MER',name:'Méridien M-180',cat:'narrow',seats:180,range:5600,speed:840,fuel:5.2,price:95e6},
-{id:'N190',mk:'ATL',name:'Atlas N-190',cat:'narrow',seats:190,range:6000,speed:840,fuel:5.5,price:102e6},
-{id:'M230',mk:'MER',name:'Méridien M-230',cat:'narrow',seats:230,range:6200,speed:840,fuel:6.2,price:118e6},
-{id:'M200',mk:'MER',name:'Méridien M-200 LR',cat:'narrowLR',seats:200,range:8200,speed:840,fuel:5.7,price:128e6},
-{id:'N220',mk:'ATL',name:'Atlas N-220 ER',cat:'narrowLR',seats:220,range:7400,speed:845,fuel:6.1,price:124e6},
-{id:'H260',mk:'HOS',name:'Hoshi H-260',cat:'wide',seats:260,range:13000,speed:905,fuel:8.0,price:235e6},
-{id:'LW280',mk:'LON',name:'Longwei LW-280',cat:'wide',seats:280,range:11000,speed:890,fuel:9.6,price:168e6},
-{id:'W300',mk:'ATL',name:'Atlas W-300',cat:'wide',seats:300,range:12000,speed:900,fuel:9.5,price:210e6},
-{id:'S300',mk:'SEV',name:'Sever S-300',cat:'wide',seats:300,range:10000,speed:860,fuel:12.0,price:120e6,eng:4},
-{id:'M330',mk:'MER',name:'Méridien M-330',cat:'wide',seats:330,range:12500,speed:890,fuel:9.0,price:245e6},
-{id:'LW360',mk:'LON',name:'Longwei LW-360',cat:'vlarge',seats:360,range:12500,speed:895,fuel:10.8,price:220e6},
-{id:'W420',mk:'ATL',name:'Atlas W-420',cat:'vlarge',seats:420,range:14500,speed:910,fuel:12.5,price:320e6},
-{id:'W470',mk:'ATL',name:'Atlas W-470 « Jumbo »',cat:'vlarge',seats:470,range:13500,speed:915,fuel:15.0,price:360e6,eng:4},
-{id:'M600',mk:'MER',name:'Méridien M-600 « Titan »',cat:'dd',seats:575,range:14800,speed:905,fuel:15.5,price:445e6,eng:4,fp:0.45},
-{id:'AC100',mk:'AER',name:'Aéris Céleste',cat:'sst',seats:100,range:7200,speed:2150,fuel:11,price:300e6,eng:4,fp:1,mxF:2},
+{id:'S50',mk:'SEV',name:'Sever S-50',cat:'turbo',seats:50,range:1400,speed:480,fuel:1.9,price:9e6},
+{id:'T50',mk:'AER',name:'Aéris T-50',cat:'turbo',seats:50,range:1500,speed:500,fuel:1.7,price:13e6},
+{id:'T70',mk:'AER',name:'Aéris T-70',cat:'turbo',seats:70,range:1600,speed:510,fuel:2.1,price:17e6},
+{id:'C80',mk:'CER',name:'Cerrado C-80',cat:'turbo',seats:80,range:1900,speed:520,fuel:2.4,price:19e6},
+{id:'T90',mk:'AER',name:'Aéris T-90',cat:'turbo',seats:90,range:2100,speed:530,fuel:2.6,price:22e6},
+{id:'H70',mk:'HOS',name:'Hoshi H-70',cat:'regional',seats:70,range:3000,speed:800,fuel:2.5,price:26e6},
+{id:'R75',mk:'BOR',name:'Boréal R-75',cat:'regional',seats:76,range:2900,speed:790,fuel:2.8,price:23e6},
+{id:'H90',mk:'HOS',name:'Hoshi H-90',cat:'regional',seats:90,range:3400,speed:810,fuel:2.9,price:29e6},
+{id:'R100',mk:'BOR',name:'Boréal R-100',cat:'regional',seats:100,range:3300,speed:800,fuel:3.4,price:30e6},
+{id:'C120',mk:'CER',name:'Cerrado C-120',cat:'regional',seats:120,range:4000,speed:820,fuel:3.9,price:34e6},
+{id:'M140',mk:'MER',name:'Méridien M-140',cat:'narrow',seats:140,range:5200,speed:830,fuel:4.4,price:38e6},
+{id:'R140',mk:'BOR',name:'Boréal R-140',cat:'narrow',seats:140,range:5900,speed:830,fuel:4.0,price:40e6},
+{id:'S150',mk:'SEV',name:'Sever S-150',cat:'narrow',seats:150,range:4600,speed:830,fuel:5.4,price:30e6},
+{id:'C150',mk:'CER',name:'Cerrado C-150',cat:'narrow',seats:150,range:4800,speed:830,fuel:4.5,price:36e6},
+{id:'LW170',mk:'LON',name:'Longwei LW-170',cat:'narrow',seats:170,range:5000,speed:820,fuel:5.4,price:40e6},
+{id:'M180',mk:'MER',name:'Méridien M-180',cat:'narrow',seats:180,range:5600,speed:840,fuel:5.2,price:52e6},
+{id:'N190',mk:'ATL',name:'Atlas N-190',cat:'narrow',seats:190,range:6000,speed:840,fuel:5.5,price:50e6},
+{id:'M230',mk:'MER',name:'Méridien M-230',cat:'narrow',seats:230,range:6200,speed:840,fuel:6.2,price:62e6},
+{id:'M200',mk:'MER',name:'Méridien M-200 LR',cat:'narrowLR',seats:200,range:8200,speed:840,fuel:5.7,price:66e6},
+{id:'N220',mk:'ATL',name:'Atlas N-220 ER',cat:'narrowLR',seats:220,range:7400,speed:845,fuel:6.1,price:64e6},
+{id:'H260',mk:'HOS',name:'Hoshi H-260',cat:'wide',seats:260,range:13000,speed:905,fuel:8.0,price:120e6},
+{id:'LW280',mk:'LON',name:'Longwei LW-280',cat:'wide',seats:280,range:11000,speed:890,fuel:9.6,price:95e6},
+{id:'W300',mk:'ATL',name:'Atlas W-300',cat:'wide',seats:300,range:12000,speed:900,fuel:9.5,price:135e6},
+{id:'S300',mk:'SEV',name:'Sever S-300',cat:'wide',seats:300,range:10000,speed:860,fuel:12.0,price:75e6,eng:4},
+{id:'M330',mk:'MER',name:'Méridien M-330',cat:'wide',seats:330,range:12500,speed:890,fuel:9.0,price:150e6},
+{id:'LW360',mk:'LON',name:'Longwei LW-360',cat:'vlarge',seats:360,range:12500,speed:895,fuel:10.8,price:125e6},
+{id:'W420',mk:'ATL',name:'Atlas W-420',cat:'vlarge',seats:420,range:14500,speed:910,fuel:12.5,price:185e6},
+{id:'W470',mk:'ATL',name:'Atlas W-470 « Jumbo »',cat:'vlarge',seats:470,range:13500,speed:915,fuel:15.0,price:165e6,eng:4},
+{id:'M600',mk:'MER',name:'Méridien M-600 « Titan »',cat:'dd',seats:575,range:14800,speed:905,fuel:15.5,price:230e6,eng:4,fp:0.45},
+{id:'AC100',mk:'AER',name:'Aéris Céleste',cat:'sst',seats:100,range:7200,speed:2150,fuel:11,price:220e6,eng:4,fp:1,mxF:2},
 // Cargos neufs (seats = équivalent de taille pour les coûts ; pay = charge utile en tonnes)
-{id:'W300F',mk:'ATL',name:'Atlas W-300F',cat:'cargo',seats:300,pay:58,range:9000,speed:880,fuel:8.4,price:165e6},
-{id:'M330F',mk:'MER',name:'Méridien M-330F',cat:'cargo',seats:330,pay:66,range:8000,speed:870,fuel:8.3,price:180e6},
-{id:'W470F',mk:'ATL',name:'Atlas W-470F',cat:'cargo',seats:470,pay:124,range:8200,speed:900,fuel:13.6,price:290e6,eng:4},
+{id:'W300F',mk:'ATL',name:'Atlas W-300F',cat:'cargo',seats:300,pay:58,range:9000,speed:880,fuel:8.4,price:150e6},
+{id:'M330F',mk:'MER',name:'Méridien M-330F',cat:'cargo',seats:330,pay:66,range:8000,speed:870,fuel:8.3,price:165e6},
+{id:'W470F',mk:'ATL',name:'Atlas W-470F',cat:'cargo',seats:470,pay:124,range:8200,speed:900,fuel:13.6,price:180e6,eng:4},
 // Programmes futurs : annoncés un an avant leur mise en service, parfois en retard
-{id:'R160',mk:'BOR',name:'Boréal R-160',cat:'narrow',seats:160,range:5600,speed:830,fuel:3.6,price:80e6,avail:420},
-{id:'H200',mk:'HOS',name:'Hoshi H-200',cat:'narrow',seats:200,range:6500,speed:840,fuel:4.4,price:108e6,avail:780},
-{id:'LW220',mk:'LON',name:'Longwei LW-220',cat:'narrowLR',seats:220,range:7200,speed:835,fuel:5.7,price:96e6,avail:900},
-{id:'M350',mk:'MER',name:'Méridien M-350 Néo',cat:'wide',seats:350,range:15500,speed:905,fuel:8.4,price:285e6,avail:1140},
-{id:'AH2',mk:'AER',name:'Aéris Hydra',cat:'turbo',seats:80,range:1300,speed:540,fuel:2.4,price:62e6,avail:1500,h2:true}];
+{id:'R160',mk:'BOR',name:'Boréal R-160',cat:'narrow',seats:160,range:5600,speed:830,fuel:3.6,price:42e6,avail:420},
+{id:'H200',mk:'HOS',name:'Hoshi H-200',cat:'narrow',seats:200,range:6500,speed:840,fuel:4.4,price:58e6,avail:780},
+{id:'LW220',mk:'LON',name:'Longwei LW-220',cat:'narrowLR',seats:220,range:7200,speed:835,fuel:5.7,price:55e6,avail:900},
+{id:'M350',mk:'MER',name:'Méridien M-350 Néo',cat:'wide',seats:350,range:15500,speed:905,fuel:8.4,price:175e6,avail:1140},
+{id:'AH2',mk:'AER',name:'Aéris Hydra',cat:'turbo',seats:80,range:1300,speed:540,fuel:2.4,price:40e6,avail:1500,h2:true}];
 for(const m of MODELS)m.kind=m.h2?'Turbopropulseur à hydrogène':CATS[m.cat];
 // Loueurs : apport à la livraison et loyer mensuel en part du prix neuf
 const LESSORS=[
- {id:'atl',name:'Atlantic Aero Leasing',city:'Dublin',fee:0.05,rate:0.0115,makers:['AER','BOR','MER','ATL','CER'],note:'Grand loueur généraliste, catalogue occidental.'},
- {id:'ori',name:'Orient Capital Leasing',city:'Singapour',fee:0.03,rate:0.0125,makers:['HOS','LON','MER','ATL'],note:'Apport réduit, loyer plus élevé.'},
- {id:'sol',name:'Solaris Fleet Finance',city:'Miami',fee:0.08,rate:0.0100,makers:['ATL','BOR','CER','SEV','AER','LON'],note:'Apport élevé, loyer le plus bas.'}];
+ {id:'atl',name:'Atlantic Aero Leasing',city:'Dublin',fee:0.05,rate:0.0080,makers:['AER','BOR','MER','ATL','CER'],note:'Grand loueur généraliste, catalogue occidental.'},
+ {id:'ori',name:'Orient Capital Leasing',city:'Singapour',fee:0.03,rate:0.0090,makers:['HOS','LON','MER','ATL'],note:'Apport réduit, loyer plus élevé.'},
+ {id:'sol',name:'Solaris Fleet Finance',city:'Miami',fee:0.08,rate:0.0070,makers:['ATL','BOR','CER','SEV','AER','LON'],note:'Apport élevé, loyer le plus bas.'}];
 // Pays : nom, préfixe d'immatriculation, format particulier
 const CTRY={MA:['Maroc','CN'],DZ:['Algérie','7T'],TN:['Tunisie','TS'],EG:['Égypte','SU'],SN:['Sénégal','6V'],CI:["Côte d'Ivoire",'TU'],GH:['Ghana','9G'],NG:['Nigeria','5N'],ET:['Éthiopie','ET'],KE:['Kenya','5Y'],TZ:['Tanzanie','5H'],CD:['RD Congo','9S'],AO:['Angola','D2'],ZA:['Afrique du Sud','ZS'],MG:['Madagascar','5R'],MU:['Maurice','3B'],
  PT:['Portugal','CS'],ES:['Espagne','EC'],FR:['France','F'],GB:['Royaume-Uni','G'],IE:['Irlande','EI'],IS:['Islande','TF'],NL:['Pays-Bas','PH'],BE:['Belgique','OO'],DE:['Allemagne','D'],CH:['Suisse','HB'],AT:['Autriche','OE'],IT:['Italie','I'],GR:['Grèce','SX'],TR:['Turquie','TC'],DK:['Danemark','OY'],SE:['Suède','SE'],NO:['Norvège','LN'],FI:['Finlande','OH'],PL:['Pologne','SP'],CZ:['Tchéquie','OK'],HU:['Hongrie','HA'],RO:['Roumanie','YR'],RS:['Serbie','YU'],BG:['Bulgarie','LZ'],UA:['Ukraine','UR'],RU:['Russie','RA','D5'],
@@ -402,7 +402,7 @@ const canServe=(m,a,b)=>dist(a,b)<=m.range&&(m.cat!=='dd'||(bigAirport(a)&&bigAi
 const legsOf=r=>r.via?[[r.a,r.via],[r.via,r.b]]:[[r.a,r.b]];
 const canServeR=(m,r)=>legsOf(r).every(l=>canServe(m,l[0],l[1]));
 const routeKm=r=>r.via?dist(r.a,r.via)+dist(r.via,r.b):dist(r.a,r.b);
-function rotMax(r,m){if(!r.via)return maxRot(dist(r.a,r.b),m);const h=flightH(dist(r.a,r.via),m)+flightH(dist(r.via,r.b),m)+1.4;return Math.max(1,Math.floor(17/(2*h)));}
+function rotMax(r,m){if(!r.via)return maxRot(dist(r.a,r.b),m);const h=flightH(dist(r.a,r.via),m)+flightH(dist(r.via,r.b),m)+1.4;return rotCap(h);}
 function bestVias(a,b,m,n){const dab=dist(a,b),out=[];for(const V of AP){const v=V.code;if(v===a||v===b)continue;const d1=dist(a,v),d2=dist(v,b);if(d1<300||d2<300||d1+d2>dab*1.45)continue;
   if(m&&(!canServe(m,a,v)||!canServe(m,v,b)))continue;out.push({v,d1,d2,sc:(demandBase(a,v)+demandBase(v,b))*Math.exp(-3*((d1+d2)/dab-1))});}
  out.sort((x,y)=>y.sc-x.sc);return out.slice(0,n||5);}
@@ -454,7 +454,7 @@ const C_INT=5000,D_INT=24000;
 function startHeavy(al,pl,kind,forced){const m=MX[pl.model],c=m.price*(kind==='D'?0.025:0.005)*(forced?1.3:1);al.cash-=c;al.m.mx+=c;pl.down=kind==='D'?35:10;pl.inCheck=true;pl.heavy=kind;
  if(kind==='D'){pl.hD=0;pl.hC=0;pl.cabY=0;}else pl.hC=0;if(forced){al.penalty+=5;if(al.player)news(pl.reg+' immobilisé par l\'autorité : visite '+kind+' en retard. Surcoût de 30 %.','bad','breakdown');}}
 // Personnel : salaires mensuels au prix du marché, coût de recrutement par personne
-const STAFF={pilot:{label:'Pilotes',sal:11e3,hire:15e3},cabin:{label:'Personnel de cabine',sal:4e3,hire:4e3},mech:{label:'Mécaniciens',sal:5e3,hire:6e3},ground:{label:'Personnel au sol',sal:3e3,hire:2e3}};
+const STAFF={pilot:{label:'Pilotes',sal:15e3,hire:20e3},cabin:{label:'Personnel de cabine',sal:5e3,hire:5e3},mech:{label:'Mécaniciens',sal:6.5e3,hire:8e3},ground:{label:'Personnel au sol',sal:4e3,hire:3e3}};   // coût employeur mensuel, charges comprises
 const SK=['pilot','cabin','mech','ground'];
 const SALLV=[0.85,0.95,1,1.1,1.2], TRAIN_PP=[0,60,150,300], TRAIN_MO=[0,4,8,12];
 // Services à bord
@@ -466,6 +466,15 @@ const PROFILES={
  challenger:{label:'Challenger opportuniste',bias:0.93,models:['C120','S150','M180','M200'],appetite:0.22,reserve:4e6,svc:{meal:1,bag:1,wifi:1,ent:0,loyal:0},biz:0.06,lv:2,train:1,camp:1,lounge:false},
  regional:{label:'Régionale prudente',bias:1.0,models:['T50','T70','H90','R100'],appetite:0.1,reserve:5e6,svc:{meal:1,bag:0,wifi:0,ent:0,loyal:0},biz:0,lv:2,train:1,camp:0,lounge:false},
  premium:{first:0.05,label:'Longue distance premium',bias:1.15,models:['M230','M200','H260','W300','W420'],appetite:0.12,reserve:10e6,svc:{meal:2,bag:0,wifi:1,ent:1,loyal:2},biz:0.2,lv:3,train:2,camp:3,lounge:true}};
+// Nouveaux entrants : quand une rivale disparaît, une jeune compagnie finit par prendre sa place
+const ENTRANTS=[{name:'Atlantica Air',profile:'challenger',color:'#c2410c'},{name:'Sahel Wings',profile:'regional',color:'#a16207'},{name:'Boréa Low Cost',profile:'lowcost',color:'#db2777'},{name:'Andes Connect',profile:'challenger',color:'#0e7490'},{name:'Meridia Airways',profile:'national',color:'#4338ca'},{name:'Kestrel Express',profile:'lowcost',color:'#ea580c'},{name:'Oasis Skyways',profile:'premium',color:'#0f766e'},{name:'Baltica Air',profile:'regional',color:'#6d28d9'}];
+function spawnEntrant(){const used=new Set(G.airlines.map(a=>a.name)),E=ENTRANTS.filter(e=>!used.has(e.name));if(!E.length)return;const R=E[Math.floor(rng()*E.length)],P=PROFILES[R.profile];
+ const taken=new Set();for(const a of G.airlines)if(!a.bankrupt)for(const b of a.bases)taken.add(b);const H=AP.filter(a=>a.pop>=4&&!taken.has(a.code));if(!H.length)return;const hub=H[Math.floor(rng()*H.length)].code;
+ const al=mkAirline({name:R.name,profile:R.profile,hub,color:R.color,cash:22e6});al.models=P.models.slice();al.entrant=true;al.artI=RIVALS.findIndex(x=>x.profile===R.profile)+1;
+ for(const m of P.models.slice(0,2)){const cb=cabinFor(P,m),pl=addPlane(al,m,true,2+Math.floor(rng()*6),cb.biz,{first:cb.first});const c=aiCandidates(al,[m])[0];if(c)openRoute(al,c.a,c.b,c.price,c.rot,[pl.id]);}
+ staffInit(al);G.mut=(G.mut||0)+1;news('Nouvelle concurrente : '+R.name+' ('+P.label.toLowerCase()+') s\'installe à '+APX[hub].name+'.','info','rivalbk');}
+// Modèle de coûts par profil (compagnies IA) : les low-cost volent avec des cabines denses, depuis des aéroports secondaires, en vente directe
+const PCOST={lowcost:{crew:0.7,fees:0.75,mx:0.9,dens:1.15,pax:0.5},challenger:{crew:0.8,fees:0.8,mx:0.9,dens:1.08,pax:0.7},regional:{crew:0.7,fees:0.7,mx:0.85,dens:1,pax:0.7}};
 const RIVALS=[
  {name:'Zéphyr Jet',profile:'lowcost',hub:'BCN',alt:'DUB',color:'#d1492e',cash:12e6,fleet:['M180','LW170','M180'],models:['LW170','R140','M180','N190','M230']},
  {name:'Air Lutèce',profile:'national',hub:'CDG',alt:'FRA',color:'#2456a6',cash:30e6,fleet:['T70','M140','M180','M230'],models:['T70','M140','M180','M230','M200','M330','M600','AC100']},
@@ -485,13 +494,15 @@ const _d={};
 function dist(a,b){const k=key(a,b);if(_d[k])return _d[k];const A=APX[a],B=APX[b],r=Math.PI/180;
  const h=Math.sin((B.lat-A.lat)*r/2)**2+Math.cos(A.lat*r)*Math.cos(B.lat*r)*Math.sin((B.lon-A.lon)*r/2)**2;
  return _d[k]=Math.round(12742*Math.asin(Math.sqrt(h)));}
-const pref=d=>50+0.11*Math.min(d,3000)+0.065*Math.max(0,d-3000);   // prix de référence éco, dégressif au-delà de 3 000 km
-const prefB=d=>pref(d)*3.2;                                         // prix de référence affaires
-const prefF=d=>pref(d)*7;                                           // prix de référence Première
+const pref=d=>35+0.09*Math.min(d,2000)+0.045*Math.max(0,d-2000);   // prix moyen éco réel (aller simple), dégressif au-delà de 3 000 km
+const prmF=d=>clamp((d-1000)/5000,0,1),prefB=d=>pref(d)*(2.2+1.4*prmF(d));                                         // prix de référence affaires
+const prefF=d=>pref(d)*(4.5+3.5*prmF(d));                                           // prix de référence Première
 const MEAL_F=[0,40,80];
 function firstFrac(a,b){const A=APX[a],B=APX[b],d=dist(a,b);return clamp(0.004+0.016*(A.w+B.w)/2,0.004,0.03)*(d>4000?1.5:d<1500?0.3:1);}
 const flightH=(d,m)=>d/m.speed+0.5;
-const maxRot=(d,m)=>Math.max(1,Math.floor(17/(2*(flightH(d,m)+0.7))));
+// Rotations par jour et par avion (17 h de vol utiles) : au-delà de ~8 h de vol, un aller-retour dure plus d'une journée et l'avion ne fait qu'une fraction de rotation par jour
+const rotCap=h=>{const f=17/(2*h);return f>=1?Math.floor(f):Math.max(0.3,Math.round(f*20)/20);};
+const maxRot=(d,m)=>rotCap(flightH(d,m)+0.7);
 // Cabine : un siège affaires prend la place de 2 sièges éco, un siège Première celle de 4. Au plus 40 % de la cabine en classes avant.
 const maxFP=m=>Math.floor(m.seats*(m.fp||0.4));
 const firstOK=m=>['narrowLR','wide','vlarge','dd','sst'].includes(m.cat);
@@ -510,11 +521,11 @@ const payOf=pl=>{const m=MX[pl.model];return m.pay||Math.round(m.seats*0.16);};
 const bellyOf=m=>m.cat==='sst'?0:m.seats*(['wide','vlarge','dd'].includes(m.cat)?0.055:m.cat==='turbo'||m.cat==='regional'?0.004:0.012);
 const C_HUB={HKG:3,PVG:2.5,PEK:1.5,CAN:1.6,SZX:1.8,TPE:1.8,ICN:2,NRT:1.6,SIN:1.6,DXB:2.2,DOH:1.6,FRA:2,AMS:1.6,CDG:1.5,LHR:1.4,LAX:1.8,ORD:1.8,JFK:1.6,MIA:1.8,ANC:2.5,NBO:1.6,BOG:1.4,IST:1.4,DEL:1.2,BOM:1.2,GRU:1.2,MEX:1.1,ATL:1.3,CMN:1.1,ADD:1.3,BKK:1.3,KUL:1.2};
 const cYield=d=>0.25+0.0003*d;   // € par kg
-function cargoBase(a,b){const A=APX[a],B=APX[b],d=dist(a,b);return 0.002*Math.sqrt(A.pop*B.pop)*Math.pow(A.w*B.w,0.7)*(C_HUB[a]||1)*(C_HUB[b]||1)*1e3*(d/(d+800))*Math.sqrt(6000/(d+6000));}
+function cargoBase(a,b){const A=APX[a],B=APX[b],d=dist(a,b);return 0.005*Math.sqrt(A.pop*B.pop)*Math.pow(A.w*B.w,0.7)*(C_HUB[a]||1)*(C_HUB[b]||1)*1e3*(d/(d+800))*Math.sqrt(6000/(d+6000));}
 const cSeason=()=>{const t=G.day%360;return 1+0.22*bump(t,320,35)-0.1*bump(t,40,25);};   // pic de fin d'année, creux de février
 function cargoD(a,b){let D=cargoBase(a,b)*cSeason()*G.econ;for(const m of G.mods){if(m.ap?(m.ap===a||m.ap===b):true)D*=Math.sqrt(m.mult);}return D;}
 // Répartit la demande fret (t/jour/sens) entre les capacités offertes
-function splitCargo(a,b,E){const D0=cargoD(a,b);let rate=0,cw=0;for(const e of E){rate+=e.rate*e.cap;cw+=e.cap;}if(!cw)return D0;const D=D0*Math.pow(rate/cw,-0.6);
+function splitCargo(a,b,E0){const D0=cargoD(a,b);let mc=0;for(const e of E0)mc+=e.cap;const oc=Math.max(D0*0.25,D0*0.75-0.5*mc),E=oc>0.5?E0.concat([{al:OTH,cap:oc,rate:1,fr:false,oth:true}]):E0;let rate=0,cw=0;for(const e of E){rate+=e.rate*e.cap;cw+=e.cap;}if(!cw)return D0;const D=D0*Math.pow(rate/cw,-0.6);
  let W=0;for(const e of E){e._w=e.cap*Math.pow(e.rate,-3)*(0.7+0.6*e.al.rep/100)*(e.fr?1.15:1);W+=e._w;e.t=0;}
  let left=D;for(let it=0;it<2&&left>1e-6&&W>0;it++){let W2=0,used=0;for(const e of E){if(e.t>=e.cap)continue;const x=Math.min(e.cap-e.t,left*e._w/W);e.t+=x;used+=x;}left-=used;W=E.reduce((s,e)=>s+(e.t<e.cap-1e-6?e._w:0),0);}
  return D;}
@@ -550,9 +561,11 @@ const firstSeats=(mid,f)=>firstOK(MX[mid])?Math.min(maxFirst(MX[mid]),2*Math.rou
 function cabinFor(P,mid){const f=firstSeats(mid,P.first||0);return{biz:Math.min(maxBiz(MX[mid],f),bizSeats(mid,P.biz)),first:f};}
 const priceNow=m=>m.price*(G&&G.salon>G.day?0.9:1);
 function season(){return 1;}
-function demandBase(a,b){const A=APX[a],B=APX[b],d=dist(a,b);return CFG.K*Math.sqrt(A.pop*B.pop)*((A.w+B.w)/2)*(d/(d+400))*(2200/(d+2200));}
+// Demande (passagers par sens et par jour) calée sur le trafic réel 2024-2025 : Paris-New York ~2 500, Londres-New York ~4 000, Paris-Nice ~1 500, Casablanca-Paris ~1 200
+const TIES=(()=>{const T={FR:'MA DZ TN SN CI CM ML BF NE GN BJ TG GA MG CA HT',GB:'IN PK NG GH KE ZA AU NZ US CA JM',ES:'MA AR CO MX PE EC BO PY VE CU DO',PT:'BR AO MZ CV',US:'MX DO JM PH IN IL CA',NL:'SR ID',DE:'TR PL',AE:'IN PK PH EG',SA:'EG PK IN ID',QA:'IN PK',IT:'AR BR',CN:'HK MO TW'},S=new Set();for(const a in T)for(const b of T[a].split(' ')){S.add(a+b);S.add(b+a);}return S;})();
+function demandBase(a,b){const A=APX[a],B=APX[b],d=dist(a,b),ca=AP_C[a],cb=AP_C[b];return CFG.K*Math.sqrt(A.pop*B.pop)*((A.w+B.w)/2)*(d/(d+500))*Math.pow(2500/(d+2500),0.9)*(ca===cb?1.5:TIES.has(ca+cb)?1.5:1);}
 function demandNow(a,b){let D=demandBase(a,b)*(G._ds?1:seasonF(a,b))*G.econ;for(const m of G.mods){if(m.ap?(m.ap===a||m.ap===b):true)D*=m.mult;}return D;}
-function bizFrac(a,b){const A=APX[a],B=APX[b];return clamp(0.03+0.07*(A.w+B.w)/2,0.03,0.14)*(dist(a,b)>2500?1.25:1);}
+function bizFrac(a,b){const A=APX[a],B=APX[b];return clamp(0.03+0.07*(A.w+B.w)/2,0.03,0.14)*(dist(a,b)>2500?1.1:1);}
 // Confort perçu, en points d'utilité (0,1 ≈ 2 % de prix)
 function comfort(al,a,b){return comfortRaw(al.svc,clamp(dist(a,b)/3000,0.4,2),al.lounges.includes(a)||al.lounges.includes(b)?1:0);}
 function comfortRaw(s,L,lg){
@@ -560,8 +573,13 @@ function comfortRaw(s,L,lg){
 const awOf=(al,a,b)=>(al.aw[APX[a].reg]+al.aw[APX[b].reg])/2;
 function fuelIdx(al){const h=al.hedge;return h&&h.until>G.day?h.sh*h.idx+(1-h.sh)*G.fuel:G.fuel;}   // part couverte au prix fixé, le reste au prix du marché
 function legCost(d,m,al,pl,a,b){const fh=flightH(d,m),ag=pl?pl.age:0,age=1+Math.max(0,ag-8)*0.04;   // les vieux avions consomment et coûtent plus en entretien
- const sf=a&&!m.h2?Math.max(al.saf||0,safMin(a,b)):0,t=m.h2?0:m.fuel*d*0.0032*(1+ag*0.005)*(1-0.8*sf),fr=isFr(pl);
- return{co2t:t,co2:a?t*G.co2*co2Cov(a,b):0,fuel:m.h2?1.25*m.fuel*d*1.05:1.25*m.fuel*d*fuelIdx(al)*(1+ag*0.005)*(1+2.2*sf),fees:fr?900+m.seats*4:1100+m.seats*11,crew:fh*(250+m.seats*(fr?0.6:4)),mx:fh*(300+m.seats*6)*age*MAKERS[m.mk].mx*(m.mxF||1)*((m.eng||2)>2?1.15:1)};}
+ const sf=a&&!m.h2?Math.max(al.saf||0,safMin(a,b)):0,de=d+250,t=m.h2?0:m.fuel*de*0.00204*(1+ag*0.005)*(1-0.8*sf),fr=isFr(pl),V=volF(al);
+ return{co2t:t,co2:a?t*G.co2*co2Cov(a,b):0,fuel:m.h2?0.42*m.fuel*de*1.05:0.42*m.fuel*de*fuelIdx(al)*(1+ag*0.005)*(1+2.2*sf)*(1-(1-V)*0.5),fees:fr?600+m.seats*8+d*0.6:400+m.seats*(8+10*apTier(a,b))+d*(0.5+m.seats*0.0022),crew:fh*(200+m.seats*(fr?0.5:3))*(d>4000?1.3:1),mx:fh*(150+m.seats*4)*age*MAKERS[m.mk].mx*(m.mxF||1)*((m.eng||2)>2?1.15:1)*famF(al,m)};}
+// Redevances aéroportuaires : un grand hub coûte bien plus cher qu'un aéroport régional
+function apTier(a,b){if(!a)return 0.8;const t=c=>clamp(APX[c].pop/10,0.2,1.3)*(0.7+0.3*clamp(APX[c].w,0.3,1.5));return (t(a)+t(b))/2;}
+// Économies d'échelle : contrats carburant, restauration, assistance au sol (selon les passagers du mois) et flotte homogène (entretien)
+function volF(al){const px=al.last?al.last.pax:0;return clamp(1.1-0.06*Math.log10(Math.max(1e4,px)/1e4),0.85,1.1);}
+function famF(al,m){let n=0;for(const p of al.planes)if(MX[p.model].mk===m.mk)n++;return clamp(1.1-0.05*Math.log2(Math.max(1,n)),0.85,1.1);}
 function planeOf(al,id){return al.planes.find(p=>p.id===id);}
 // Ponctualité attendue d'une ligne : rotations serrées, météo, hiver, aéroports saturés, état des avions, mécaniciens, réserve
 function otpOf(al,r,o){const mr=Math.max(1,maxRotRoute(al,r)),tight=r.rot/mr,t=G.day%360;let p=0.91;
@@ -581,10 +599,10 @@ function routeOps(al,r,extra,mark){let left=r.rot;const o={seats:0,seatsB:0,seat
   const m=MX[pl.model];if(!canServeR(m,r)||!brandOK(m,r))continue;const k=Math.min(left,rotMax(r,m));left-=k;const b=pl.biz||0;
   const cab=MAKERS[m.mk].cab-0.015*clamp((pl.cabY==null?pl.age:pl.cabY)-8,0,10);   // une cabine fatiguée pèse sur le confort
   o._w=(o._w||0)+k*m.seats;o._s=(o._s||0)+k*m.seats*m.speed;o._c=(o._c||0)+k*m.seats*cab;o.fl+=k;o._cd=(o._cd||0)+k*pl.cond;
-  const fs=pl.first||0,fr=isFr(pl);if(fr){o.ct=(o.ct||0)+k*payOf(pl);o.fr=true;}else if(r.brand==='lc'){o.seats+=k*Math.round(m.seats*BRANDS.lc.dens);o.ct=(o.ct||0)+k*bellyOf(m);}else{o.seats+=k*ecoSeats(m,b,fs);o.seatsB+=k*b;o.seatsF+=k*fs;o.ct=(o.ct||0)+k*bellyOf(m);}o.flights+=2*k;let h=0;
+  const fs=pl.first||0,fr=isFr(pl);if(fr){o.ct=(o.ct||0)+k*payOf(pl);o.fr=true;}else if(r.brand==='lc'||(PCOST[al.profile]&&PCOST[al.profile].dens>1)){o.seats+=k*Math.round(m.seats*(r.brand==='lc'?BRANDS.lc.dens:PCOST[al.profile].dens));o.ct=(o.ct||0)+k*bellyOf(m);}else{o.seats+=k*ecoSeats(m,b,fs);o.seatsB+=k*b;o.seatsF+=k*fs;o.ct=(o.ct||0)+k*bellyOf(m);}o.flights+=2*k;let h=0;
   for(const l of L){const dl=dist(l[0],l[1]),c=legCost(dl,m,al,pl,l[0],l[1]);o.fuel+=2*k*c.fuel;o.fees+=2*k*c.fees;o.crew+=2*k*c.crew;o.mx+=2*k*c.mx;o.co2+=2*k*c.co2;o.co2t+=2*k*c.co2t;h+=2*k*flightH(dl,m);}
   if(mark){pl.flew=true;pl._h=(pl._h||0)+h;}}
- o.ct=o.ct||0;if(r.brand){const B=BRANDS[r.brand];o.crew*=B.crew;o.fees*=B.fees;o.mx*=B.mx;}const f=al.capF==null?1:al.capF;if(f<1)for(const q of['seats','seatsB','seatsF','flights','fuel','fees','crew','mx','co2','co2t','ct'])o[q]*=f;   // sous-effectif : vols annulés
+ o.ct=o.ct||0;if(r.brand){const B=BRANDS[r.brand];o.crew*=B.crew;o.fees*=B.fees;o.mx*=B.mx;}const PC=PCOST[al.profile];if(PC){o.crew*=PC.crew;o.fees*=PC.fees;o.mx*=PC.mx;}const f=al.capF==null?1:al.capF;if(f<1)for(const q of['seats','seatsB','seatsF','flights','fuel','fees','crew','mx','co2','co2t','ct'])o[q]*=f;   // sous-effectif : vols annulés
  o.spd=o._w?o._s/o._w:840;o.cab=o._w?o._c/o._w:0;o.cond=o.fl?o._cd/o.fl:90;o.cost=o.fuel+o.fees+o.crew+o.mx+o.co2;return o;}
 function maxRotRoute(al,r,extra){let n=0;for(const pl of r.planes.map(id=>planeOf(al,id)).concat(extra||[])){if(pl&&canServeR(MX[pl.model],r))n+=rotMax(r,MX[pl.model]);}return n;}
 // Partage d'une classe de cabine entre compagnies (modèle logit), avec débordement vers ceux qui ont des sièges libres
@@ -593,8 +611,13 @@ function splitClass(L,D,pr,el,sens,get){let W=0;
  let xb=0,cb=0;for(const e of L){e._s=e._w/W;xb+=e._s*e._x;cb+=e._s*e._cf;}
  const T=D*Math.exp(-el*xb+0.3*cb)*(1+0.1*(L.length-1));let spill=0,spare=0;   // un meilleur produit élargit aussi le marché
  for(const e of L){const want=T*e._s;e._p=Math.min(e._cap,want);spill+=want-e._p;if(e._cap>e._p)spare+=e._w;}
- if(spill>0&&spare>0)for(const e of L)if(e._cap>e._p)e._p=Math.min(e._cap,e._p+0.5*spill*e._w/spare);}
-function splitMarket(a,b,E){const d=dist(a,b),D=demandNow(a,b);
+ if(spill>0&&spare>0)for(const e of L)if(e._cap>e._p)e._p=Math.min(e._cap,e._p+0.5*spill*(e._w/spare)*Math.exp(-sens*0.5*Math.max(0,e._x)));}   // les passagers refoulés acceptent un vol plus cher, mais pas à n'importe quel prix
+// Les autres compagnies (non modélisées) offrent déjà des sièges sur chaque marché, un peu plus que la demande (remplissage ~80 %).
+// Elles cèdent une partie du terrain quand les compagnies du jeu ajoutent des sièges, sans jamais disparaître.
+const OTH={id:-1,name:'Autres compagnies',rep:55,aw:{EU:0.8,AF:0.8,ME:0.8,AS:0.8,NA:0.8,LA:0.8,OC:0.8},allies:[],lounges:[],svc:{meal:1,bag:0,wifi:0,ent:1,loyal:1}};
+function othEntry(a,b,D,E){const cov=1+0.2*D/(D+500);let mod=0;for(const e of E)mod+=e.seats+e.seatsB+(e.seatsF||0);const S=Math.max(D*0.5,D*cov-0.6*mod);if(S<1)return null;
+ const bf=bizFrac(a,b),ff=firstFrac(a,b),d=dist(a,b);return{al:OTH,oth:true,price:pref(d),priceB:prefB(d),priceF:prefF(d),seats:S*(1-bf-ff),seatsB:S*bf*1.1,seatsF:S*ff*0.8,rot:Math.max(1,S/200),spd:840,cab:0};}
+function splitMarket(a,b,E0){const d=dist(a,b),D=demandNow(a,b),O=othEntry(a,b,D,E0),E=O?E0.concat([O]):E0;splitMarket.oth=O;
  for(const e of E){e.pax=0;e.paxB=0;e.paxF=0;e.seatsF=e.seatsF||0;{const c=comfort(e.svcAl||e.al,a,b),sp=Math.log((e.spd||840)/840)*clamp(d/3000,0.3,1.5),cb=e.cab||0;e._c={e:c.e+cb+0.1*sp,b:c.b+cb+0.45*sp,f:c.f+cb+0.65*sp};}e._f=(0.6+0.8*(e.rep!=null?e.rep:e.al.rep)/100)*(0.5+0.5*awOf(e.al,a,b))*Math.sqrt(e.rot);if(E.some(o=>isAlly(e.al,o.al)))e._f*=1.12;if(e.cs)e._f*=1.08;}   // partage de codes entre alliés
  const Le=E.filter(e=>e.seats>0),Lb=E.filter(e=>e.seatsB>0),Lf=E.filter(e=>e.seatsF>0);
  let ff=firstFrac(a,b),bf=bizFrac(a,b);if(!Lf.length){bf+=ff;ff=0;}if(!Lb.length)bf=0;   // sans Première, la clientèle Première se rabat sur l'affaires, puis sur l'éco
@@ -604,7 +627,8 @@ function splitMarket(a,b,E){const d=dist(a,b),D=demandNow(a,b);
  return D;}
 // Recettes et coûts de service pour un jour de ligne (pax par sens)
 function paxMoney(al,d,pax,paxB,price,priceB,paxF,priceF){const L=clamp((d/820+0.5)/1.5,0.6,4),s=al.svc,P=2*pax,PB=2*paxB,PF=2*(paxF||0),m1=Math.max(1,s.meal);
- return{tix:P*price,tixB:PB*priceB,tixF:PF*(priceF||0),anc:P*((s.bag?BAG_REV*(d>3000?1.5:1):0)+(s.wifi?WIFI_REV:0)),svc:P*MEAL_E[s.meal]*L+PB*MEAL_B[m1]*L+PF*MEAL_F[m1]*L+(P+PB+PF)*LOYAL_PAX[s.loyal]};}
+ const V=(al.last?volF(al):1)*((PCOST[al.profile]||{}).pax||1),tix=P*price,tixB=PB*priceB,tixF=PF*(priceF||0);
+ return{tix,tixB,tixF,anc:P*((s.bag?BAG_REV*(d>3000?1.5:1):0)+(s.wifi?WIFI_REV:0)),svc:V*(P*MEAL_E[s.meal]*L+PB*MEAL_B[m1]*L+PF*MEAL_F[m1]*L+(P+PB+PF)*(6+4))+(P+PB+PF)*LOYAL_PAX[s.loyal]+0.03*(tix+tixB+tixF)};}   // distribution et paiement : 4 € + 3 % du billet ; assistance au sol : 6 €
 let _mk={k:'',m:null};
 function marketIndex(){const k=G.day+':'+(G.mut||0)+':'+G.nid;if(_mk.k===k)return _mk.m;const m={};
  for(const o of G.airlines){if(o.bankrupt)continue;for(const r of o.routes)if(r.seats>0||r.ct>0){const q=key(r.a,r.b);(m[q]=m[q]||[]).push({al:o,r,k:'d'});if(r.via)for(const l of legsOf(r)){const ql=key(l[0],l[1]);(m[ql]=m[ql]||[]).push({al:o,r,k:'l',l});}}}
@@ -633,7 +657,7 @@ function estimateRoute(al,r,extra){const d=dist(r.a,r.b),o=routeOps(al,r,extra,f
  return Object.assign(R,{ct:o.ct,fr:!!o.fr,seats:o.seats,seatsB:o.seatsB,seatsF:o.seatsF,lf:cap?seg/((V?2:1)*cap):o.ct?R.cT/o.ct:0,fly:o.cost,co2:o.co2,co2t:o.co2t,delay:comp,otp,legs,rev,cost,profit:rev-cost,rivals:R0.n});}
 
 function newM(){return{revC:0,cargoT:0,rmsG:0,obG:0,denied:0,csIn:0,csOut:0,sub:0,co2:0,co2t:0,delay:0,slots:0,revF:0,paxF:0,divIn:0,divOut:0,ally:0,hedge:0,cx:0,rev:0,revB:0,anc:0,fuel:0,crew:0,wages:0,hr:0,fees:0,mx:0,svc:0,lounge:0,loyal:0,lease:0,fixed:0,mkt:0,interest:0,pax:0,paxB:0,ask:0,rpk:0};}
-function mCosts(m){return (m.csOut||0)+(m.sub||0)+(m.co2||0)+(m.delay||0)+m.fuel+m.crew+m.wages+m.hr+m.fees+m.mx+m.svc+m.lounge+m.loyal+m.lease+m.fixed+m.mkt+m.interest+(m.ally||0);}
+function mCosts(m){return (m.dep||0)+(m.csOut||0)+(m.sub||0)+(m.co2||0)+(m.delay||0)+m.fuel+m.crew+m.wages+m.hr+m.fees+m.mx+m.svc+m.lounge+m.loyal+m.lease+m.fixed+m.mkt+m.interest+(m.ally||0);}
 function mProfit(m){return m.rev+m.revB+(m.revF||0)+m.anc+(m.revC||0)+(m.csIn||0)+(m.obG||0)+(m.divIn||0)-mCosts(m);}
 function mkAirline(o){const P=o.profile?PROFILES[o.profile]:null,home=APX[o.hub].reg;
  const al={id:G.airlines.length,name:o.name,color:o.color,player:!!o.player,profile:o.profile||null,cash:o.cash,debt:0,rep:50,bases:[o.hub],planes:[],routes:[],
@@ -675,8 +699,8 @@ const player=()=>G.airlines[0];
 
 // ---- Personnel
 function staffNeed(al){const n={pilot:0,cabin:0,mech:0,ground:12*al.bases.length};
- for(const p of al.planes){const m=MX[p.model],b=p.biz||0,f=p.first||0;n.pilot+=m.range>7000?10:6;if(!isFr(p))n.cabin+=4*(Math.ceil(ecoSeats(m,b,f)/50)+Math.ceil(b/16)+Math.ceil(f/8));n.mech+=Math.round(3+m.seats/60);}
- for(const r of al.routes)n.ground+=2*r.rot;return n;}
+ for(const p of al.planes){const m=MX[p.model],b=p.biz||0,f=p.first||0;n.pilot+=m.cat==='turbo'?6:m.range>7000?18:10;if(!isFr(p))n.cabin+=4*(Math.ceil(ecoSeats(m,b,f)/50)+Math.ceil(b/16)+Math.ceil(f/8));n.mech+=Math.round(3+m.seats/30);n.ground+=Math.round(3+m.seats/40);}
+ for(const r of al.routes)n.ground+=4*r.rot;return n;}
 function updateCap(al){const need=staffNeed(al);al.need=need;al.ratio={};for(const k of SK)al.ratio[k]=need[k]?al.staff[k].n/need[k]:1;
  al.capF=Math.min(1,al.ratio.pilot,al.ratio.cabin);return need;}
 function hire(al,k,n){const s=al.staff[k];n=Math.max(-s.n,Math.round(n));if(!n)return;
@@ -691,7 +715,7 @@ function wagesMonth(al){let w=0;for(const k of SK)w+=al.staff[k].n*STAFF[k].sal*
 function svcFixedMonth(al){let c=LOYAL_FIX[al.svc.loyal]+LOUNGE*al.lounges.length;for(const p of al.planes){if(al.svc.wifi)c+=WIFI_PLANE;if(al.svc.ent)c+=ENT_SEAT*MX[p.model].seats;}return c;}
 function campMonth(al){let c=0;for(const k in al.camp)c+=CAMP_COST[al.camp[k]||0];return c;}
 
-function newGame(o){resetWorld();_mk.k='';_cx.k='';G={v:9,prog:{},apSh:{},co2:85,slotCap:Object.assign({},SLOT_AP),init:true,evSeen:{},av:0,used:[],seed:o.seed|0,day:0,fuel:1,econ:1,mods:[],news:[],nid:1,mut:0,salon:0,airlines:[],won:false,over:false,diff:o.diff,frac:0};
+function newGame(o){resetWorld();_mk.k='';_cx.k='';G={v:10,prog:{},apSh:{},co2:85,slotCap:Object.assign({},SLOT_AP),init:true,evSeen:{},av:0,used:[],seed:o.seed|0,day:0,fuel:1,econ:1,mods:[],news:[],nid:1,mut:0,salon:0,airlines:[],won:false,over:false,diff:o.diff,frac:0};
  const p=mkAirline({name:o.name,hub:o.hub,color:'#b01f6a',cash:[14e6,9e6,6e6][o.diff],player:true});
  const p0=addPlane(p,'R100',true,8,0,{cond:88,from:'Kestrel Airways'});p0.name='Premier envol';staffInit(p);
  const list=o.diff===0?[RIVALS[0],RIVALS[2],RIVALS[3],RIVALS[5]]:RIVALS;
@@ -892,7 +916,7 @@ function dayStep(){G.day++;const mk={},cmk={},P0=player();
   for(const e of E){const t=e.t*(0.95+rng()*0.1),r=e.r,al=e.al,o=r._o,rev=2*t*y*e.rate*(e.fr?1.25:1),hand=2*t*150,pf=rev-hand-(e.costed?o.cost:0);al.cash+=pf;const m=al.m;m.revC+=rev;m.fees+=hand;m.cargoT+=2*t;
    if(e.costed){m.fuel+=o.fuel;m.crew+=o.crew;m.fees+=o.fees;m.mx+=o.mx;m.co2+=o.co2;m.co2t+=o.co2t;m.hedge+=o.fuel*(G.fuel/fuelIdx(al)-1);r._cap=e.cap;r._pax=(r._pax||0)+t;r._ft=1;}
    r.ctD=(r.ctD||0)*0.7+2*t*0.3;r.revCD=(r.revCD||0)*0.7+rev*0.3;r._pf=(r._pf||0)+pf;if(r._pax==null)r._pax=0;}}
- for(const k in mk){const E=mk[k],ab=k.split('-'),d=dist(ab[0],ab[1]),Dm=splitMarket(ab[0],ab[1],E),tau=Dm/Math.max(1,E.reduce((s,e)=>s+e.seats+e.seatsB+e.seatsF,0));
+ for(const k in mk){const E=mk[k],ab=k.split('-'),d=dist(ab[0],ab[1]),Dm=splitMarket(ab[0],ab[1],E),Om=splitMarket.oth,tau=Dm/Math.max(1,E.reduce((s,e)=>s+e.seats+e.seatsB+e.seatsF,0)+(Om?Om.seats+Om.seatsB+Om.seatsF:0));
   for(const e of E){const nz=0.95+rng()*0.1,r=e.r,al=e.al,o=r._o,leg=e.kind==='leg';let pax=Math.min(e.seats,e.pax*nz),paxB=Math.min(e.seatsB,e.paxB*nz),paxF=Math.min(e.seatsF,e.paxF*nz),pE=e.price,pB=e.priceB,xtra=0;
    if(al.rms){if(tau>=0.8){const up=Math.min(0.12,(tau-0.8)*0.25);pE*=1+up;pB*=1+up*0.7;al.m.rmsG+=2*(pax*e.price*up+paxB*e.priceB*up*0.7);}   // revenue management : tarifs qui montent quand l'avion se remplit
     else{const x=Math.min(e.seats-pax,pax*Math.min(0.1,(0.8-tau)*0.2));if(x>0){pE=(pax*pE+x*0.85*pE)/(pax+x);pax+=x;al.m.rmsG+=2*x*0.85*e.price;}}}   // ... et promotions ciblées quand il reste de la place
@@ -936,17 +960,17 @@ function strikes(al){for(const k of SK){const s=al.staff[k];if(s.mo>=35||!s.n||r
   s.mo=Math.min(100,s.mo+12);return;}}
 function monthStep(){let tot=0;
  for(const al of G.airlines.slice(1).concat([G.airlines[0]])){if(al.bankrupt)continue;const m=al.m;let lease=0;for(const p of al.planes)if(!p.owned)lease+=leaseOf(p);   // le joueur en dernier : il encaisse les dividendes du mois
-  const fixed=100e3+25e3*al.planes.length+60e3*(al.bases.length-1),interest=al.debt*0.006,wages=wagesMonth(al),train=staffCount(al)*TRAIN_PP[al.train];
+  const fixed=60e3+20e3*al.planes.length+80e3*(al.bases.length-1)+0.05*(m.rev+m.revB+(m.revF||0)+m.anc+(m.revC||0)),interest=al.debt*0.006,wages=wagesMonth(al),train=staffCount(al)*TRAIN_PP[al.train];
   let wifi=0;for(const p of al.planes){if(al.svc.wifi)wifi+=WIFI_PLANE;if(al.svc.ent)wifi+=ENT_SEAT*MX[p.model].seats;}
   const lounge=LOUNGE*al.lounges.length,loyal=LOYAL_FIX[al.svc.loyal],mkt=campMonth(al),hubF=al.player?CX.hubFee*Math.max(0,al.hubs.length-1):0,ally=ALLY_FEE*al.allies.length;
   const divIn=al.m.divIn||0;
   let subF=0;for(const k in al.subs||{})subF+=BRANDS[k].fee;subF+=CS_FEE*(al.cs||[]).length+(al.rms&&al.player?RMS_FEE:0);m.sub+=subF;
   al.cash-=(lease+fixed+hubF+interest+wages+train+wifi+lounge+loyal+mkt+ally+subF);m.ally+=ally;if(m.denied)al.penalty+=Math.min(4,m.denied/400);
-  m.lease+=lease;m.fixed+=fixed+hubF;m.interest+=interest;m.wages+=wages;m.hr+=train;m.svc+=wifi;m.lounge+=lounge;m.loyal+=loyal;m.mkt+=mkt;m.profit=mProfit(m);
+  {let dep=0;for(const p of al.planes)if(p.owned&&!p.deliv)dep+=priceNow(MX[p.model])/(25*12);m.dep=dep;}m.lease+=lease;m.fixed+=fixed+hubF;m.interest+=interest;m.wages+=wages;m.hr+=train;m.svc+=wifi;m.lounge+=lounge;m.loyal+=loyal;m.mkt+=mkt;m.profit=mProfit(m);
   // Dividendes : le joueur déclare une part de son bénéfice (seuls les actionnaires extérieurs sont payés) ; une rivale verse le taux de son profil si sa trésorerie le permet
   let decl=0;
   if(al.player){if(m.profit>0&&al.float>0){decl=m.profit*PAYOUT[al.payout];const dv=decl*al.float;al.cash-=dv;m.divOut=dv;}}
-  else if(m.profit>0&&al.cash>PROFILES[al.profile].reserve*2+1.5e6*al.planes.length){decl=DIVR[al.profile]*m.profit;al.cash-=decl;m.divOut=decl;
+  else if(m.profit>0&&al.cash>PROFILES[al.profile].reserve*2+1.5e6*al.planes.length+2*(m.lease+m.wages+m.fixed)){decl=DIVR[al.profile]*m.profit;al.cash-=decl;m.divOut=decl;
    const pp=player(),st=pp.stakes[al.id]||0;if(st){const mine=decl*st;pp.cash+=mine;pp.m.divIn+=mine;pp.divRecv=pp.divRecv||{};(pp.divRecv[al.id]=pp.divRecv[al.id]||[]).push(Math.round(mine));if(pp.divRecv[al.id].length>12)pp.divRecv[al.id].shift();}}
   al.divH=al.divH||[];al.divH.push(Math.round(decl));if(al.divH.length>12)al.divH.shift();
   al.cxHL=al.cxH;al.cxH={};
@@ -959,10 +983,11 @@ function monthStep(){let tot=0;
     if(al.slotIdle[c]>=3){const n=Math.ceil(idle/2);al.slots[c]-=n;al.slotIdle[c]=0;if(al.player)news(n+' créneau'+(n>1?'x':'')+' inutilisé'+(n>1?'s':'')+' à '+APX[c].name+' retourne'+(n>1?'nt':'')+' au coordinateur.','bad');}}else al.slotIdle[c]=0;}
   awUpdate(al);strikes(al);}
  for(const al of G.airlines){al.share=al.bankrupt||!tot?0:al.paxM/tot;(al.shareH=al.shareH||[]).push(Math.round(al.share*1e4));if(al.shareH.length>72)al.shareH.shift();
-  if(!al.bankrupt&&!al.player&&al.cash<-(8e6+1e6*al.planes.length)){al.bankrupt=true;al.routes=[];al.planes=[];G.mut=(G.mut||0)+1;news(al.name+' fait faillite et quitte le marché.','info','rivalbk');}}
+  if(!al.bankrupt&&!al.player&&al.negDays>=CFG.graceDays&&al.cash<-(8e6+2e6*al.planes.length)){al.bankrupt=true;al.routes=[];al.planes=[];G.mut=(G.mut||0)+1;news(al.name+' fait faillite et quitte le marché.','info','rivalbk');}}
  const pl0=player();for(const id of pl0.allies.slice()){const al=G.airlines[id];const ch=0.02+({lowcost:0.04,challenger:0.03}[al.profile]||0)+(pl0.share>al.share*1.5?0.03:0);
   if(rng()<ch){leaveAlly(pl0,al);al.allyCd=G.day+180;news(al.name+' quitte l\'alliance et redevient ta concurrente.','bad','allyoff');}}
  for(const id of (pl0.cs||[]).slice()){const al=G.airlines[id];if(al.bankrupt||(Object.values(al.wars||{}).some(t=>t>G.day)&&rng()<0.3)||rng()<0.01){endCS(pl0,al);news(al.name+' met fin au partage de codes.','bad','allyoff');}}
+ {const alive=G.airlines.filter(a=>!a.bankrupt&&!a.player).length,dead=G.airlines.filter(a=>a.bankrupt&&!a.player).length;if(dead&&alive<9&&G.day-(G.lastEntry||0)>150&&rng()<0.35){G.lastEntry=G.day;spawnEntrant();}}
  worldStep();if(G.day%360===300)news('La saison du fret de fin d\'année commence : la demande grimpe jusqu\'en décembre.','info','cargo');
  if(G.board){if(!G.board.pending&&G.day>=G.board.next)boardMeet(pl0);else if(G.board.pending&&G.day-G.board.pending.day>=30)boardClose(pl0,null,null);}
  usedRefresh();
@@ -983,15 +1008,17 @@ function rollEvent(){const x=rng(),ap=AP[Math.floor(rng()*AP.length)];
  else{const L=Object.keys(G.slotCap),c=L[Math.floor(rng()*L.length)];G.slotCap[c]+=6;news('Nouvelle piste à '+APX[c].name+' : 6 créneaux quotidiens de plus à attribuer.','good','hub');}}
 
 // ---- Concurrents IA : mêmes règles, mêmes fonctions que le joueur
+// Coût journalier d'un avion hors vols : équipages, mécaniciens, sol et frais de structure (pour juger une ligne à coût complet)
+function planeOH(al,m){const sl=SALLV[(al.staff&&al.staff.pilot)?al.staff.pilot.lv:2]||1,pil=m.cat==='turbo'?6:m.range>7000?18:10,cab=4*Math.ceil(m.seats/50);return (sl*(pil*STAFF.pilot.sal+cab*STAFF.cabin.sal+(3+m.seats/30)*STAFF.mech.sal+(3+m.seats/40+4)*STAFF.ground.sal)+20e3)/30;}
 function aiModels(al){return (al.models||PROFILES[al.profile].models).filter(id=>MX[id]&&avail(MX[id])&&MX[id].cat!=='cargo');}
 function aiCandidates(al,models){const P=PROFILES[al.profile],out=[];G._ds=1;try{
  for(const a of al.bases)for(const B of AP){const b=B.code;if(b===a)continue;const k=key(a,b);if(al.routes.some(r=>key(r.a,r.b)===k))continue;const d=dist(a,b);if(d<250)continue;
   const sa=[a,b].filter(isSlot);let slotC=0,blocked=false;for(const c of sa){const room=(al.slots[c]||0)-slotsUsed(al,c);if(room<1){if(slotFree(c)<1)blocked=true;else slotC+=slotPrice(c);}}if(blocked)continue;
   for(const mid of models){const m=MX[mid];if(!canServe(m,a,b))continue;const cb=cabinFor(P,mid),fake={model:mid,age:0,cond:100,down:0,biz:cb.biz,first:cb.first},price=pref(d)*P.bias;let best=null;
-   for(let rot=1;rot<=maxRot(d,m);rot++){const e=estimateRoute(al,{a,b,price,rot,planes:[]},[fake]);if(!best||e.profit>best.profit)best={profit:e.profit,rot};}
-   out.push({a,b,mid,rot:best.rot,price,score:best.profit-CFG.leaseRate*m.price/30-slotC/250});}}
+   for(let rot=1;rot<=Math.max(1,Math.floor(maxRot(d,m)));rot++){const e=estimateRoute(al,{a,b,price,rot,planes:[]},[fake]);if(!best||e.profit>best.profit)best={profit:e.profit,rot};}
+   out.push({a,b,mid,rot:best.rot,price,score:best.profit-CFG.leaseRate*m.price/30-planeOH(al,m)-slotC/250});}}
  }finally{G._ds=0;}out.sort((x,y)=>y.score-x.score);return out;}
-function aiWeek(al){const P=PROFILES[al.profile],reserve=P.reserve+4e5*al.planes.length;al.react=al.react||{};al.wars=al.wars||{};
+function aiWeek(al){const P=PROFILES[al.profile],L=al.last,reserve=Math.max(P.reserve+4e5*al.planes.length,L?1.3*(L.lease+L.wages+L.fixed):0);   // garde au moins un mois de charges fixesal.react=al.react||{};al.wars=al.wars||{};
  aiReact(al,P,reserve);
  for(const r of al.routes.slice()){const d=dist(r.a,r.b),pr=pref(d),mx=maxRotRoute(al,r),war=al.wars[key(r.a,r.b)]>G.day;
   if(war){r.price=clamp(Math.min(r.price,pr*0.86),pr*0.7,pr*1.7);if(r.rot<mx&&ensureSlots(al,r,r.rot+1,r)>r.rot)r.rot++;r.lossW=0;r.lastW=r.profitW;r.profitW=0;continue;}
@@ -1006,7 +1033,7 @@ function aiWeek(al){const P=PROFILES[al.profile],reserve=P.reserve+4e5*al.planes
  if(al.cash>reserve&&rng()<0.5){const mods=aiModels(al),o=G.used.find(x=>mods.includes(x.model)&&x.cond>=65&&x.age<14&&x.price<0.6*priceNow(MX[x.model])&&al.cash>x.price+reserve);   // bonnes affaires d'occasion
   if(o){const c=aiCandidates(al,[o.model])[0];if(c&&c.score>3000){const pl=buyUsed(al,o.id);if(pl)openRoute(al,c.a,c.b,c.price,c.rot,[pl.id]);}}}
  let lf=0;for(const r of al.routes)lf+=r.lf;lf=al.routes.length?lf/al.routes.length:1;
- if(al.cash>reserve&&lf>0.66&&(!al.routes.length||!al.last||al.last.profit>0)&&rng()<P.appetite){const c=aiCandidates(al,aiModels(al)).slice(0,3),pick=c[Math.floor(rng()*c.length)];
+ if(al.cash>reserve&&lf>0.66&&(!al.routes.length||!al.last||al.last.profit>0||al.planes.length<=3)&&rng()<P.appetite*(al.planes.length<=3?2:1)){const c=aiCandidates(al,aiModels(al)).slice(0,3),pick=c[Math.floor(rng()*c.length)];
   if(pick&&pick.score>3000){const m=MX[pick.mid],buy=al.cash>priceNow(m)+reserve;
    if(buy||al.cash>reserve+CFG.leaseFee*m.price){const cb=cabinFor(P,pick.mid),pl=acquire(al,pick.mid,!buy,cb.biz,null,cb.first);if(pl){openRoute(al,pick.a,pick.b,pick.price,pick.rot,[pl.id]);
     if(rivalsOn(pick.a,pick.b,al).some(x=>x.al.player))news(al.name+' ouvre '+pick.a+' - '+pick.b+' face à toi.','bad');}}}}
@@ -1065,7 +1092,7 @@ function writeSlot(slot,quiet){if(!G)return false;let data;try{data=JSON.stringi
  if(ok){lsSet(svM(slot),meta);UI.savedAt=Date.now();}else if(!quiet)toast('Espace de stockage plein dans ce navigateur. Exporte ta partie dans un fichier, puis libère un emplacement.');
  return ok;}
 function parseSave(txt){const g=JSON.parse(txt);if(!g||typeof g!=='object'||!Array.isArray(g.airlines)||!g.airlines.length)throw new Error('format');
- if(g.v===7)migrate8(g);if(g.v===8)migrate9(g);if(g.v!==9)throw new Error('version');return g;}
+ if(g.v===7)migrate8(g);if(g.v===8)migrate9(g);if(g.v===9)migrate10(g);if(g.v!==10)throw new Error('version');return g;}
 function readSlot(slot){const t=lsGet(svK(slot));if(!t)return null;try{return parseSave(t);}catch(e){return null;}}
 function slotMeta(slot){const t=lsGet(svM(slot));if(!t||!lsGet(svK(slot)))return null;try{return JSON.parse(t);}catch(e){return null;}}
 function migrateLegacy(){const old=lsGet('plan-de-vol-save-v7');if(!old)return;if(!lsGet(svK('auto'))){try{const g=parseSave(old),G0=G;G=g;restoreWorld();writeSlot('auto',true);G=G0;}catch(e){}}lsDel('plan-de-vol-save-v7');}
@@ -1084,6 +1111,9 @@ async function exportFile(){const p=player(),name='plan-de-vol-'+slugify(p.name)
 const slugify=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ago=t=>{if(!t)return '';const m=Math.round((Date.now()-t)/60000);return m<1?'à l\'instant':m<60?'il y a '+m+' min':m<1440?'il y a '+Math.round(m/60)+' h':'il y a '+Math.round(m/1440)+' j';};
 // Partie de la version précédente : créneaux attribués selon l'usage, nouveaux compteurs initialisés
+// Passage à l'économie réaliste : loyers recalculés aux nouveaux prix, effectifs complétés pour éviter des vols annulés
+function migrate10(g){const G0=G;G=g;g.v=10;for(const al of g.airlines){for(const pl of al.planes)if(!pl.owned){const L=LESSORS.find(x=>x.id===pl.lessor);pl.rate=MX[pl.model].price*(L?L.rate:CFG.leaseRate);}
+ if(!al.bankrupt){const need=staffNeed(al);for(const k of SK)al.staff[k].n=Math.max(al.staff[k].n,Math.ceil(need[k]*1.02));}al.m=Object.assign(newM(),al.m);}G=G0;}
 function migrate9(g){const G0=G;G=g;g.v=9;g.prog=g.prog||{};g.apSh=g.apSh||{};
  for(const al of g.airlines){Object.assign(al,{cs:[],subs:{},rms:!al.player&&['premium','national','challenger'].includes(al.profile),ob:al.player?0:(({premium:0.03,national:0.03,challenger:0.05,lowcost:0.04})[al.profile]||0),cRate:al.profile==='lowcost'?0.95:1,revH:[],shareH:[],cashH:[],paxH:[],cargoH:[]});al.m=Object.assign(newM(),al.m);}
  resetWorld();for(const N of NEW_AP)if(g.day>=N.day)openAirport(N);applyGrowth();boardInit(g.airlines[0]);g.board.next=g.day+90;G=G0;}
@@ -1114,7 +1144,7 @@ function openZoom(id,reg){const m=MX[id],Mk=MAKERS[m.mk],z=document.getElementBy
  z.hidden=false;}
 document.addEventListener('click',e=>{const h=e.target.closest('[data-zoom]');if(h){e.stopPropagation();openZoom(h.dataset.zoom,h.dataset.reg);return;}if(e.target.closest('#zoom'))document.getElementById('zoom').hidden=true;},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('zoom').hidden=true;});
-function logo(al,size){const n=size||28,i=al.player?0:RIVALS.findIndex(r=>r.name===al.name)+1;
+function logo(al,size){const n=size||28,i=al.player?0:al.entrant?99:RIVALS.findIndex(r=>r.name===al.name)+1;
  if(i<=8)return '<img src="art/logo-'+i+'.jpg" width="'+n+'" height="'+n+'" alt="" style="border-radius:50%;flex:none">';
  const ini=al.name.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
  return '<svg width="'+n+'" height="'+n+'" viewBox="0 0 28 28" aria-hidden="true" style="flex:none"><circle cx="14" cy="14" r="13" fill="'+al.color+'"/><text x="14" y="18.5" text-anchor="middle" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="13" fill="#fff">'+esc(ini)+'</text></svg>';}
@@ -1223,7 +1253,7 @@ function goalCard(){const p=player(),sh=p.share;return '<div class="card"><div c
  '<p class="muted" style="font-size:12px">Part des passagers transportés le mois dernier, toutes compagnies confondues. Réputation : <span class="num">'+Math.round(p.rep)+'/100</span></p></div>';}
 // meilleures destinations pour un avion donné depuis une base
 function destScan(al,a,pl){return AP.filter(x=>x.code!==a).map(x=>{const d=dist(a,x.code),has=al.routes.some(r=>key(r.a,r.b)===key(a,x.code)),riv=rivalsOn(a,x.code,al).length,inR=!!pl&&canServe(MX[pl.model],a,x.code);let pf=null,rot=1;
-  if(inR&&!has)for(let k=1;k<=maxRot(d,MX[pl.model]);k++){const e=estimateRoute(al,{a,b:x.code,price:pref(d),rot:k,planes:[pl.id]});if(pf===null||e.profit>pf){pf=e.profit;rot=k;}}
+  if(inR&&!has)for(let k=1;k<=Math.max(1,Math.floor(maxRot(d,MX[pl.model])));k++){const e=estimateRoute(al,{a,b:x.code,price:pref(d),rot:k,planes:[pl.id]});if(pf===null||e.profit>pf){pf=e.profit;rot=k;}}
   const via=pl&&!inR&&!has?(bestVias(a,x.code,MX[pl.model],1)[0]||null):null;if(pf!==null)for(const c of [a,x.code])if(isSlot(c)&&((al.slots[c]||0)-slotsUsed(al,c))<rot)pf-=slotPrice(c)*rot/365;
   return{a:x,d,D:demandNow(a,x.code),has,riv,inR,pf,rot,via,slot:isSlot(x.code)};});}
 function bestCard(){const p=player(),pl=p.planes.find(x=>!x.route&&(!x.down||x.deliv||x.ferry));if(!pl)return '';const a=UI.sel&&p.bases.includes(UI.sel)?UI.sel:p.bases[0];
@@ -1381,8 +1411,8 @@ function subFin(p){const m=p.last,lim=creditLimit(p);
  if(p.hist.length){const mx=Math.max(1,...p.hist.map(Math.abs));h+='<div class="card"><h3>Résultat mensuel'+(p.hist.length>1?', '+p.hist.length+' derniers mois':'')+'</h3><div class="spark" role="img" aria-label="Résultat mensuel">'+p.hist.map(v=>'<i class="'+(v<0?'n':'')+'" style="height:'+Math.max(4,Math.abs(v)/mx*100)+'%" title="'+money(v)+'"></i>').join('')+'</div><div class="row muted num" style="font-size:11px"><span class="grow">échelle : '+money(mx)+'</span><span>dernier : '+signed(p.hist[p.hist.length-1])+'</span></div></div>';}
  if(m){const row=(l,v,neg)=>v?'<tr><td>'+l+'</td><td class="r num">'+(neg?'-':'')+money(v)+'</td></tr>':'',sec=t=>'<tr><th colspan="2">'+t+'</th></tr>';
   h+='<div class="card"><h3>Compte de résultat du mois dernier</h3><table>'+sec('Produits')+row('Billets classe éco',m.rev)+row('Billets classe affaires',m.revB)+row('Billets Première',m.revF)+row('Revenus annexes (bagages, Wi-Fi)',m.anc)+row('Dividendes reçus de tes participations',m.divIn)+
-  sec('Coûts des vols')+row('Carburant',m.fuel,1)+row('Frais d\'équipage en vol',m.crew,1)+row('Taxes d\'aéroport',m.fees,1)+row('Maintenance',m.mx,1)+row('Carbone (quotas et taxes)',m.co2,1)+row('Indemnités de retard',m.delay,1)+row('Restauration et services à bord',m.svc,1)+
-  sec('Coûts de structure')+row('Salaires',m.wages,1)+row('Recrutement et formation',m.hr,1)+row('Salons',m.lounge,1)+row('Programme de fidélité',m.loyal,1)+row('Loyers d\'avions',m.lease,1)+row('Frais fixes, bases et hubs',m.fixed,1)+row('Cotisations d\'alliance',m.ally,1)+row('Campagnes de marketing',m.mkt,1)+row('Intérêts',m.interest,1)+
+  sec('Coûts des vols')+row('Carburant',m.fuel,1)+row('Frais d\'équipage en vol',m.crew,1)+row('Taxes d\'aéroport',m.fees,1)+row('Maintenance',m.mx,1)+row('Carbone (quotas et taxes)',m.co2,1)+row('Indemnités de retard',m.delay,1)+row('Restauration, assistance au sol et distribution',m.svc,1)+
+  sec('Coûts de structure')+row('Salaires',m.wages,1)+row('Recrutement et formation',m.hr,1)+row('Salons',m.lounge,1)+row('Programme de fidélité',m.loyal,1)+row('Loyers d\'avions',m.lease,1)+row('Frais de structure (siège, ventes, informatique)',m.fixed,1)+row('Amortissement des avions en propriété',m.dep,1)+row('Cotisations d\'alliance',m.ally,1)+row('Campagnes de marketing',m.mkt,1)+row('Intérêts',m.interest,1)+
   '<tr class="total"><td>Résultat</td><td class="r num '+cls(m.profit)+'">'+signed(m.profit)+'</td></tr>'+(m.slots?'<tr><td>Achats nets de créneaux</td><td class="r num">'+(m.slots>0?'-':'+')+money(Math.abs(m.slots))+'</td></tr>':'')+(m.divOut?'<tr><td>Dividendes versés aux actionnaires</td><td class="r num">-'+money(m.divOut)+'</td></tr>':'')+(Math.abs(m.hedge||0)>1e3?'<tr><td>Dont effet de la couverture carburant</td><td class="r num '+cls(m.hedge)+'">'+signed(m.hedge)+'</td></tr>':'')+'</table><p class="muted" style="font-size:12px">'+nf(m.pax)+' passagers transportés, dont '+nf(m.paxB)+' en affaires'+(m.paxF?' et '+nf(m.paxF)+' en Première':'')+'.</p></div>';}
  else h+='<p class="muted">Le premier compte de résultat arrive à la fin du mois.</p>';
  const hg=p.hedge&&p.hedge.until>G.day?p.hedge:null,sh=+(UI.hsh||0.5),du=+(UI.hdur||6);
@@ -1442,7 +1472,7 @@ function subGroup(p){const V=valuation(p),riv=G.airlines.filter(a=>!a.player&&!a
   (ally?'<span class="pill good">Alliée</span><button class="btn small" data-act="leaveally" data-v="'+al.id+'">Quitter</button>':'<button class="btn small" data-act="ally" data-v="'+al.id+'"'+(cd||p.allies.length>=3?DIS(cd?'Refus récent : réessaie dans quelques semaines.':'Maximum de 3 alliances atteint.'):'')+'>Proposer</button>')+'</div>';}
  h+='</div><div class="card"><h3>Participations et rachats</h3><p class="muted" style="font-size:12px">Achète des parts de 10 % au prix de la valorisation. Chaque mois, une rivale bien en trésorerie verse une part de son bénéfice en dividendes, selon sa politique ; tu en touches ta part. Une rivale qui verse beaucoup coûte plus cher à acheter. À 50 %, ou si elle est en difficulté, tu peux la racheter entièrement : sa flotte, ses lignes, ses bases, son personnel, sa trésorerie et ses dettes rejoignent ta compagnie.</p>';
  for(const al of riv){const st=p.stakes[al.id]||0,canT=st>=0.5||inTrouble(al),tc=takeoverCost(p,al);
-  h+='<div class="card" style="padding:10px 12px"><img class="banner" style="width:calc(100% + 24px);margin:-10px -12px 0;height:96px" src="art/riv-'+(RIVALS.findIndex(x=>x.name===al.name)+1)+'.jpg" alt=""><div class="row">'+logo(al,24)+'<b class="grow">'+esc(al.name)+'</b>'+(inTrouble(al)?'<span class="pill bad">En difficulté</span>':'')+'</div>'+
+  h+='<div class="card" style="padding:10px 12px"><img class="banner" style="width:calc(100% + 24px);margin:-10px -12px 0;height:96px" src="art/riv-'+(al.entrant?al.artI:RIVALS.findIndex(x=>x.name===al.name)+1)+'.jpg" alt=""><div class="row">'+logo(al,24)+'<b class="grow">'+esc(al.name)+'</b>'+(inTrouble(al)?'<span class="pill bad">En difficulté</span>':'')+'</div>'+
   '<div class="kv"><span>Valorisation</span><b>'+money(valuation(al))+'</b><span>Ta participation</span><b>'+Math.round(st*100)+' %</b><span>Résultat du mois dernier</span><b class="'+(al.last?cls(al.last.profit):'')+'">'+(al.last?signed(al.last.profit):'-')+'</b><span>Politique de dividende</span><b>'+Math.round(DIVR[al.profile]*100)+' % du bénéfice'+(al.divH&&al.divH.length&&!al.divH[al.divH.length-1]?' (suspendu)':'')+'</b><span>Dividendes versés (12 mois)</span><b>'+money(div12(al))+'</b><span>Rendement</span><b>'+nf(divYield(al)*100,1)+' %</b>'+(st?'<span>Tes dividendes reçus (12 mois)</span><b class="pos">'+money(sum((p.divRecv||{})[al.id]))+'</b>':'')+'</div>'+
   '<div class="row"><button class="btn small" data-act="stake" data-v="'+al.id+'"'+(p.cash<stakeCost(al)||st>=0.9?DIS(st>=0.9?'Participation maximale atteinte.':'Trésorerie insuffisante : il manque '+money(stakeCost(al)-p.cash)+'.'):'')+'>+10 % ('+money(stakeCost(al))+')</button>'+(st?'<button class="btn small" data-act="unstake" data-v="'+al.id+'">-10 %</button>':'')+
   (canT?'<button class="btn small primary" data-act="takeover" data-v="'+al.id+'"'+(p.cash<tc?DIS('Trésorerie insuffisante : il manque '+money(tc-p.cash)+' pour le rachat.'):'')+'>Racheter ('+money(tc)+')</button>':'')+'</div></div>';}
@@ -1460,7 +1490,7 @@ function panelMarche(){const banner='<img class="tabhero" src="art/tab-marche.jp
   '<div class="bar"><i style="width:'+clamp(al.share/top*100,0,100)+'%;background:'+al.color+'"></i></div>'+
   '<div class="muted" style="font-size:12px">'+(al.player?'Ta compagnie':(isAlly(player(),al)?'<b style="color:var(--good)">Alliée</b> · ':'')+PROFILES[al.profile].label+((player().stakes[al.id]||0)?' · '+Math.round(player().stakes[al.id]*100)+' % à toi':''))+' · base '+al.bases.join(', ')+' · '+plur(al.planes.length,'avion')+' · '+plur(al.routes.length,'ligne')+(al.last?' · résultat '+signed(al.last.profit):'')+'</div></div>'+
   (al.bankrupt?'':'<button class="btn small" data-act="goto" data-v="'+al.bases[0]+'">Voir</button>')+'</div>';}
- h+='</div><div class="card"><h3>Comparatif des compagnies</h3><div style="overflow-x:auto"><table><tr><th>Compagnie</th><th class="r">Rép.</th><th class="r">Éco</th><th class="r">Aff.</th><th class="r">Moral</th></tr>'+als.filter(a=>!a.bankrupt).map(a=>{const c=comfortRaw(a.svc,1,a.lounges.length?1:0);return '<tr><td>'+esc(a.name)+'</td><td class="r num">'+Math.round(a.rep)+'</td><td class="r num">'+Math.round(clamp((c.e+0.15)/0.73,0,1)*100)+'</td><td class="r num">'+(a.planes.some(x=>x.biz)?Math.round(clamp(c.b/0.99,0,1)*100):'-')+'</td><td class="r num">'+Math.round(avgMorale(a))+'</td></tr>';}).join('')+'</table></div><p class="muted" style="font-size:12px">Confort sur 100 pour un vol de 3 000 km. « - » : pas de classe affaires.</p></div><div class="card"><h3>Conjoncture</h3><div class="kv"><span>Indice carburant</span><b class="'+(G.fuel>1.15?'neg':G.fuel<0.9?'pos':'')+'">'+nf(G.fuel*100)+'</b><span>Prix du carbone</span><b>'+Math.round(G.co2)+' €/t</b><span>Croissance du marché</span><b>'+nf(G.econ*100)+'</b></div>'+
+ h+='</div><div class="card"><h3>Comparatif des compagnies</h3><div style="overflow-x:auto"><table><tr><th>Compagnie</th><th class="r">Rép.</th><th class="r">Éco</th><th class="r">Aff.</th><th class="r">Moral</th></tr>'+als.filter(a=>!a.bankrupt).map(a=>{const c=comfortRaw(a.svc,1,a.lounges.length?1:0);return '<tr><td>'+esc(a.name)+'</td><td class="r num">'+Math.round(a.rep)+'</td><td class="r num">'+Math.round(clamp((c.e+0.15)/0.73,0,1)*100)+'</td><td class="r num">'+(a.planes.some(x=>x.biz)?Math.round(clamp(c.b/0.99,0,1)*100):'-')+'</td><td class="r num">'+Math.round(avgMorale(a))+'</td></tr>';}).join('')+'</table></div><p class="muted" style="font-size:12px">Confort sur 100 pour un vol de 3 000 km. « - » : pas de classe affaires.</p></div><div class="card"><h3>Conjoncture</h3><div class="kv"><span>Kérosène</span><b class="'+(G.fuel>1.15?'neg':G.fuel<0.9?'pos':'')+'">'+nf(G.fuel*90)+' $/baril · '+nf(G.fuel*650)+' €/t</b><span>Prix du carbone</span><b>'+Math.round(G.co2)+' €/t</b><span>Croissance du marché</span><b>'+nf(G.econ*100)+'</b></div>'+
  (function(){const y=Math.floor(G.day/360),hd=y*360+hajjDay(y)<G.day?(y+1)*360+hajjDay(y+1):y*360+hajjDay(y);const L=EVENTS.filter(E=>E.to>=G.day).map(E=>({d:E.from,t:E.name,s:E.aps.slice(0,5).join(', '),m:E.mult,on:E.from<=G.day})).concat([{d:hd,t:'Hajj',s:'JED, MED',m:3.2,on:false}]).sort((a,b)=>a.d-b.d).slice(0,6);
   return '<h3>Agenda des grands événements</h3>'+L.map(x=>'<div class="row" style="font-size:13px"><span class="num" style="flex:0 0 110px">'+(x.on?'<b style="color:var(--good)">en cours</b>':dShort(x.d))+'</span><span class="grow">'+esc(x.t)+'<div class="muted" style="font-size:11px">'+x.s+'</div></span><span class="num pos">+'+Math.round((x.m-1)*100)+' %</span></div>').join('')+'<p class="muted" style="font-size:12px">S\'y ajoutent les saisons : soleil l\'été en Méditerranée, soleil l\'hiver aux Canaries, aux Caraïbes et en Asie du Sud-Est, retour de la diaspora entre le Maghreb et l\'Europe en juillet et août.</p><h3>En cours</h3>';})()+
  (G.mods.length?'<div class="row">'+G.mods.map(m=>'<span class="pill '+(m.mult>1?'good':'bad')+'">'+esc(m.label)+' · '+(m.until-G.day)+' j</span>').join('')+'</div>':'<p class="muted" style="font-size:12px">Aucun événement en cours.</p>')+'</div>';
@@ -1484,7 +1514,7 @@ function slotInfoHTML(al,r,rot,skip){const N=slotNeed(al,r,rot,skip);if(!slotAps
 function estHTML(al,r,extra){const d=dist(r.a,r.b),e=estimateRoute(al,r,extra),riv=rivalsOn(r.a,r.b,al),B=e.seatsB>0,F=e.seatsF>0,skip=r.rid?al.routes.find(x=>x.id===r.rid):null;
  G._ds=1;const ey=estimateRoute(al,r,extra);G._ds=0;const sf=seasonF(r.a,r.b);
  return '<div class="card" style="background:#fbfaf6"><h3>Estimation par jour</h3><div class="kv">'+(r.via?'<span>Escale</span><b style="font-family:var(--body)">'+esc(APX[r.via].name)+' ('+nf(routeKm(r))+' km au lieu de '+nf(d)+')</b>':'')+
- '<span>Demande du marché, par sens</span><b>'+nf(e.D)+' pax</b>'+
+ '<span>Demande du marché, par sens</span><b>'+nf(e.D)+' pax</b>'+(()=>{const O=othEntry(r.a,r.b,e.D,riv.map(x=>rivEntry(x)).concat([{seats:e.seats,seatsB:e.seatsB,seatsF:e.seatsF}]));return O?'<span>Autres compagnies (sièges/jour)</span><b>'+nf(O.seats+O.seatsB+O.seatsF)+'</b><span>Ta part du marché</span><b>'+nf(100*(e.pax+e.paxB+e.paxF)/Math.max(1,e.D),1)+' %</b>':'';})()+
  '<span>Concurrents</span><b style="font-family:var(--body)">'+(riv.length?riv.map(x=>esc(x.al.name)+' ('+nf(x.r.price)+' €)').join(', '):'aucun')+'</b>'+
  '<span>Sièges offerts, par sens</span><b>'+nf(e.seats)+(B?' + '+nf(e.seatsB)+' aff.':'')+(F?' + '+nf(e.seatsF)+' Prem.':'')+'</b>'+
  '<span>Passagers attendus, par sens</span><b>'+nf(e.pax)+(B?' + '+nf(e.paxB)+' aff.':'')+(F?' + '+nf(e.paxF,1)+' Prem.':'')+'</b>'+
@@ -1493,11 +1523,12 @@ function estHTML(al,r,extra){const d=dist(r.a,r.b),e=estimateRoute(al,r,extra),r
  '<span>Coûts de vol</span><b>-'+money(e.fly)+'</b>'+(e.svc?'<span>Services à bord</span><b>-'+money(e.svc)+'</b>':'')+
  (e.ct>0?'<span>Fret : demande / chargé par sens</span><b>'+nf(e.cD)+' t / '+nf(e.cT)+' t</b><span>Recettes fret</span><b>'+money(e.cRev)+'</b>':'')+(e.co2?'<span>Carbone ('+nf(e.co2t)+' t CO2)</span><b>-'+money(e.co2)+'</b>':'')+(e.delay>1?'<span>Indemnités de retard</span><b>-'+money(e.delay)+'</b>':'')+
  '<span><b>Profit</b></span><b class="'+cls(e.profit)+'" style="font-weight:700">'+signed(e.profit)+'</b>'+
- '<span>Profit moyen sur l\'année</span><b class="'+cls(ey.profit)+'">'+signed(ey.profit)+'</b>'+
+ '<span>Profit moyen sur l\'année</span><b class="'+cls(ey.profit)+'">'+signed(ey.profit)+'</b>'+(()=>{let fc=0,frac=1;for(const pl of r.planes.map(id=>planeOf(al,id)).concat(extra||[])){if(!pl)continue;const m=MX[pl.model];fc+=planeOH(al,m)+(pl.owned?priceNow(m)/(25*360):leaseOf(pl)/30);frac=Math.min(frac,rotMax(r,m));}
+   return '<span>Équipages, structure et avion (loyer ou amortissement)</span><b>-'+money(fc)+'</b><span><b>Résultat complet par jour</b></span><b class="'+cls(ey.profit-fc)+'" style="font-weight:700">'+signed(ey.profit-fc)+'</b>'+(frac<1?'<span class="neg" style="grid-column:1/-1">Un aller-retour dure plus d\'une journée : cet avion n\'assure qu\'une rotation tous les '+nf(1/frac,1)+' jours. Ajoute des avions pour un vol quotidien.</span>':'');})()+
  (e.legs&&e.legs.length?e.legs.map(l=>'<span>Passagers locaux '+l.a+' - '+l.b+'</span><b>'+nf(l.pax)+' / '+nf(l.D)+' pax</b>').join(''):'')+
  '<span>Ponctualité attendue</span><b class="'+(e.otp<0.7?'neg':e.otp>=0.85?'pos':'')+'">'+Math.round(e.otp*100)+' %</b>'+slotInfoHTML(al,r,r.rot,skip)+'</div>'+
  '<div class="row muted" style="font-size:12px;margin-top:8px"><span class="grow">Saisonnalité (ce mois-ci : '+Math.round(sf*100)+' %)</span><span>'+(EVENTS.filter(E=>(E.aps.includes(r.a)||E.aps.includes(r.b))&&E.to>=G.day).map(E=>'<span class="pill warn">'+esc(E.name)+'</span>').join(' '))+'</span></div>'+seasBars(r.a,r.b)+
- '<p class="muted" style="font-size:12px">'+nf(d)+' km · prix de référence '+nf(pref(d))+' €'+(B?' (affaires '+nf(prefB(d))+' €)':'')+(F?' (Première '+nf(prefF(d))+' €)':'')+' · hors salaires, loyers et frais fixes. Les correspondances s\'ajoutent sur les sièges libres et ne sont pas comptées ici.</p></div>';}
+ '<p class="muted" style="font-size:12px">'+nf(d)+' km · prix de référence '+nf(pref(d))+' €'+(B?' (affaires '+nf(prefB(d))+' €)':'')+(F?' (Première '+nf(prefF(d))+' €)':'')+'. Le profit couvre les coûts de vol et de service ; le résultat complet retire aussi équipages, structure et avion, mais pas les frais de siège généraux. Les correspondances s\'ajoutent sur les sièges libres et ne sont pas comptées ici.</p></div>';}
 function destListHTML(M){const p=player(),pl=M.plane?planeOf(p,M.plane):null,q=norm(M.q||'');
  let L=destScan(p,M.a,pl).filter(x=>(!q||norm(x.a.name).includes(q)||x.a.code.toLowerCase().startsWith(q))&&(M.reg==='ALL'||x.a.reg===M.reg)&&(!M.onlyRange||!pl||x.inR)&&(!M.noRival||!x.riv));
  const S={profit:(x,y)=>(y.pf===null?-1e15:y.pf)-(x.pf===null?-1e15:x.pf)||y.D-x.D,demand:(x,y)=>y.D-x.D,dist:(x,y)=>x.d-y.d};L.sort(S[M.sort]);
