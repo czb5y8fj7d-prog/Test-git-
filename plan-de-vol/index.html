@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Plan de Vol</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   /* Carte aéronautique de jour + tableau des départs. Une seule ambiance, assumée. */
@@ -208,7 +208,7 @@ tr.total td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
 .slot .sw{flex:0 0 12px;height:36px;border-radius:4px}
 .hsave{background:none;border:1px solid rgba(255,255,255,.25);color:#F2EFE4;border-radius:8px;width:34px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px}
 .hsave svg{width:17px;height:17px}
-textarea.code{width:100%;min-height:90px;font:11px 'B612 Mono',monospace;border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box;word-break:break-all}
+textarea.code{width:100%;min-height:90px;font:11px ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box;word-break:break-all}
 #modal[hidden]{display:none}
 #modal:not([hidden]){animation:mfade .18s ease}#modal:not([hidden]) .sheet{animation:mup .26s cubic-bezier(.2,.8,.2,1)}
 @keyframes mfade{from{background:rgba(19,25,34,0)}}@keyframes mup{from{transform:translateY(40px);opacity:.4}}
@@ -246,6 +246,107 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
 .title .card{color:var(--ink)}
 @media (min-width:900px){#start{background:linear-gradient(90deg,rgba(19,25,34,.96) 0%,rgba(19,25,34,.9) 30%,rgba(19,25,34,0) 58%),url(art/title-d.jpg) right center/cover no-repeat,#131922;align-items:center;justify-content:flex-start;padding-left:7vw}.title{margin:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ================= Thème 2 : moderne, doux, animé ================= */
+:root{--paper:#f2f4f7;--card:#fff;--ink:#14213a;--muted:#667085;--line:#e4e8ee;--magenta:#c2185b;--magenta2:#ec4f86;--blue:#2563eb;--board:#0c1322;--amber:#ffc447;
+ --good:#12805c;--bad:#d1372e;--warn:#b86a00;
+ --body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+ --r:16px;--sh:0 1px 2px rgba(16,24,40,.04),0 6px 18px rgba(16,24,40,.06);--sh2:0 4px 10px rgba(16,24,40,.08),0 18px 44px rgba(16,24,40,.16);--ease:cubic-bezier(.2,.8,.2,1)}
+body{font-size:14px;letter-spacing:-.006em;font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased}
+.num,.kv b,.tile b,.flap b{font-variant-numeric:tabular-nums}
+.kv b{font-weight:600}
+h2{font-size:26px;letter-spacing:.01em}
+h3{font-family:var(--body);font-weight:700;font-size:12px;letter-spacing:.09em;color:#7a8699}
+h4{margin:6px 0 0;font-size:13px;font-weight:700}
+#panel{gap:16px;padding:16px 16px 28px}
+.card{border:1px solid rgba(16,24,40,.05);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;transition:box-shadow .25s var(--ease),transform .25s var(--ease)}
+.card[data-act]:hover,.card[role=button]:hover{box-shadow:var(--sh2);transform:translateY(-2px)}
+.banner{width:calc(100% + 32px);margin:-14px -16px 0;border-radius:var(--r) var(--r) 0 0;height:118px}
+.tabhero{border-radius:var(--r);box-shadow:var(--sh)}
+.hero{border-radius:14px}
+.tiles{gap:10px}
+.tile{border:0;border-radius:14px;background:linear-gradient(180deg,#fff,#f7f9fc);box-shadow:inset 0 0 0 1px rgba(16,24,40,.06);padding:10px 12px}
+.tile small{font-family:var(--body);font-weight:600;font-size:10.5px;letter-spacing:.08em;color:#7a8699}
+.tile b{font-family:var(--body);font-size:19px;font-weight:700;letter-spacing:-.01em}
+.btn{font-family:var(--body);text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;border:1px solid rgba(16,24,40,.12);border-radius:11px;padding:9px 15px;background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.btn.small{font-size:13px;padding:7px 12px;border-radius:10px}
+.btn:hover:not([aria-disabled=true]){border-color:rgba(16,24,40,.28);box-shadow:0 3px 10px rgba(16,24,40,.1)}
+.btn.primary{background:linear-gradient(135deg,var(--magenta),var(--magenta2));border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(194,24,91,.28)}
+.btn.primary:hover:not([aria-disabled=true]){transform:translateY(-1px);box-shadow:0 10px 22px rgba(194,24,91,.34);border-color:transparent}
+.btn.danger{color:var(--bad);border-color:rgba(209,55,46,.35)}
+.chip{border:1px solid rgba(16,24,40,.1);background:#fff;border-radius:999px;padding:5px 12px;font-weight:500;font-size:12.5px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.chip:hover{border-color:rgba(16,24,40,.25)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:0 4px 12px rgba(20,33,58,.25)}
+.seg{border:0;background:#e8ecf2;border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0!important;border-radius:9px;background:transparent;font-weight:500;font-size:12.5px;padding:7px 4px;color:#475467}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(16,24,40,.14),0 1px 1px rgba(16,24,40,.06)}
+.pill{font-family:var(--body);border:0;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;letter-spacing:.04em;background:rgba(20,33,58,.07)}
+.pill.good{background:rgba(18,128,92,.12)}.pill.bad{background:rgba(209,55,46,.12)}.pill.warn{background:rgba(184,106,0,.13)}.pill.info{background:rgba(37,99,235,.11)}
+.alert{border-radius:12px;border-left-width:4px;box-shadow:var(--sh);background:#fff8ec}.alert.bad{background:#fff1f0}
+.bar{height:8px;border-radius:99px;background:#e8edf3}.bar>i{border-radius:99px;transition:width .7s var(--ease)}
+input[type=text],input[type=search],input[type=number],select{border:1px solid rgba(16,24,40,.14);border-radius:11px;padding:9px 12px;background:#fff;transition:border-color .15s,box-shadow .15s}
+input[type=text]:focus,input[type=search]:focus,select:focus{outline:0;border-color:var(--magenta);box-shadow:0 0 0 4px rgba(194,24,91,.12)}
+input[type=range]{accent-color:var(--magenta)}
+table td,table th{border-bottom-color:#eef1f5}
+details.lines{border:1px solid rgba(16,24,40,.07);border-radius:12px;background:#fafbfd;transition:background .2s}
+details.lines[open]{background:#fff}
+details.lines summary{list-style:none;display:flex;align-items:center;gap:8px}
+details.lines summary::-webkit-details-marker{display:none}
+details.lines summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s var(--ease);flex:none}
+details.lines[open] summary::before{transform:rotate(45deg)}
+/* En-tête */
+#board{background:radial-gradient(120% 140% at 0% 0%,#1b2a4a 0%,#0c1322 60%);box-shadow:0 6px 24px rgba(5,10,20,.35);position:relative;z-index:6;padding:9px 16px}
+.brand{font-family:var(--display);letter-spacing:.06em}
+.brand img{box-shadow:0 0 0 2px rgba(255,255,255,.15)}
+.flap small{font-family:var(--body);font-weight:600;font-size:10px;letter-spacing:.1em;color:#8b98ad}
+.flap b{font-family:var(--body);font-weight:700;font-size:15px;color:#fff;transition:color .3s}
+.flap b.up{animation:fup .7s var(--ease)}.flap b.dn{animation:fdn .7s var(--ease)}
+@keyframes fup{0%{color:#5be3a8;transform:translateY(-2px)}100%{transform:none}}@keyframes fdn{0%{color:#ff8a80;transform:translateY(2px)}100%{transform:none}}
+.flap b.neg{color:#ff8a80}
+.speed{border:0;background:rgba(255,255,255,.07);border-radius:12px;padding:3px;gap:2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.speed button{border:0!important;border-radius:9px;color:#aab4c5;font-family:var(--body);font-weight:700}
+.speed button:hover{background:rgba(255,255,255,.08);color:#fff}
+.speed button[aria-pressed="true"]{background:linear-gradient(135deg,#ffd166,#ffb020);color:#1a1405;box-shadow:0 4px 12px rgba(255,176,32,.35)}
+.hsave,.hcheat{background:rgba(255,255,255,.07);border:0;border-radius:10px;color:#cfd6e2;width:36px;height:34px;display:inline-flex;align-items:center;justify-content:center;transition:background .15s}
+.hsave:hover,.hcheat:hover{background:rgba(255,255,255,.14);color:#fff}
+.hsave svg,.hcheat svg{width:18px;height:18px}
+.hcheat{color:#ffd166}
+/* Barre d'onglets */
+#tabs{background:rgba(255,255,255,.86);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);border-top:1px solid rgba(16,24,40,.06);box-shadow:0 -6px 24px rgba(16,24,40,.06);position:relative;z-index:6}
+#tabs button{border-top:0!important;position:relative;font-family:var(--body);text-transform:none;letter-spacing:0;font-weight:600;font-size:11.5px;color:#7a8699;padding:7px 2px 8px;transition:color .2s}
+#tabs button::before{content:"";position:absolute;top:4px;left:50%;width:58px;height:30px;margin-left:-29px;border-radius:15px;background:rgba(194,24,91,.11);transform:scale(.5);opacity:0;transition:transform .3s var(--ease),opacity .3s}
+#tabs button[aria-pressed="true"]{color:var(--magenta)}
+#tabs button[aria-pressed="true"]::before{transform:none;opacity:1}
+#tabs img{position:relative;transition:transform .3s var(--ease),opacity .2s}
+#tabs button[aria-pressed="true"] img{transform:scale(1.1)}
+@media (min-width:900px){#tabs button::before{top:5px;bottom:5px;height:auto;width:auto;left:18%;right:18%;margin:0;border-radius:12px}#tabs button{font-size:13.5px}}
+/* Carte */
+.maptop .chips .chip:not([aria-pressed=true]),#legend .chip:not([aria-pressed=true]){background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.mapctl button{border-radius:12px!important;box-shadow:var(--sh)}
+/* Fenêtres */
+#modal{background:rgba(9,14,26,.42);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.sheet{border-radius:22px 22px 0 0;box-shadow:var(--sh2);padding:18px 18px 24px}
+@media (min-width:700px){.sheet{border-radius:22px}}
+#modal:not([hidden]) .sheet{animation:mup .34s var(--ease)}
+@keyframes mup{from{transform:translateY(60px) scale(.98);opacity:0}}
+#toast{background:rgba(17,26,46,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:14px;box-shadow:var(--sh2);transition:opacity .25s,transform .35s var(--ease)}
+/* Entrées animées */
+#panel.fadein>*{animation:pin .38s var(--ease) both}
+#panel.fadein>*:nth-child(2){animation-delay:.04s}#panel.fadein>*:nth-child(3){animation-delay:.08s}#panel.fadein>*:nth-child(4){animation-delay:.12s}#panel.fadein>*:nth-child(n+5){animation-delay:.16s}
+@keyframes pin{from{opacity:0;transform:translateY(10px)}}
+.subnav{background:linear-gradient(var(--paper) 78%,rgba(242,244,247,0))}
+.stockrow{border-radius:10px;padding:8px 6px;margin:0 -6px;border-top:0;box-shadow:0 -1px 0 #eef1f5}
+.stockrow:hover{background:#f5f7fa}
+.gauge .ndl{transition:transform 1.6s var(--ease)}
+.cheatgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+@media (max-width:600px){
+ #board{display:grid!important;grid-template-columns:auto auto auto 1fr auto auto;grid-template-areas:"brand brand brand brand cheat save" "d c p . speed speed";gap:6px 12px;padding:8px 12px 9px}
+ #board .brand{grid-area:brand}#board .flap:nth-of-type(2){grid-area:d}#board .flap:nth-of-type(3){grid-area:c}#board .flap:nth-of-type(4){grid-area:p}
+ #board .grow{display:none}#board .speed{grid-area:speed;justify-self:end;align-self:end}#board .hcheat{grid-area:cheat;justify-self:end}#board .hsave{grid-area:save;justify-self:end}
+ .flap b{font-size:13px}.flap small{font-size:9px;letter-spacing:.06em;white-space:nowrap}.speed button{min-width:29px;padding:6px 5px;font-size:12px}#board{column-gap:14px!important}
+}
+.devbadge{position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:7;background:#ffd166;color:#1a1405;font:700 10px var(--body);letter-spacing:.08em;padding:3px 8px;border-radius:99px;box-shadow:var(--sh);pointer-events:none}
+
 </style>
 </head>
 <body data-tab="carte">
@@ -254,7 +355,7 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
     <div class="brand"><img src="art/logo-0.jpg" width="24" height="24" alt="" style="border-radius:50%"><span id="coname">Plan de Vol</span></div>
     <div class="flap"><small>Date</small><b id="hdate">--</b></div>
     <div class="flap"><small>Trésorerie</small><b id="hcash">--</b></div>
-    <div class="flap"><small>Résultat du mois</small><b id="hprofit">--</b></div>
+    <div class="flap"><small>Ce mois</small><b id="hprofit">--</b></div>
     <div class="grow"></div>
     <div class="speed" role="group" aria-label="Vitesse du temps">
       <button data-act="speed" data-v="0" aria-label="Pause">II</button>
@@ -262,6 +363,7 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
       <button data-act="speed" data-v="2" aria-label="Vitesse rapide">&gt;&gt;</button>
       <button data-act="speed" data-v="3" aria-label="Vitesse très rapide">&gt;&gt;&gt;</button>
     </div>
+    <button class="hcheat" data-act="cheat" aria-label="Menu de test" title="Menu de test (développement)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></button>
     <button class="hsave" data-act="saves" aria-label="Sauvegardes" title="Sauvegardes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3"/><rect x="8" y="13" width="8" height="6"/></svg></button>
   </header>
   <main>
@@ -289,6 +391,7 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
   </nav>
 </div>
 <div id="zoom" hidden></div>
+<div class="devbadge" id="devbadge" hidden>PARTIE DE TEST</div>
 <div id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="start" hidden>
   <div class="title">
@@ -1099,7 +1202,7 @@ function dayStep(){G.day++;const mk={},cmk={},P0=player();
  G.mods=G.mods.filter(m=>m.until>G.day);
  if(G.day%7===0)weekStep();
  if(G.day%30===0)monthStep();
- const p=player();if(!G.over&&p.negDays>=CFG.graceDays){G.over=true;news('Faillite : la trésorerie est restée négative '+CFG.graceDays+' jours.','bad');}}
+ const p=player();if(!G.over&&!(G.cheat&&G.cheat.safe)&&p.negDays>=CFG.graceDays){G.over=true;news('Faillite : la trésorerie est restée négative '+CFG.graceDays+' jours.','bad');}}
 function weekStep(){stockStep();for(const al of G.airlines){if(al.bankrupt)continue;if(al.autoHire)staffAuto(al);if(al.player){for(const r of al.routes){if(r.lf>0.98&&!r.rec&&r.seats>0){r.rec=1;news('Record : '+r.a+' - '+r.b+' vole complet.','good','record');}r.h=r.h||[];r.h.push({lf:Math.round(r.lf*100),pf:Math.round(r.profitW/7),cx:Math.round((r.cxW||0)/7)});if(r.h.length>26)r.h.shift();if(r.brand&&al.subs[r.brand])al.subs[r.brand].pw=(al.subs[r.brand].pw||0)+r.profitW;r.lastW=r.profitW;r.profitW=0;r.cxW=0;}}else{for(const r of al.routes)r.cxW=0;aiWeek(al);}}}
 function strikes(al){for(const k of SK){const s=al.staff[k];if(s.mo>=35||!s.n||rng()>=(35-s.mo)/50)continue;al.penalty+=6;
   if(k==='mech'){al.mechStrike=10;news('Grève des mécaniciens chez '+al.name+' : révisions bloquées 10 jours.',al.player?'bad':'info','strike');}
@@ -1237,7 +1340,7 @@ const SLOTS=['auto','1','2','3'],svK=x=>'pdv.save.'+x,svM=x=>'pdv.meta.'+x;
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
-function saveMeta(){const p=player();return{name:p.name,color:p.color,day:G.day,cash:Math.round(p.cash),fleet:p.planes.length,routes:p.routes.length,share:p.share||0,over:!!G.over,won:!!G.won,at:Date.now()};}
+function saveMeta(){const p=player();return{test:!!(G.cheat&&G.cheat.used),name:p.name,color:p.color,day:G.day,cash:Math.round(p.cash),fleet:p.planes.length,routes:p.routes.length,share:p.share||0,over:!!G.over,won:!!G.won,at:Date.now()};}
 function writeSlot(slot,quiet){if(!G)return false;let data;try{data=JSON.stringify(G);}catch(e){return false;}const meta=JSON.stringify(saveMeta());
  if(slot==='auto'){const cur=lsGet(svK('auto'));if(cur&&cur.length){const m=lsGet(svM('auto'));if(!m||JSON.parse(m).day!==G.day){lsSet(svK('auto.prev'),cur);lsSet(svM('auto.prev'),m||'{}');}}}   // garde la sauvegarde précédente en secours
  let ok=lsSet(svK(slot),data);if(!ok){lsDel(svK('auto.prev'));lsDel(svM('auto.prev'));ok=lsSet(svK(slot),data);}
@@ -1365,7 +1468,7 @@ function drawMap(){if(!CW||!UI.view)return;const v=UI.view,s=v.s,Wp=WW*s,nk=Math
   if(P&&P.hubs.includes(a.code)){cx.beginPath();cx.arc(X,Y,r+3,0,7);cx.strokeStyle='#b01f6a';cx.lineWidth=1.2;cx.setLineDash([2,2]);cx.stroke();cx.setLineDash([]);}
   if(rivalBase[a.code]){cx.beginPath();cx.arc(X,Y,r+3.5,0,7);cx.strokeStyle=rivalBase[a.code];cx.lineWidth=1.5;cx.stroke();}
   if(sel){cx.beginPath();cx.arc(X,Y,r+7,0,7);cx.strokeStyle='#17263a';cx.lineWidth=1.5;cx.setLineDash([3,3]);cx.stroke();cx.setLineDash([]);}
-  if(base||sv||sel||a.pop>=minPop){const big=z>=6||base||sel;cx.font=(base||sel?'700 ':'')+'11px "B612 Mono",monospace';const t=big&&z>=4?a.code+' '+a.name:a.code;
+  if(base||sv||sel||a.pop>=minPop){const big=z>=6||base||sel;cx.font=(base||sel?'700 ':'600 ')+'11px Inter,system-ui,sans-serif';const t=big&&z>=4?a.code+' '+a.name:a.code;
    cx.lineWidth=3;cx.strokeStyle='rgba(242,239,228,.85)';cx.strokeText(t,X+r+4,Y+1);cx.fillStyle='#17263a';cx.fillText(t,X+r+4,Y+1);}}}
 function zoomAt(px,py,f){const v=UI.view;UI.anim=null;const wxp=(px-v.ox)/v.s,wyp=(py-v.oy)/v.s;v.s=clamp(v.s*f,minS(),minS()*60);v.ox=px-wxp*v.s;v.oy=py-wyp*v.s;clampView();}
 function pickAirport(px,py){const v=UI.view,Wp=WW*v.s,nk=Math.ceil((CW-v.ox)/Wp);let best=null,bd=24;
@@ -1390,9 +1493,10 @@ function legend(){if(!G){$('legend').innerHTML='';return;}const riv=G.airlines.f
  G.airlines.filter(a=>!a.bankrupt).map(a=>a.player?'<span class="chip al" aria-pressed="true"><i style="background:'+a.color+'"></i>'+esc(a.name)+'</span>':'<button class="chip al" data-act="toggleal" data-v="'+a.id+'" aria-pressed="'+!UI.hide[a.id]+'"><i style="background:'+a.color+'"></i>'+esc(a.name)+'</button>').join('');}
 
 // ---- Panneaux
+function tick(el,v,txt){if(el.textContent===txt)return;const o=el._v;el.textContent=txt;el._v=v;if(o==null||Math.abs(v-o)<Math.max(1,Math.abs(o)*0.002))return;el.classList.remove('up','dn');void el.offsetWidth;el.classList.add(v>o?'up':'dn');}
 function header(){const p=player();$('coname').textContent=p.name;$('hdate').textContent=dateStr(G.day);
- const c=$('hcash');c.textContent=money(p.cash);c.className=p.cash<0?'neg':'';
- const cur=mProfit(p.m);$('hprofit').textContent=signed(cur);$('hprofit').className=cur<0?'neg':'';
+ const c=$('hcash');tick(c,p.cash,money(p.cash));c.classList.toggle('neg',p.cash<0);
+ const cur=mProfit(p.m),hp=$('hprofit');tick(hp,cur,signed(cur));hp.classList.toggle('neg',cur<0);if(document.body.dataset.cheat!==String(!!G.cheat))document.body.dataset.cheat=String(!!G.cheat);$('devbadge').hidden=!(G.cheat&&G.cheat.used);
  document.querySelectorAll('.speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.v===UI.speed)));
  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===UI.tab)));
  document.body.dataset.tab=UI.tab;}
@@ -1896,6 +2000,13 @@ function renderModal(){const M=UI.modal,p=G?player():null,S=$('sheet');let h='';
   '<h3>Lignes</h3><details class="lines"><summary>Lui confier une de tes lignes ('+myR.length+')</summary>'+(myR.length?myR.map(r=>'<div class="row"><span class="grow">'+r.a+(r.via?' · '+r.via:'')+' - '+r.b+' · '+plur(r.planes.length,'avion')+' <small class="'+cls(r.profitD||0)+'">'+signed(r.profitD||0)+'/j</small></span><button class="btn small" data-act="groute" data-id="'+a.id+'" data-v="'+r.id+'">Confier</button></div>').join(''):'<p class="muted" style="font-size:12px">Aucune ligne transférable.</p>')+'<p class="muted" style="font-size:12px">La ligne part avec ses avions et ses créneaux ; elle te paie les avions en propriété. Sa direction fixe ensuite les prix.</p></details>'+
   '<details class="lines"><summary>Reprendre une de ses lignes ('+a.routes.length+')</summary>'+a.routes.map(r=>{const v=routeVal(a,r),dup=p.routes.some(x=>key(x.a,x.b)===key(r.a,r.b));return '<div class="row"><span class="grow">'+r.a+' - '+r.b+' · '+plur(r.planes.length,'avion')+' <small class="'+cls(r.profitD||0)+'">'+signed(r.profitD||0)+'/j</small></span><button class="btn small" data-act="troute" data-id="'+a.id+'" data-v="'+r.id+'"'+(dup?DIS('Tu exploites déjà cette ligne.'):p.cash<v?DIS('Trésorerie insuffisante : il faut '+money(v)+'.'):'')+'>Reprendre'+(v?' ('+money(v)+')':'')+'</button></div>';}).join('')+'</details>'+
   '<h3>Sortie</h3><div class="row" style="flex-wrap:wrap"><button class="btn small" data-act="ctlsellmk" data-v="'+a.id+'">Tout vendre en bourse (+'+money(sellGet(a,st))+')</button><button class="btn small" data-act="ctlsellriv" data-v="'+a.id+'"'+(!buyer?DIS('Aucune rivale n\'a les moyens de la racheter en ce moment.'):'')+'>Vendre à '+(buyer?esc(buyer.name):'une rivale')+' (+'+money(st*M2*1.2+(a.loanG||0))+')</button><button class="btn small primary" data-act="takeover" data-v="'+a.id+'"'+(p.cash<tc?DIS('Trésorerie insuffisante : il manque '+money(tc-p.cash)+' pour la fusion.'):'')+'>Fusionner avec ta compagnie ('+money(tc)+')</button></div><p class="muted" style="font-size:12px">Vendre à une rivale : elle rachète tout le capital avec 20 % de prime et rembourse le prêt du groupe ; sa flotte rejoint l\'acheteuse.</p>';}
+ else if(M.kind==='cheat'){const C=G.cheat||{};
+  const b=(act,v,l,cl)=>'<button class="btn small'+(cl?' '+cl:'')+'" data-act="'+act+'" data-v="'+v+'">'+l+'</button>';
+  h='<div class="row"><h2 class="grow">Menu de test</h2><button class="btn small" data-act="close">Fermer</button></div><p class="muted" style="font-size:12px">Outils de développement pour tester vite. Une partie qui les utilise est marquée « test ».</p>'+
+  '<h3>Trésorerie</h3><div class="cheatgrid">'+b('ch','cash:1e7','+10 M€')+b('ch','cash:1e8','+100 M€','primary')+b('ch','cash:1e9','+1 Md€')+b('ch','cash:1e10','+10 Md€')+b('ch','debt','Effacer la dette')+b('ch','safe',C.safe?'Faillite : désactivée ✓':'Désactiver la faillite')+'</div>'+
+  '<h3>Temps</h3><div class="cheatgrid">'+b('ch','days:7','+1 semaine')+b('ch','days:30','+1 mois')+b('ch','days:90','+3 mois')+b('ch','days:360','+1 an')+'</div>'+
+  '<h3>Compagnie</h3><div class="cheatgrid">'+b('ch','deliver','Livrer toutes les commandes')+b('ch','fix','Flotte remise à neuf')+b('ch','rep','Réputation 100')+b('ch','morale','Moral du personnel 100')+b('ch','board','Conseil satisfait')+b('ch','slots','+10 créneaux partout')+'</div>'+
+  '<h3>Marché</h3><div class="cheatgrid">'+b('ch','fuel:0.7','Kérosène bon marché')+b('ch','fuel:1.4','Kérosène cher')+b('ch','crash','Krach boursier')+b('ch','boom','Euphorie boursière')+b('ch','trouble','Une rivale en difficulté')+'</div>';}
  else if(M.kind==='brand'){const B=BRANDS[M.k];h='<div class="row"><h2 class="grow">Nouvelle filiale '+B.label.toLowerCase()+'</h2><button class="btn small" data-act="close">Fermer</button></div>'+IMG('br-'+M.k+'.jpg',BFB[M.k]||'tab-lignes.jpg','hero')+
   '<label class="f"><span>Nom de la marque</span><input type="text" data-f="bname" maxlength="24" value="'+esc(M.bname)+'"></label><div class="f"><span class="lbl">Couleur</span><div class="chips">'+['#F28C28','#E5C100','#1E8C8C','#6A3FA0','#2E9E4F','#D6336C'].map(c=>'<button class="chip" data-act="mset" data-k="color" data-v="'+c+'" aria-pressed="'+(M.color===c)+'"><i style="background:'+c+'"></i>'+c+'</button>').join('')+'</div></div>'+
   '<div class="kv"><span>Création</span><b>'+money(B.cost)+'</b><span>Frais fixes</span><b>'+money(B.fee)+'/mois</b></div><div class="row"><button class="btn primary" data-act="brandok"'+(p.cash<B.cost?DIS('Trésorerie insuffisante : il manque '+money(B.cost-p.cash)+'.'):'')+'>Créer la filiale</button></div>';}
@@ -1996,6 +2107,22 @@ const ACT={
  convert(d){const p=player(),pl=planeOf(p,+d.v);openModal('confirm',{title:'Convertir en cargo ?',text:plLabel(pl)+' : '+money(convCost(pl))+', 40 jours au sol. L\'avion perd ses sièges et emporte '+Math.round(MX[pl.model].seats*0.16)+' t de fret. Conversion définitive.',ok:'Convertir',yes(){if(convertCargo(p,pl))news(pl.reg+' part en conversion cargo.','info','delivery');}});},
  newbrand(d){const p=player(),w=p.name.split(' ')[0];openModal('brand',{k:d.v,bname:w+' '+({lc:'Go',reg:'Connect',leis:'Soleil',cargo:'Cargo'})[d.v],color:({lc:'#F28C28',reg:'#1E8C8C',leis:'#E5C100',cargo:'#6A3FA0'})[d.v]});},
  stock(d){openModal('stock',{id:+d.v});},
+ cheat(){if(G)openModal('cheat',{});},
+ ch(d){const p=player(),[k,x]=d.v.split(':');G.cheat=G.cheat||{};const C=G.cheat;let msg='';
+  if(k==='cash'){p.cash+=+x;msg='+'+money(+x)+' en trésorerie.';}
+  else if(k==='debt'){p.debt=0;msg='Dette effacée.';}
+  else if(k==='safe'){C.safe=!C.safe;msg=C.safe?'Faillite désactivée.':'Faillite réactivée.';}
+  else if(k==='days'){const n=+x;for(let i=0;i<n&&!G.over;i++)dayStep();msg='+'+n+' jours.';}
+  else if(k==='deliver'){for(const pl of p.planes){if(pl.deliv){pl.deliv=false;pl.down=0;}}updateCap(p);msg='Commandes livrées.';}
+  else if(k==='fix'){for(const pl of p.planes){pl.cond=100;if(!pl.deliv)pl.down=0;}msg='Flotte remise à neuf.';}
+  else if(k==='rep'){p.rep=100;msg='Réputation à 100.';}
+  else if(k==='morale'){for(const s of SK)p.staff[s].mo=100;msg='Moral au maximum.';}
+  else if(k==='board'){if(G.board){G.board.conf=100;for(const id in G.board.sat)G.board.sat[id]=90;}msg='Conseil satisfait.';}
+  else if(k==='slots'){for(const c in G.slotCap){p.slots[c]=(p.slots[c]||0)+10;G.slotCap[c]+=10;}msg='+10 créneaux dans chaque aéroport saturé.';}
+  else if(k==='fuel'){G.fuel=+x;msg='Indice carburant : '+nf(G.fuel*100)+'.';}
+  else if(k==='crash'||k==='boom'){for(const a of G.airlines)if(!a.bankrupt)nudge(a,k==='crash'?-0.35:0.35);msg=k==='crash'?'Krach : tous les cours chutent.':'Euphorie : tous les cours montent.';}
+  else if(k==='trouble'){const a=G.airlines.filter(x=>!x.player&&!x.bankrupt&&x.parent==null).sort((x,y)=>y.planes.length-x.planes.length)[0];if(a){a.cash=-2e6;a.hist.push(-3e6,-3e6);a.negDays=25;msg=a.name+' est en difficulté.';}}
+  C.used=true;G.mut=(G.mut||0)+1;toast(msg);reAll();header();},
  ctladm(d){openModal('ctl',{id:+d.v});},
  amtstep(d){const o=AMTM[d.k];if(!o)return;UI.amt[d.k]=clamp(+((UI.amt[d.k]||0)+(+d.v)*o.step).toFixed(6),o.min,Math.max(o.min,o.max));amtRefresh(d.k);},
  repay(d){const p=player(),v=Math.min(UI.amt[d.k]||0,p.debt,p.cash);if(v>0){p.debt-=v;p.cash-=v;toast('Remboursement : '+money(v)+'.');}renderAll(true);},
