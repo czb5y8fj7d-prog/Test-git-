@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f2f4f8" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#101822" media="(prefers-color-scheme: dark)">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>_modele</title>
+<style>
+/* TYCOON ENGINE — style.css : design system « studio moderne ».
+   Cartes arrondies, ombres douces, navigation en dock flottant, mode sombre automatique. Le jeu surcharge accent / accent2 via def.theme. */
+:root{
+  --bg:#f2f4f8; --surface:#fff; --card:#fff; --ink:#0f1b2d; --muted:#667085; --line:#e5e8ee; --line2:#d2d8e1;
+  --accent:#1f5f84; --accent2:#d9480f; --accent-t:var(--accent); --on-accent:#fff;
+  --tint:color-mix(in srgb,var(--accent) 9%,transparent); --tint2:color-mix(in srgb,var(--accent) 14%,var(--surface));
+  --good:#12805c; --warn:#b45309; --bad:#d92d20;
+  --body:ui-sans-serif,system-ui,-apple-system,"Segoe UI","SF Pro Text",Roboto,"Helvetica Neue",sans-serif; --display:var(--body); --mono:var(--body);
+  --r:18px; --r2:12px; --sh:0 1px 2px rgba(16,24,40,.05),0 6px 18px -8px rgba(16,24,40,.12); --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+  --hazard:var(--accent2); --prim:var(--accent); --prim-ink:#fff; --board:var(--surface); --flap:var(--ink); --board-dim:var(--muted);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#090e15; --surface:#101822; --card:#131d29; --ink:#e8edf4; --muted:#8c9bb0; --line:#1f2b3a; --line2:#2b3a4d;
+  --accent-t:color-mix(in srgb,var(--accent) 52%,#fff); --tint:color-mix(in srgb,var(--accent) 22%,transparent); --tint2:color-mix(in srgb,var(--accent) 24%,var(--surface));
+  --good:#3ecf9a; --warn:#f5a623; --bad:#ff7b6e; --sh:0 1px 2px rgba(0,0,0,.4),0 8px 24px -10px rgba(0,0,0,.6);
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent;touch-action:manipulation;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:2px}
+#app{height:100%;height:100dvh;display:flex;flex-direction:column}
+.muted{color:var(--muted)}.pos{color:var(--good)}.neg{color:var(--bad)}.num{text-align:right;font-variant-numeric:tabular-nums}
+b,.num,.tile b,.kv b,.flap b{font-variant-numeric:tabular-nums}
+h2{font-size:27px;letter-spacing:-.025em;margin:0;line-height:1.1;font-weight:800}
+h3{font-size:15px;letter-spacing:-.005em;color:var(--ink);margin:0 0 2px;font-weight:700}
+p{margin:0}
+
+/* ---------- en-tête ---------- */
+#board{position:relative;z-index:3;background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:saturate(1.5) blur(16px);backdrop-filter:saturate(1.5) blur(16px);border-bottom:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"b s v" "f f f";align-items:center;gap:8px 10px;padding:calc(8px + var(--safe-t)) 14px 9px}
+.brand{grid-area:b;font-weight:800;font-size:17px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px;min-width:0}
+.brand span:first-child{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--tint);font-size:17px;flex:none}
+.brand span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#flaps{grid-area:f;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:1px 0}#flaps::-webkit-scrollbar{display:none}
+.grow{flex:1}#board .grow{display:none}
+.flap{display:flex;flex-direction:column;flex:none;min-width:0;background:var(--bg);border-radius:12px;padding:5px 12px 6px}
+.flap small{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);line-height:1.25;font-weight:600}
+.flap b{font-size:15px;white-space:nowrap;line-height:1.25;font-weight:700}.flap b.neg{color:var(--bad)}
+.speed{grid-area:s;display:flex;background:var(--bg);border-radius:999px;padding:3px;gap:2px}
+.speed button{background:none;border:0;color:var(--muted);height:34px;min-width:38px;padding:0 6px;font-size:11px;font-weight:800;border-radius:999px;letter-spacing:-.05em}
+.speed button[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:0 3px 10px -3px color-mix(in srgb,var(--accent) 80%,transparent)}
+.hsave{grid-area:v;background:var(--bg);border:0;border-radius:999px;height:40px;width:40px;font-size:16px}
+
+/* ---------- rubriques du hub (mobile) ---------- */
+#subnav{position:relative;z-index:2;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:9px 12px 3px;background:var(--bg)}
+#subnav::-webkit-scrollbar{display:none}
+#subnav button{flex:0 0 auto;min-height:38px;border:1px solid var(--line2);background:var(--card);border-radius:999px;padding:0 15px;font-size:14px;font-weight:650;display:flex;align-items:center;gap:7px;white-space:nowrap}
+#subnav button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* ---------- mise en page ---------- */
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+#mapwrap{position:relative;background:#dfe9ee;flex:0 0 38%;min-height:0;overflow:hidden}
+#map{position:absolute;inset:0;width:100%;height:100%;display:block}
+#panel{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px 14px 96px;scrollbar-width:thin}
+.flow{display:flex;flex-direction:column;gap:12px;min-width:0;max-width:1080px;margin:0 auto}
+.fadein .flow>*{animation:pin .32s both}.fadein .flow>*:nth-child(2){animation-delay:.03s}.fadein .flow>*:nth-child(n+3){animation-delay:.06s}
+@keyframes pin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* dock de navigation (mobile) : flottant, 5 pôles maximum */
+#tabs{position:relative;z-index:4;display:flex;gap:2px;margin:0 10px calc(8px + var(--safe-b));padding:6px;background:color-mix(in srgb,var(--surface) 92%,transparent);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:26px;box-shadow:0 10px 30px -10px rgba(10,20,40,.35)}
+#tabs .sidebrand{display:none}
+#tabs .hub{flex:1 1 0;min-width:0;display:flex}
+#tabs .subs{display:none}
+#tabs .hubbtn{flex:1;min-width:0;height:56px;background:none;border:0;border-radius:20px;padding:4px 2px;font-size:11px;font-weight:650;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;transition:background .2s,color .2s}
+#tabs .hubbtn .ti{font-size:22px;line-height:1;transition:transform .2s}
+#tabs .hubbtn .tl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tabs .hubbtn[aria-pressed="true"]{background:var(--tint2);color:var(--accent-t);font-weight:800}
+#tabs .hubbtn[aria-pressed="true"] .ti{transform:translateY(-1px) scale(1.08)}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font-size:10.5px;font-weight:800;font-style:normal;line-height:1}
+.bdg.info{background:var(--accent)}.bdg.warn{background:var(--warn)}
+.hubbtn .bdg{position:absolute;top:2px;right:calc(50% - 24px);box-shadow:0 0 0 2px var(--surface)}
+#tabs.many{overflow-x:auto;scrollbar-width:none}#tabs.many::-webkit-scrollbar{display:none}#tabs.many .hub{flex:0 0 74px}
+
+/* bouton d'action contextuel */
+#fab{position:fixed;right:14px;bottom:calc(88px + var(--safe-b));z-index:9;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+#fab .fabmain{min-height:54px;min-width:54px;border:0;border-radius:27px;padding:0 20px;background:var(--accent2);color:#fff;font-weight:800;font-size:15px;box-shadow:0 12px 24px -8px color-mix(in srgb,var(--accent2) 75%,#000),0 2px 4px rgba(0,0,0,.15);display:flex;align-items:center;gap:8px;transition:transform .15s}
+#fab .fabmain:active{transform:scale(.96)}
+#fab .fabmain.round{padding:0;width:54px;font-size:26px;justify-content:center;font-weight:500}
+#fab .fablist{display:flex;flex-direction:column;align-items:flex-end;gap:8px;animation:up .18s}
+#fab .fablist button{min-height:46px;border:1px solid var(--line);background:var(--card);border-radius:23px;padding:0 18px;font-weight:700;box-shadow:var(--sh);display:flex;align-items:center;gap:9px}
+#fab .fabscrim{position:fixed;inset:0;background:rgba(8,14,22,.4);z-index:-1;animation:fade .18s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+@media (min-width:600px){th{padding:10px 14px}td{padding:11px 14px}}
+@media (min-width:900px){
+  body{font-size:15px}
+  #app{display:grid;grid-template-columns:262px 1fr;grid-template-rows:auto 1fr}
+  #board{grid-column:1/3;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"b f s v";gap:10px 28px;padding:12px 24px}
+  .brand{font-size:19px}
+  #flaps{gap:10px}.flap{padding:6px 14px 7px}.flap b{font-size:16px}
+  #subnav{display:none!important}
+  main{grid-column:2;grid-row:2;flex-direction:row}
+  main.hasmap #mapwrap{flex:0 0 45%}
+  #tabs{grid-column:1;grid-row:2;flex-direction:column;gap:2px;margin:0;border:0;border-right:1px solid var(--line);border-radius:0;box-shadow:none;background:var(--surface);padding:18px 14px;overflow-y:auto;-webkit-backdrop-filter:none;backdrop-filter:none}
+  #tabs .sidebrand{display:flex;flex-direction:column;padding:2px 12px 16px}
+  #tabs .sidebrand small{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  #tabs .sidebrand b{font-size:20px;letter-spacing:-.02em;font-weight:800}
+  #tabs.many{overflow-x:visible}
+  #tabs .hub,#tabs.many .hub{flex:none;flex-direction:column;margin-bottom:6px}
+  #tabs .hubbtn{flex:none;height:44px;flex-direction:row;justify-content:flex-start;gap:12px;padding:0 12px;border-radius:12px;font-size:14.5px;color:var(--ink);font-weight:650;text-align:left}
+  #tabs .hubbtn:hover{background:var(--bg)}
+  #tabs .hubbtn .ti{font-size:19px;width:24px;text-align:center}
+  #tabs .hubbtn .bdg{position:static;margin-left:auto;box-shadow:none}
+  #tabs .hub.multi .hubbtn{height:34px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-top:8px;pointer-events:none}
+  #tabs .hub.multi .hubbtn[aria-pressed="true"]{background:none;color:var(--accent-t)}
+  #tabs .hub.multi .hubbtn .ti{font-size:14px}
+  #tabs .hub.multi .subs{display:flex;flex-direction:column;gap:1px}
+  #tabs .subs button{height:40px;border:0;background:none;border-radius:11px;padding:0 12px 0 14px;display:flex;align-items:center;gap:12px;font-size:14.5px;font-weight:600;color:var(--ink);text-align:left}
+  #tabs .subs button:hover{background:var(--bg)}
+  #tabs .subs button .ti{font-size:17px;width:24px;text-align:center}
+  #tabs .subs button .bdg{margin-left:auto}
+  #tabs .subs button[aria-pressed="true"]{background:var(--tint2);color:var(--accent-t);font-weight:800}
+  #tabs .hub.single.on .hubbtn{background:var(--tint2);color:var(--accent-t);font-weight:800}
+  #panel{padding:26px 32px 40px}
+  .flow{gap:14px}
+  #fab{bottom:28px;right:32px}
+}
+@media (min-width:1240px){
+  main:not(.hasmap) #panel .flow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px 16px;max-width:1240px}
+  main:not(.hasmap) #panel .flow>h2,main:not(.hasmap) #panel .flow>.row,main:not(.hasmap) #panel .flow>.tiles,main:not(.hasmap) #panel .flow>p,main:not(.hasmap) #panel .flow>.tbl,main:not(.hasmap) #panel .flow>.news,main:not(.hasmap) #panel .flow>.card.wide,main:not(.hasmap) #panel .flow>.fbar,main:not(.hasmap) #panel .flow>details,main:not(.hasmap) #panel .flow>.fsum,main:not(.hasmap) #panel .flow>.card.fbar,main:not(.hasmap) #panel .flow>.bento{grid-column:1/-1}
+}
+
+/* ---------- composants ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:10px;min-width:0}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:560px){.tiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;min-width:0;box-shadow:var(--sh)}
+.tile small{font-size:11.5px;letter-spacing:.03em;color:var(--muted);font-weight:600}
+.tile b{font-size:20px;margin-top:3px;line-height:1.2;overflow-wrap:anywhere;font-weight:750;letter-spacing:-.01em}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0;align-items:baseline}
+.kv>*{padding:7px 0;border-bottom:1px solid var(--line)}.kv>:nth-last-child(-n+2){border-bottom:0}
+.kv span{color:var(--muted)}.kv b{font-weight:650;text-align:right;padding-left:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{min-height:44px;border:0;background:var(--tint2);color:var(--accent-t);border-radius:var(--r2);padding:0 18px;font-weight:700;transition:transform .08s,filter .15s,background .15s}
+.btn:hover{filter:brightness(.97)}.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:#fff;box-shadow:0 8px 18px -8px color-mix(in srgb,var(--accent) 80%,transparent)}
+.btn.small{min-height:38px;padding:0 14px;font-size:13.5px;border-radius:11px}.btn.sq{width:44px;min-height:44px;padding:0;text-align:center;font-size:20px;line-height:1}
+.btn[aria-disabled="true"]{opacity:.42;box-shadow:none}
+.xbtn{position:sticky;top:0;z-index:2;align-self:flex-end;margin-bottom:-44px;min-width:40px;width:40px;min-height:40px!important;padding:0!important;font-size:15px;border-radius:50%!important;background:var(--bg)!important;color:var(--ink)!important;box-shadow:none!important}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;background:var(--bg);color:var(--muted);vertical-align:1px;white-space:nowrap}
+.pill.good{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}.pill.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}.pill.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}.pill.info{background:var(--tint);color:var(--accent-t)}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{min-height:38px;border:1px solid var(--line2);background:var(--card);border-radius:999px;padding:0 15px;font-size:13.5px;font-weight:650;white-space:nowrap;transition:background .15s,color .15s}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.fbar{display:flex;flex-direction:column;gap:11px}
+.fl{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fl>small{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:2px}.chips.scroll::-webkit-scrollbar{display:none}
+.fsum{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+details.filters{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:0 16px}
+details.filters summary{list-style:none;cursor:pointer;min-height:50px;display:flex;align-items:center;gap:10px;font-weight:750}
+details.filters summary::-webkit-details-marker{display:none}
+details.filters summary::after{content:"";margin-left:auto;width:9px;height:9px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .2s}
+details.filters[open] summary::after{transform:rotate(-135deg) translateY(-2px)}
+details.filters .fbar{padding:2px 0 16px}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--bg);border-radius:13px;padding:3px;gap:2px;max-width:100%}
+.seg button{background:none;border:0;min-height:38px;padding:0 13px;font-size:13.5px;font-weight:650;border-radius:10px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(16,24,40,.18);font-weight:800}
+.bar{height:9px;border-radius:999px;background:var(--bg);overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%,#fff));border-radius:999px;transition:width .4s}.bar i.good{background:var(--good)}.bar i.bad{background:var(--bad)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--sh);-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 10px;background:var(--bg);font-weight:750;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);background:var(--card)}tr:last-child td{border-bottom:0}
+th.num{text-align:right}th.num,td.num{width:1%;white-space:nowrap;font-size:13.5px}
+.tbl th:first-child,.tbl td:first-child{position:sticky;left:0;z-index:1}.tbl th:first-child{background:var(--bg)}
+tr.me td{background:var(--tint)}tr.dead{opacity:.45}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px}
+.amt{display:flex;flex-direction:column;gap:8px}.amt input[type=range]{flex:1;min-width:0;height:40px;accent-color:var(--accent)}.amtv{font-weight:700}
+.chart{width:100%;height:auto}.spark{width:100%;height:50px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.gauge{display:flex;flex-direction:column;align-items:center;width:120px}.gauge small{font-size:11px;color:var(--muted)}
+.news{display:flex;flex-direction:column;gap:8px}
+.nw{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--sh);position:relative}
+.nw::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--line2)}
+.nw small{color:var(--muted)}.nw.good::before{background:var(--good)}.nw.bad::before{background:var(--bad)}.nw.info::before{background:var(--accent)}
+.slot{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+details.setup{border:1px solid var(--line);border-radius:14px;padding:0 14px;background:var(--card)}
+details.setup summary{list-style:none;cursor:pointer;font-weight:700;font-size:14px;min-height:46px;display:flex;align-items:center}
+details.setup summary::-webkit-details-marker{display:none}details.setup summary::before{content:"›";margin-right:10px;color:var(--accent-t);font-size:20px;line-height:1;transition:transform .2s;display:inline-block}details.setup[open] summary::before{transform:rotate(90deg)}
+details.setup[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+
+/* ---------- fenêtres ---------- */
+#modal{position:fixed;inset:0;background:rgba(8,14,22,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:20;animation:fade .18s}
+.sheet{position:relative;background:var(--bg);width:min(680px,100%);max-height:93vh;max-height:93dvh;overflow-y:auto;overscroll-behavior:contain;border-radius:26px 26px 0 0;padding:22px 16px calc(18px + var(--safe-b));display:flex;flex-direction:column;gap:12px;animation:up .25s cubic-bezier(.2,.8,.2,1)}
+.sheet::before{content:"";position:sticky;top:-14px;align-self:center;flex:none;width:42px;height:5px;border-radius:3px;background:var(--line2);margin:-12px 0 -2px}
+.sheet>.btn.primary:last-child{position:sticky;bottom:-2px;z-index:2;min-height:54px;font-size:16px;box-shadow:0 0 0 12px var(--bg),0 8px 18px -8px color-mix(in srgb,var(--accent) 80%,transparent)}
+@keyframes up{from{transform:translateY(28px);opacity:0}to{transform:none;opacity:1}}
+@media (min-width:900px){#modal{align-items:center}.sheet{border-radius:24px;padding:26px 24px 26px}.sheet::before{display:none}.sheet>.btn.primary:last-child{bottom:0}}
+.endwrap{display:flex;flex-direction:column;gap:12px;text-align:center;align-items:center;padding:12px}
+
+#cheatfab{position:fixed;left:12px;bottom:calc(92px + var(--safe-b));z-index:12;width:42px;height:42px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font-size:18px;opacity:.8;box-shadow:0 6px 16px rgba(0,0,0,.3)}
+@media (min-width:900px){#cheatfab{bottom:20px;left:276px}}
+/* ---------- écran de départ ---------- */
+#start{position:fixed;inset:0;z-index:15;background:radial-gradient(1200px 500px at 85% -10%,color-mix(in srgb,var(--accent) 16%,transparent),transparent),var(--bg);overflow-y:auto;display:flex;align-items:safe center;justify-content:center;padding:24px 16px calc(24px + var(--safe-b))}
+.title{width:min(620px,100%);display:flex;flex-direction:column;gap:14px}
+.title h1{font-size:clamp(40px,11vw,84px);overflow-wrap:anywhere;line-height:.95;margin:0;letter-spacing:-.04em;font-weight:850}.title h1 span{color:var(--accent2)}
+.title h1::after{content:"";display:block;width:72px;height:7px;border-radius:4px;margin-top:16px;background:linear-gradient(90deg,var(--accent2),var(--accent))}
+.lede{color:var(--muted);font-size:16px}
+.title .btn{width:100%}.title .btn.primary{min-height:58px;font-size:17.5px;border-radius:16px}
+.f{display:flex;flex-direction:column;gap:6px;flex:1}.f span{font-size:12.5px;color:var(--muted);font-weight:650}
+.f input[type=text],.f input[type=number],.f select{border:1px solid var(--line2);border-radius:12px;padding:0 13px;min-height:48px;font-size:16px;background:var(--card);width:100%}
+input[type=color]{width:56px;height:48px;padding:3px;border:1px solid var(--line2);border-radius:12px;background:var(--card)}
+.sgrid{display:flex;flex-direction:column;gap:12px;margin-top:10px;padding-bottom:12px}label.chk{display:flex;gap:10px;align-items:center;font-size:14px;min-height:40px}label.chk input{width:22px;height:22px;accent-color:var(--accent)}
+@media (min-width:700px){.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}.sgrid>.chk{grid-column:1/-1}}
+#toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:13px 18px;border-radius:16px;z-index:30;max-width:min(92vw,520px);font-size:14px;font-weight:550;box-shadow:0 14px 34px rgba(0,0,0,.35);animation:up .2s}
+@media (min-width:900px){#toast{bottom:28px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+input.txt{font:inherit;min-height:44px;padding:6px 13px;border:1px solid var(--line2);border-radius:12px;background:var(--card);color:inherit;flex:1 1 150px;min-width:0}
+input.txt:focus{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:0;border-color:var(--accent)}
+
+/* ---------- bento : cartes-résumé dépliables ---------- */
+.bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+@media (min-width:700px){.bento{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}}
+.fold{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh);overflow:hidden;min-width:0;transition:border-color .2s}
+.fold.open{grid-column:1/-1;border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.foldh{display:flex;flex-direction:column;gap:9px;width:100%;padding:13px 14px 14px;margin:0;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;position:relative}
+.foldh:active{background:var(--tint)}
+.fn{font-weight:750;font-size:15px;letter-spacing:-.01em;line-height:1.25;padding-right:20px;overflow-wrap:anywhere}
+.fn .pill{margin:2px 3px 0 0}
+.fm{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:6px 10px}
+.mt{display:flex;flex-direction:column;min-width:0}.mt small{font-size:10.5px;color:var(--muted);font-weight:650;letter-spacing:.03em}.mt b{font-size:15px;font-weight:750;white-space:nowrap}.mt b.neg{color:var(--bad)}.mt b.pos{color:var(--good)}
+.chev{position:absolute;top:16px;right:14px;width:8px;height:8px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg);transition:transform .2s,top .2s}
+.fold.open .chev{transform:rotate(-135deg);top:20px}
+.foldb{padding:12px 14px 16px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);animation:pin .25s}
+img.art{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:12px;background:var(--bg);display:block}
+.foldh img.art{margin-bottom:-2px}
+#start.hasart{background-size:cover;background-position:center}
+
+/* bento : affinage mobile */
+.foldh img.art{height:74px;aspect-ratio:auto;border-radius:10px;margin:0}
+.fold.open .foldh{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:10px 12px}
+.fold.open .foldh img.art{width:92px;height:62px;grid-row:1}
+.fold.open.noimg .foldh{display:flex}
+.fold.open .fm{grid-column:1/-1}
+.fn{display:block}.fp{display:block;margin-top:5px;line-height:1.1}.fp .pill{font-size:10.5px;padding:2px 8px;margin:0 4px 3px 0}
+.fold.open .chev{top:18px}
+.foldb{font-size:14px;padding:6px 14px 18px;gap:12px}
+.foldb .kv{font-size:13.5px}.foldb .kv>*{padding:6px 0}.foldb .kv b{padding-left:10px;text-align:right;overflow-wrap:anywhere}
+.foldb .row{flex-wrap:wrap;gap:6px}.foldb .btn{min-height:40px}
+.foldb .seg{flex-wrap:wrap}.foldb .muted{font-size:12px}
+.foldb img.art{display:none}
+.foldb h3{margin:6px 0 2px;font-size:13px}
+.bento{padding-bottom:70px}
+
+/* ---------- icônes (illustrations ico-* ou pictogrammes dessinés) ---------- */
+.ic{width:1.25em;height:1.25em;display:inline-block;vertical-align:-.25em;flex:none}
+img.ic.art{object-fit:contain;border-radius:0;background:none;aspect-ratio:1;height:auto}
+#tabs .ti .ic{width:26px;height:26px;vertical-align:middle}
+#subnav .ic{width:1.3em;height:1.3em;margin-right:2px}
+#brandic .ic{width:22px;height:22px}
+.hsave .ic,#cheatfab .ic{width:22px;height:22px}
+.btn .ic,.chip .ic,.pill .ic{width:1.15em;height:1.15em;margin-right:3px}
+.fabmain .ic,.fablist .ic{width:1.3em;height:1.3em}
+/* ---------- Campus : l'entreprise comme un lieu ---------- */
+.campus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:700px){.campus{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.place{position:relative;min-height:176px;border-radius:20px;overflow:hidden;background:linear-gradient(160deg,var(--pc,var(--accent)),color-mix(in srgb,var(--pc,var(--accent)) 55%,#000));color:#fff;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:var(--sh);isolation:isolate}
+.place.wide{grid-column:1/-1;min-height:200px}
+.place .pbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
+.place .pfb{position:absolute;right:-6px;top:-6px;width:96px;height:96px;opacity:.18;z-index:-2;color:#fff}
+.place::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,20,30,0) 25%,rgba(8,20,30,.78))}
+.place .ph{display:block;width:100%;padding:14px 14px 4px;text-align:left;background:none;border:0;color:inherit;font:inherit;cursor:pointer}
+.place .pn{font-size:18px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+.place .pn .ic{width:22px;height:22px}
+.place .ps{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:6px;font-size:12px;opacity:.95}.place .ps b{font-size:14px;margin-left:4px}
+.place .ps .warn{color:#ffd9a8}
+.place .pl{display:flex;flex-wrap:wrap;gap:6px;padding:6px 12px 12px}
+.place .pl button{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.16);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;font:inherit;font-size:12px;font-weight:650;padding:5px 10px;border-radius:999px;cursor:pointer;min-height:30px;display:inline-flex;align-items:center;gap:4px}
+.place .pl button:active{background:rgba(255,255,255,.3)}
+.place .pfb .ic{width:100%;height:100%}
+.place .pfb{width:110px;height:110px;opacity:.16}
+
+
+</style></head>
+<body>
+<script>
+/* =============================================================================
+   TYCOON ENGINE — core.js
+   Noyau SANS DOM : utilitaires, aléatoire reproductible, calendrier, formats,
+   état de partie, finances, marché, événements, rivales IA, objectifs, sauvegardes.
+   Extrait de « Plan de Vol » : tout ce qui n'est pas propre à l'aérien.
+   Un jeu = un objet de définition (voir ENGINE.md) passé à TE.define().
+   ============================================================================= */
+(function (root) {
+'use strict';
+const TE = root.TE = root.TE || {};
+TE.GAMES = TE.GAMES || {};          // registre des jeux (pour les tests et les sélecteurs)
+
+/* ---------- Utilitaires ---------- */
+TE.clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+TE.sum = a => a.reduce((s, x) => s + x, 0);
+TE.key = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
+TE.esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+TE.norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+TE.nf = (n, d) => Number(n).toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+TE.pct = (v, d) => TE.nf(v * 100, d == null ? 0 : d) + ' %';
+TE.plur = (n, w) => n + ' ' + w + (n > 1 ? 's' : '');
+
+/* Argent : « 12,5 M€ », « 340 k€ ». Le symbole se règle par jeu (def.currency). */
+TE.money = function (n) {
+  const cur = (TE.def && TE.def.currency) || '€', a = Math.abs(n), s = n < 0 ? '-' : '';
+  if (a >= 1e9) return s + TE.nf(a / 1e9, 2) + ' G' + cur;
+  if (a >= 1e6) return s + TE.nf(a / 1e6, a >= 1e8 ? 0 : 2) + ' M' + cur;
+  if (a >= 1e3) return s + TE.nf(a / 1e3) + ' k' + cur;
+  return s + TE.nf(a) + ' ' + cur;
+};
+TE.signed = n => (n > 0 ? '+' : '') + TE.money(n);
+TE.cls = n => (n < 0 ? 'neg' : 'pos');
+
+/* ---------- Aléatoire reproductible (mulberry32, graine stockée dans G.seed) ---------- */
+TE.rng = function () {
+  const G = TE.G;
+  G.seed = (G.seed + 0x6D2B79F5) | 0;
+  let t = G.seed;
+  t = Math.imul(t ^ t >>> 15, t | 1);
+  t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+};
+TE.rand = (a, b) => a + TE.rng() * (b - a);
+TE.randInt = (a, b) => Math.floor(TE.rand(a, b + 1));
+TE.pick = arr => arr[Math.floor(TE.rng() * arr.length)];
+/* Tirage pondéré : items = [{w:2, ...}, ...] */
+TE.pickW = function (items) {
+  let tot = 0; for (const i of items) tot += i.w == null ? 1 : i.w;
+  let x = TE.rng() * tot;
+  for (const i of items) { x -= i.w == null ? 1 : i.w; if (x <= 0) return i; }
+  return items[items.length - 1];
+};
+
+/* ---------- Calendrier ----------
+   Le temps est un compteur de ticks (G.day). Par défaut 1 tick = 1 jour, 30 jours/mois, 12 mois/an. */
+TE.cal = function () {
+  const c = (TE.def && TE.def.calendar) || {};
+  return Object.assign({
+    ticksPerMonth: 30, monthsPerYear: 12, startYear: 2027,
+    months: ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+  }, c);
+};
+TE.dateParts = function (day) {
+  const c = TE.cal(), tpy = c.ticksPerMonth * c.monthsPerYear;
+  return { d: day % c.ticksPerMonth + 1, m: Math.floor(day / c.ticksPerMonth) % c.monthsPerYear, y: c.startYear + Math.floor(day / tpy), yi: Math.floor(day / tpy) };
+};
+TE.dateStr = function (day) { const p = TE.dateParts(day), c = TE.cal(); return p.d + ' ' + c.months[p.m] + ' ' + p.y; };
+TE.shortDate = function (day) { const p = TE.dateParts(day), c = TE.cal(); return p.d + ' ' + c.months[p.m]; };
+TE.monthStr = function (day) { const p = TE.dateParts(day), c = TE.cal(); return c.months[p.m] + ' ' + p.y; };
+
+/* ---------- Définition d'un jeu ---------- */
+TE.define = function (def) {
+  TE.def = def;
+  def.save = def.save || def.id || 'tycoon';
+  def.version = def.version || 1;
+  def.credit = Object.assign({ base: 0, earnMult: 6, assetsMult: 0.6, minLimit: 0, rates: [0.04, 0.05, 0.065, 0.085, 0.11], graceDays: 60, bankruptFloor: -8e6 }, def.credit || {});
+  def.speeds = def.speeds || [0, 1 / 3, 1, 3];
+  return def;
+};
+
+/* ---------- Registre d'acteurs ---------- */
+TE.player = () => TE.G.actors[0];
+TE.alive = () => TE.G.actors.filter(a => !a.bankrupt);
+TE.rivals = () => TE.G.actors.filter(a => !a.player && !a.bankrupt);
+TE.byId = id => TE.G.actors[id];
+
+/* Un acteur = le joueur ou une rivale. Champs génériques ; le jeu ajoute les siens librement
+   (tout doit rester sérialisable : nombres, chaînes, tableaux, objets simples). */
+TE.newMonth = () => ({ in: {}, out: {}, vol: 0 });
+TE.mkActor = function (o) {
+  const G = TE.G;
+  const a = Object.assign({
+    id: G.actors.length, name: 'Acteur', color: '#2456a6', player: false, profile: null,
+    cash: 0, debt: 0, rep: 50, bankrupt: false, negDays: 0,
+    m: TE.newMonth(), last: null, hist: [], revH: [], cashH: [], shareH: [], share: 0, vol: 0
+  }, o || {});
+  G.actors.push(a);
+  return a;
+};
+
+/* ---------- Grand livre mensuel ----------
+   TE.earn(a,'billets',1200)  → encaisse (cash + recette de la catégorie)
+   TE.spend(a,'salaires',800) → décaisse
+   En fin de mois, a.last = ce grand livre ; l'UI standard affiche le compte de résultat. */
+TE.earn = function (a, cat, v) { if (!v) return; a.cash += v; a.m.in[cat] = (a.m.in[cat] || 0) + v; };
+TE.spend = function (a, cat, v) { if (!v) return; a.cash -= v; a.m.out[cat] = (a.m.out[cat] || 0) + v; };
+TE.revenue = m => TE.sum(Object.values(m.in));
+TE.costs = m => TE.sum(Object.values(m.out));
+TE.profit = m => TE.revenue(m) - TE.costs(m);
+/* Charge non cash (amortissement) : réduit le résultat sans toucher la trésorerie */
+TE.accrue = function (a, cat, v) { if (!v) return; a.m.out[cat] = (a.m.out[cat] || 0) + v; a.m.noncash = (a.m.noncash || 0) + v; };
+
+/* ---------- Crédit, notation, emprunts ---------- */
+TE.assets = a => (TE.def.assets ? TE.def.assets(a) : 0);       // valeur des actifs (le jeu la fournit)
+TE.annualProfit = function (a) { const h = a.hist.slice(-12); return h.length ? TE.sum(h) / h.length * 12 : 0; };
+TE.creditLimit = function (a) {
+  const C = TE.def.credit, earn = Math.max(0, TE.annualProfit(a)) * C.earnMult * 0.25;
+  return Math.max(C.minLimit, C.base + TE.assets(a) * C.assetsMult + earn);
+};
+TE.RATINGS = ['AA', 'A', 'BBB', 'BB', 'B'];
+TE.rating = function (a) {
+  const L = a.debt / Math.max(1, TE.creditLimit(a)), h = a.hist.slice(-6);
+  let i = L < 0.2 ? 0 : L < 0.4 ? 1 : L < 0.6 ? 2 : L < 0.8 ? 3 : 4;
+  if (h.length >= 3 && h.slice(-3).every(x => x < 0)) i = Math.min(4, i + 1);
+  return i;
+};
+TE.loanRate = a => TE.def.credit.rates[TE.rating(a)];
+TE.borrow = function (a, x) {
+  x = Math.max(0, Math.floor(x));
+  if (!x || a.debt + x > TE.creditLimit(a) + 1e-6) return false;
+  a.debt += x; a.cash += x; return true;
+};
+TE.repay = function (a, x) {
+  x = Math.min(Math.round(x), a.debt, Math.max(0, a.cash));
+  if (x <= 0) return false;
+  a.debt -= x; a.cash -= x; return true;
+};
+TE.companyValue = function (a) { return a.cash - a.debt + TE.assets(a); };
+
+/* ---------- Modificateurs de demande / de coûts ----------
+   G.mods = [{tag, scope, mult, until, label}] — expirent tout seuls.
+   TE.modFactor('demande', 'CMN') → produit des mult applicables (scope vide = global). */
+TE.addMod = function (m) { TE.G.mods.push(Object.assign({ until: TE.G.day + 30, mult: 1, tag: 'demande' }, m)); TE.G.mut = (TE.G.mut || 0) + 1; };
+TE.modFactor = function (tag, scope) {
+  let f = 1;
+  for (const m of TE.G.mods) if (m.tag === tag && (!m.scope || m.scope === scope || (Array.isArray(m.scope) && m.scope.includes(scope)))) f *= m.mult;
+  return f;
+};
+
+/* ---------- Fil d'actualités ---------- */
+TE.news = function (text, kind, ev) {
+  const G = TE.G;
+  G.news.unshift({ day: G.day, text, kind: kind || 'info', ev: ev || null });
+  if (G.news.length > 40) G.news.pop();
+};
+
+/* ---------- Marché : répartition d'une demande entre offreurs ----------
+   entries: [{id, price, quality, cap, ...}]  (cap = capacité max servable)
+   opts: {priceSens:2.2, qualSens:1.6, refPrice}
+   Retourne la même liste enrichie de .sold (volumes). Modèle logit + débordement :
+   ce qu'un offreur ne peut pas servir (capacité) est redistribué aux autres.        */
+TE.splitMarket = function (demand, entries, opts) {
+  opts = opts || {};
+  const ps = opts.priceSens == null ? 2.2 : opts.priceSens, qs = opts.qualSens == null ? 1.6 : opts.qualSens;
+  const ref = opts.refPrice || (entries.length ? TE.sum(entries.map(e => e.price)) / entries.length : 1) || 1;
+  for (const e of entries) {
+    e.sold = 0;
+    e.attr = Math.pow(Math.max(0.01, e.price / ref), -ps) * Math.pow(Math.max(0.05, e.quality == null ? 1 : e.quality), qs) * (e.weight == null ? 1 : e.weight);
+  }
+  let left = demand, open = entries.filter(e => e.cap > 0);
+  for (let it = 0; it < 8 && left > 1e-6 && open.length; it++) {
+    const W = TE.sum(open.map(e => e.attr));
+    if (W <= 0) break;
+    let used = 0;
+    for (const e of open) {
+      const want = left * e.attr / W, room = e.cap - e.sold, got = Math.min(want, room);
+      e.sold += got; used += got;
+    }
+    left -= used;
+    open = open.filter(e => e.cap - e.sold > 1e-6);
+  }
+  entries.unmet = left;
+  return entries;
+};
+
+/* ---------- Effectif (personnel) générique ----------
+   staff = { kind: {n, mo (moral 0-100), lv (niveau de salaire 0-4)} }  ; def.staff décrit les métiers. */
+TE.SALLV = [0.85, 0.95, 1, 1.1, 1.2];
+TE.staffCount = a => TE.sum(Object.values(a.staff || {}).map(s => s.n));
+TE.wagesMonth = function (a) {
+  let w = 0; const S = (TE.def.staff || {});
+  for (const k in (a.staff || {})) w += a.staff[k].n * (S[k] ? S[k].sal : 0) * TE.SALLV[a.staff[k].lv == null ? 2 : a.staff[k].lv];
+  return w;
+};
+TE.avgMorale = function (a) {
+  let t = 0, n = 0; for (const k in (a.staff || {})) { t += a.staff[k].mo * a.staff[k].n; n += a.staff[k].n; }
+  return n ? t / n : 60;
+};
+TE.staffInit = function (a, counts) {
+  a.staff = a.staff || {};
+  for (const k in (TE.def.staff || {})) a.staff[k] = { n: (counts && counts[k]) || 0, mo: 65, lv: 2 };
+};
+TE.hire = function (a, k, n) {
+  const s = a.staff[k], S = TE.def.staff[k]; n = Math.max(-s.n, Math.round(n)); if (!n) return false;
+  if (n > 0) { const c = n * (S.hire || 0); if (a.cash < c) return false; TE.spend(a, 'recrutement', c); }
+  s.n += n; if (n > 0) s.mo = Math.max(40, s.mo - 2); return true;
+};
+/* Moral : tend vers une cible selon le niveau de salaire ; grève si trop bas (le jeu lit a.penalty). */
+TE.staffTick = function (a) {
+  for (const k in (a.staff || {})) {
+    const s = a.staff[k], target = 50 + 12 * (s.lv - 2) + (a.rep - 50) * 0.2;
+    s.mo += (target - s.mo) * 0.02;
+  }
+};
+
+/* ---------- Objectifs ----------
+   def.goals = { share:{label, value:(a)=>0..1+, fmt:(v)=>'..', unit:'%'}, value:{...} }
+   G.cfg.goal = 'share' | 'none' ; G.cfg.gv = valeur cible (unités de l'objectif)   */
+TE.goalInfo = function () {
+  const G = TE.G, C = G.cfg || {}, goals = TE.def.goals || {};
+  if (!C.goal || C.goal === 'none' || !goals[C.goal]) return null;
+  const g = goals[C.goal], p = TE.player(), cur = g.value(p), tgt = C.gv != null ? C.gv : g.def;
+  return { id: C.goal, label: g.label, cur, tgt, frac: tgt ? cur / tgt : 0, fmt: g.fmt || (v => TE.nf(v, 1)), met: cur >= tgt };
+};
+
+/* ---------- Création de partie ---------- */
+TE.newGame = function (o) {
+  const def = TE.def;
+  const presets = def.presets || [{}];
+  const cfg = Object.assign({ goal: 'none', rivals: 4, rich: 1, aggr: 1, entr: 1, safe: 0 }, presets[o.diff == null || o.diff >= presets.length ? Math.min(1, presets.length - 1) : o.diff], o.cfg || {});
+  TE.G = {
+    v: def.version, seed: (o.seed != null ? o.seed : Math.floor(Math.random() * 1e9)) | 0,
+    day: 0, frac: 0, nid: 1, mut: 0, actors: [], mods: [], news: [], evSeen: {}, flags: {},
+    won: false, over: false, diff: o.diff, cfg, opts: o.opts || {}, name: o.name || 'Joueur', game: {}
+  };
+  const p = TE.mkActor({ name: o.name || 'Joueur', color: o.color || '#b01f6a', player: true, cash: cfg.cash != null ? cfg.cash : 1e7 });
+  TE.staffInit(p);
+  const list = (def.rivals || []).slice(0, TE.clamp(cfg.rivals, 0, (def.rivals || []).length));
+  if (def.init) def.init(TE.G, o);                      // monde du jeu (carte, pistes, catalogue…)
+  if (def.initActor) def.initActor(TE.G, p, null, o);   // joueur : flotte/équipe de départ
+  for (const R of list) {
+    const a = TE.mkActor({ name: R.name, color: R.color, profile: R.profile, cash: (R.cash || 1e7) * (cfg.rich || 1) });
+    TE.staffInit(a);
+    if (def.initActor) def.initActor(TE.G, a, R, o);
+  }
+  if (def.start) def.start(TE.G, o);
+  TE.news(def.welcome ? def.welcome(TE.G, o) : 'Ta partie commence.', 'good');
+  return TE.G;
+};
+
+/* ---------- Boucle de simulation : un tick ----------
+   Ordre : IA hebdo → pack.onTick (le jeu simule la journée) → semaine → mois → année → événements → fin de partie. */
+TE.step = function () {
+  const G = TE.G, def = TE.def, c = TE.cal();
+  G.day++;
+  // modificateurs expirés
+  if (G.mods.length) { const n = G.mods.length; G.mods = G.mods.filter(m => m.until > G.day); if (G.mods.length !== n) G.mut = (G.mut || 0) + 1; }
+  // IA : chaque rivale réfléchit une fois par semaine, à tour de rôle
+  if (def.ai && def.ai.week) for (const a of G.actors) if (!a.bankrupt && !a.player && (G.day + a.id) % 7 === 0) def.ai.week(G, a, def.profiles ? def.profiles[a.profile] : null);
+  for (const a of G.actors) { if (a.bankrupt) continue; TE.staffTick(a); a.negDays = a.cash < 0 ? a.negDays + 1 : 0; }
+  if (def.onTick) def.onTick(G);
+  if (G.day % 7 === 0 && def.onWeek) def.onWeek(G);
+  if (G.day % c.ticksPerMonth === 0) TE.monthStep();
+  if (G.day % (c.ticksPerMonth * c.monthsPerYear) === 0 && def.onYear) def.onYear(G);
+  TE.eventStep();
+  // victoire / défaite
+  const p = TE.player(), gi = TE.goalInfo();
+  if (!G.won && gi && gi.met) { G.won = true; TE.news('Objectif atteint !', 'good'); }
+  if (!G.over && p.bankrupt) { G.over = true; }
+  if (def.checkEnd) def.checkEnd(G);
+};
+
+/* Clôture mensuelle : le jeu calcule recettes/charges via onMonth(G, acteur) ; le moteur gère
+   intérêts, historiques, faillites, part de marché, nouveaux entrants. */
+TE.monthStep = function () {
+  const G = TE.G, def = TE.def, C = def.credit;
+  // le joueur passe en dernier (il encaisse ce que les rivales lui versent ce mois-ci)
+  const order = G.actors.slice(1).concat([G.actors[0]]);
+  let tot = 0;
+  for (const a of order) {
+    if (a.bankrupt) continue;
+    if (def.onMonth) def.onMonth(G, a);
+    const interest = a.debt * (a.player ? TE.loanRate(a) : 0.006) / 12;
+    TE.spend(a, 'intérêts', interest);
+    const w = TE.wagesMonth(a); TE.spend(a, 'salaires', w);
+    const m = a.m; m.profit = TE.profit(m);
+    a.last = m; a.hist.push(Math.round(m.profit)); if (a.hist.length > 36) a.hist.shift();
+    const H = (k, v) => { a[k].push(Math.round(v)); if (a[k].length > 72) a[k].shift(); };
+    H('revH', TE.revenue(m)); H('cashH', a.cash);
+    tot += m.vol || 0;
+    a.m = TE.newMonth();
+  }
+  for (const a of G.actors) {
+    a.share = a.bankrupt || !tot ? 0 : (a.last ? (a.last.vol || 0) / tot : 0);
+    a.shareH.push(Math.round(a.share * 1e4)); if (a.shareH.length > 72) a.shareH.shift();
+    // faillite des rivales (le joueur : fin de partie, sauf mode « sans faillite »)
+    if (!a.bankrupt && a.negDays >= C.graceDays && a.cash < C.bankruptFloor) {
+      if (a.player) { if (!G.cfg.safe) { a.bankrupt = true; } else { a.cash = 0; a.negDays = 0; TE.news('Mode sans faillite : la banque efface ton découvert.', 'info'); } }
+      else {
+        a.bankrupt = true; G.mut = (G.mut || 0) + 1;
+        if (def.onBankrupt) def.onBankrupt(G, a);
+        TE.news(a.name + ' fait faillite et quitte le marché.', 'info', 'rivalbk');
+      }
+    }
+  }
+  // nouveaux entrants : quand une rivale disparaît, une jeune structure finit par la remplacer
+  if (def.entrants && G.cfg.entr !== 0) {
+    const alive = G.actors.filter(a => !a.bankrupt && !a.player).length, dead = G.actors.filter(a => a.bankrupt && !a.player).length;
+    if (dead && alive < (def.maxRivals || 9) && G.day - (G.lastEntry || 0) > 150 && TE.rng() < 0.35) { G.lastEntry = G.day; TE.spawnEntrant(); }
+  }
+  if (def.afterMonth) def.afterMonth(G, tot);
+};
+
+TE.spawnEntrant = function () {
+  const G = TE.G, def = TE.def, used = new Set(G.actors.map(a => a.name)), E = def.entrants.filter(e => !used.has(e.name));
+  if (!E.length) return;
+  const R = TE.pick(E);
+  const a = TE.mkActor({ name: R.name, color: R.color, profile: R.profile, cash: R.cash || 2e7, entrant: true });
+  TE.staffInit(a);
+  if (def.initActor) def.initActor(G, a, R, {});
+  G.mut = (G.mut || 0) + 1;
+  TE.news('Nouvelle concurrente : ' + R.name + ' arrive sur le marché.', 'info', 'rivalbk');
+};
+
+/* ---------- Événements ----------
+   def.events.random   = [{w, name, when?(G), run(G)}]  tirés avec probabilité def.events.rate par tick
+   def.events.scheduled= [{id, name, from, to, lead, scope, mult, text?}] : annoncés `lead` ticks avant,
+                         et appliqués comme modificateur pendant [from,to].                          */
+TE.eventStep = function () {
+  const G = TE.G, E = TE.def.events;
+  if (!E) return;
+  for (const S of E.scheduled || []) {
+    const lead = S.lead == null ? 120 : S.lead;
+    if (!G.evSeen[S.id] && G.day >= S.from - lead && G.day < S.from) {
+      G.evSeen[S.id] = 1;
+      TE.news(S.text || ('À venir : ' + S.name + ' (' + TE.shortDate(S.from) + ').'), 'info', S.art || 'boom');
+    }
+    if (G.evSeen[S.id] === 1 && G.day >= S.from) {
+      G.evSeen[S.id] = 2;
+      TE.addMod({ tag: S.tag || 'demande', scope: S.scope, mult: S.mult, until: S.to, label: S.name });
+    }
+  }
+  if (E.random && TE.rng() < (E.rate == null ? 0.5 : E.rate)) {
+    const ok = E.random.filter(e => !e.when || e.when(G));
+    if (ok.length) TE.pickW(ok).run(G);
+  }
+};
+
+
+/* ---------- Triche / outils de test ----------
+   Appelables en headless (tests) et depuis le menu 🛠 de l'interface (ui.js). Un jeu peut ajouter ses propres outils
+   via def.cheats = [{ group, label, run(G, p, ctx) }].                                                              */
+TE.ART = TE.ART || {};
+TE.art = name => (TE.ART && TE.ART[name]) || null;     // images optionnelles : dossier games/<jeu>/art/, intégrées au build
+TE.cheat = {
+  cash(n) { TE.player().cash += n; },
+  clearDebt() { TE.player().debt = 0; },
+  safe() { const G = TE.G; G.cfg.safe = G.cfg.safe ? 0 : 1; return !!G.cfg.safe; },
+  skip(days) { const G = TE.G; for (let i = 0; i < days && !G.over; i++) TE.step(); },
+  event(i) { const E = TE.def.events; if (!E || !E.random || !E.random[i]) return false; E.random[i].run(TE.G); return true; },
+  randomEvent() { const E = TE.def.events; if (!E || !E.random || !E.random.length) return false; TE.pickW(E.random).run(TE.G); return true; },
+  kill(id) { const a = TE.G.actors.find(x => x.id === id); if (!a || a.player || a.bankrupt) return false; a.bankrupt = true; TE.G.mut = (TE.G.mut || 0) + 1; TE.news(a.name + ' disparaît du marché (test).', 'info'); return true; },
+  entrant() { TE.spawnEntrant(); },
+  rivalsCash(n) { for (const a of TE.rivals()) a.cash += n; },
+  win() { TE.G.won = true; }
+};
+
+/* ---------- IA : aides pour écrire def.ai.week ---------- */
+TE.ai = {
+  /* trésorerie à garder en réserve selon le profil */
+  reserve: (a, P, perUnit) => (P && P.reserve || 4e6) + (perUnit || 0),
+  /* Probabilité d'agir ce tour, modulée par le tempérament de la partie */
+  willing: (P) => TE.rng() < ((P && P.appetite) || 0.2) * (TE.G.cfg.aggr || 1),
+  canAfford: (a, cost, P) => a.cash - cost > TE.ai.reserve(a, P)
+};
+
+/* ---------- Sauvegardes ----------
+   Stockage injectable (localStorage par défaut ; objet mémoire en test). 4 emplacements : auto, auto.prev, 1, 2, 3. */
+TE.store = (function () {
+  try { if (root.localStorage) { root.localStorage.setItem('__t', '1'); root.localStorage.removeItem('__t'); return root.localStorage; } } catch (e) {}
+  const mem = {};
+  return { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
+})();
+TE.SLOTS = ['auto', '1', '2', '3'];
+const svK = x => TE.def.save + '.save.' + x, svM = x => TE.def.save + '.meta.' + x;
+const lsGet = k => { try { return TE.store.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { TE.store.setItem(k, v); return true; } catch (e) { return false; } };
+const lsDel = k => { try { TE.store.removeItem(k); } catch (e) {} };
+TE.saveMeta = function () {
+  const G = TE.G, p = TE.player();
+  const meta = TE.def.saveMeta ? TE.def.saveMeta(G, p) : {};
+  return Object.assign({ name: p.name, color: p.color, day: G.day, cash: Math.round(p.cash), over: !!G.over, won: !!G.won, at: Date.now() }, meta);
+};
+TE.writeSlot = function (slot) {
+  const G = TE.G; if (!G) return false;
+  let data; try { data = JSON.stringify(G); } catch (e) { return false; }
+  const meta = JSON.stringify(TE.saveMeta());
+  if (slot === 'auto') {                                  // garde la sauvegarde précédente en secours
+    const cur = lsGet(svK('auto'));
+    if (cur) { const m = lsGet(svM('auto')); if (!m || JSON.parse(m).day !== G.day) { lsSet(svK('auto.prev'), cur); lsSet(svM('auto.prev'), m || '{}'); } }
+  }
+  let ok = lsSet(svK(slot), data);
+  if (!ok) { lsDel(svK('auto.prev')); lsDel(svM('auto.prev')); ok = lsSet(svK(slot), data); }
+  if (ok) lsSet(svM(slot), meta);
+  return ok;
+};
+TE.parseSave = function (txt) {
+  let g = JSON.parse(txt);
+  if (!g || typeof g !== 'object' || !Array.isArray(g.actors) || !g.actors.length) throw new Error('format');
+  const mig = TE.def.migrate || {};
+  while (g.v < TE.def.version && mig[g.v]) { const from = g.v; g = mig[from](g) || g; g.v = from + 1; }
+  if (g.v !== TE.def.version) throw new Error('version');
+  return g;
+};
+TE.readSlot = function (slot) { const t = lsGet(svK(slot)); if (!t) return null; try { return TE.parseSave(t); } catch (e) { return null; } };
+TE.slotMeta = function (slot) { const t = lsGet(svM(slot)); if (!t || !lsGet(svK(slot))) return null; try { return JSON.parse(t); } catch (e) { return null; } };
+TE.save = () => TE.writeSlot('auto');
+TE.load = function () { return TE.readSlot('auto') || TE.readSlot('auto.prev'); };
+TE.exportSave = () => JSON.stringify(TE.G);
+TE.importSave = function (txt) { const g = TE.parseSave(txt); TE.G = g; return g; };
+
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+/* =============================================================================
+   TYCOON ENGINE — ui.js
+   Kit d'interface : coque (en-tête, onglets, panneau, fenêtres), rendu incrémental (morph),
+   composants HTML (tuiles, graphiques, jauges, curseurs), écran de départ, sauvegardes,
+   boucle d'animation. Dépend de core.js. Le jeu ne fournit que du HTML pour ses onglets.
+   ============================================================================= */
+(function (root) {
+'use strict';
+const TE = root.TE;
+const $ = id => document.getElementById(id);
+const esc = TE.esc, nf = TE.nf, money = TE.money, clamp = TE.clamp;
+
+TE.ICONS = {"campus": "M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6", "tableau": "M4 17a8 8 0 1 1 16 0M12 17l4-5M12 17h.01M6 11l1 1M12 7v1.5M18 11l-1 1", "classement": "M3 20h18M5 20v-6h4v6M10 20V8h4v12M15 20v-4h4v4M12 4l.6 1.4 1.4.2-1 1 .2 1.4L12 7.3l-1.2.7.2-1.4-1-1 1.4-.2z", "actus": "M5 5h12v14H6a1 1 0 0 1-1-1zM17 9h3v9a1 1 0 0 1-1 1M8 9h6M8 12h6M8 15h4", "gamme": "M3 15l1.5-4.5A2 2 0 0 1 6.4 9h11.2a2 2 0 0 1 1.9 1.5L21 15v3H3zM3 15h18M7 18v1.5M17 18v1.5M7.5 15.5h.01M16.5 15.5h.01", "pieces": "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1", "usines": "M3 20V10l5 3v-3l5 3V6h3v14zM3 20h18M17 6V3M9 17h.01M13 17h.01", "stocks": "M3 20v-7h8v7zM13 20v-7h8v7zM7 13V5h10v8M3 20h18", "pays": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18", "marque": "M4 10v4h3l7 4V6L7 10zM17 9a4 4 0 0 1 0 6M7 14l1 5h2l-1-4", "groupe": "M6 20V5h8v15M14 10h4v10M9 8h2M9 11h2M9 14h2M4 20h16M16 13h.01M16 16h.01", "licences": "M7 3h8l4 4v14H7zM15 3v4h4M10 12h6M10 16h4", "finances": "M5 7c0-1.4 3-2.5 7-2.5S19 5.6 19 7s-3 2.5-7 2.5S5 8.4 5 7zM5 7v5c0 1.4 3 2.5 7 2.5s7-1.1 7-2.5V7M5 12v5c0 1.4 3 2.5 7 2.5s7-1.1 7-2.5v-5", "nouveau": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8M8 12h8", "ingenieurs": "M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 20c0-3.3 2.7-5 6-5s6 1.7 6 5M7 7.5h10M9 6.5a3 3 0 0 1 6 0", "concession": "M4 10l1-5h14l1 5M4 10a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0M5 12v8h14v-8M10 20v-5h4v5", "extension": "M4 20V10l8-6 8 6v10zM12 9v7M8.5 12.5h7", "automatisation": "M4 20h7M8 20v-5l6-6M14 9l3 3M17 12l3-2M14 9l1-3", "energie": "M13 3L6 13h5l-1 8 8-11h-5z", "vente": "M3 12V4h8l9 9-8 8zM7.5 7.5h.01", "rachat": "M8 15a4 4 0 1 1 3-3l9 9M17 20l2-2M14 17l2-2", "fonds": "M4 5h16v14H4zM8 9h8v6H8zM12 12h.01M4 19v1.5M20 19v1.5", "reglages": "M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4", "sauvegarde": "M5 4h12l2 2v14H5zM8 4v5h7V4M8 20v-6h8v6", "filtres": "M4 5h16l-6 8v6l-4-2v-4z", "tresorerie": "M9 4h6l-1 3h-4zM10 7c-5 3-5 11-3 14h10c2-3 2-11-3-14M12 12v5", "dette": "M9 15l6-6M7 13l-2 2a3 3 0 0 0 4 4l2-2M17 11l2-2a3 3 0 0 0-4-4l-2 2", "image": "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z", "qualite": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12.5l3 3 5-6", "alerte": "M12 4l9 16H3zM12 10v4M12 17h.01", "succes": "M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a3 3 0 0 0 4 3M16 6h4v1a3 3 0 0 1-4 3M12 13v4M8 20h8M10 17h4", "temps": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", "vitesse": "M5 6l7 6-7 6zM13 6l7 6-7 6z", "co2": "M7 18a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 8.5 4.8 4.8 0 0 1 17.5 18z", "electrique": "M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0zM12 16v5", "carburant": "M5 20V5h8v15M4 20h10M13 9h3l2 2v6a1.5 1.5 0 0 0 3 0V9l-3-3M7 8h4", "rappel": "M14 6a4 4 0 0 0 4 4l-9 9a2 2 0 0 1-3-3l9-9a4 4 0 0 0-1-1zM17 3l4 4"};
+TE.ico = (name, cls) => { const u = TE.art && TE.art('ico-' + name); if (u) return '<img class="ic art ' + (cls || '') + '" src="' + u + '" alt="" loading="lazy" decoding="async">';
+  const d = TE.ICONS[name]; return d ? '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>' : ''; };
+const ic = x => (/^[a-z0-9]+$/.test(x || '') && TE.ICONS[x]) ? TE.ico(x) : (x || '');
+const UI = TE.UI = { txt: {}, open: {}, hubTab: {}, fabOpen: false,
+  tab: null, sub: {}, speed: 0, lastSpeed: 2, modal: null, acc: 0, dirty: true, lastRender: 0,
+  holding: false, amt: {}, scr: {}, pkey: null, endShown: 0, lastSave: 0
+};
+
+/* =============================== Composants HTML =============================== */
+const H = TE.h = {};
+H.tile = (l, v, c) => '<div class="tile"><small>' + l + '</small><b class="' + (c || '') + '">' + v + '</b></div>';
+H.tiles = arr => '<div class="tiles">' + arr.map(t => H.tile(t[0], t[1], t[2])).join('') + '</div>';
+H.pill = (t, c) => '<span class="pill ' + (c || '') + '">' + t + '</span>';
+H.card = (title, body, cls) => '<div class="card ' + (cls || '') + '">' + (title ? '<h3>' + title + '</h3>' : '') + body + '</div>';
+H.kv = rows => '<div class="kv">' + rows.map(r => '<span>' + r[0] + '</span><b class="' + (r[2] || '') + '">' + r[1] + '</b>').join('') + '</div>';
+H.btn = (label, act, data, o) => {
+  o = o || {}; let at = '';
+  for (const k in (data || {})) at += ' data-' + k + '="' + esc(data[k]) + '"';
+  return '<button class="btn ' + (o.cls || '') + '" data-act="' + act + '"' + at + (o.off ? ' aria-disabled="true" data-why="' + esc(o.why || '') + '"' : '') + '>' + label + '</button>';
+};
+H.seg = (act, key, cur, labels) => '<div class="seg">' + labels.map((l, i) => '<button data-act="' + act + '" data-k="' + key + '" data-v="' + i + '" aria-pressed="' + (i === cur) + '">' + l + '</button>').join('') + '</div>';
+H.chips = (act, key, cur, opts) => '<div class="chips">' + opts.map(o => '<button class="chip" data-act="' + act + '" data-k="' + key + '" data-v="' + esc(o[0]) + '" aria-pressed="' + (o[0] === cur) + '">' + o[1] + '</button>').join('') + '</div>';
+H.text = (k, o) => { o = o || {}; const v = UI.txt && UI.txt[k] != null ? UI.txt[k] : (o.def || ''); return '<input class="txt" type="text" data-txt="' + k + '" maxlength="' + (o.max || 24) + '" placeholder="' + esc(o.ph || '') + '" value="' + esc(v) + '" aria-label="' + esc(o.lbl || o.ph || 'Texte') + '" autocomplete="off" autocapitalize="words">'; };
+H.filter = (label, key, cur, opts) => '<div class="fl"><small>' + label + '</small><div class="chips scroll">' + opts.map(o => '<button class="chip" data-act="set" data-k="' + key + '" data-v="' + esc(o[0]) + '" aria-pressed="' + (String(o[0]) === String(cur == null ? '' : cur)) + '">' + o[1] + '</button>').join('') + '</div></div>';
+H.ico = TE.ico;
+H.img = (name, cls) => { const u = TE.art(name); return u ? '<img class="art ' + (cls || '') + '" src="' + u + '" alt="" loading="lazy" decoding="async">' : ''; };
+H.metric = (l, v, c) => '<span class="mt"><small>' + l + '</small><b class="' + (c || '') + '">' + v + '</b></span>';
+/* Bento : carte-résumé qui se déploie au toucher. o = { title, img, metrics:[[label, valeur, classe]], body, cls } */
+H.fold = (id, o) => { const open = !!UI.open[id], im = o.img ? H.img(o.img) : '';
+  let t = o.title, pills = ''; const ip = t.indexOf('<span class="pill'); if (ip > 0) { pills = '<span class="fp">' + t.slice(ip) + '</span>'; t = t.slice(0, ip); }
+  return '<div class="fold' + (open ? ' open' : '') + (o.cls ? ' ' + o.cls : '') + (im ? '' : ' noimg') + '"><button class="foldh" data-act="fold" data-k="' + esc(id) + '" aria-expanded="' + open + '">' + im + '<span class="fn">' + t + pills + '</span><i class="chev"></i>' +
+    (o.metrics && o.metrics.length ? '<span class="fm">' + o.metrics.map(m => H.metric(m[0], m[1], m[2])).join('') + '</span>' : '') + '</button>' + (open ? '<div class="foldb">' + o.body + '</div>' : '') + '</div>'; };
+H.bento = html => '<div class="bento">' + html + '</div>';
+H.bar = (v, max, c) => '<div class="bar"><i class="' + (c || '') + '" style="width:' + clamp(max ? v / max * 100 : 0, 0, 100) + '%"></i></div>';
+H.table = (cols, rows) => '<div class="tbl"><table><thead><tr>' + cols.map(c => '<th class="' + (c.cls || '') + '">' + c.h + '</th>').join('') + '</tr></thead><tbody>' +
+  rows.map(r => '<tr' + (r._cls ? ' class="' + r._cls + '"' : '') + '>' + cols.map(c => '<td class="' + (c.cls || '') + '">' + c.get(r) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>';
+
+/* Courbe minuscule */
+H.spark = function (vals, o) {
+  o = o || {}; const h = o.h || 46, W = 300, color = o.color || 'var(--accent)';
+  if (vals.length < 2) return '<p class="muted" style="font-size:12px">Pas encore assez de données.</p>';
+  const mn = Math.min(...vals, o.zero ? 0 : Infinity), mx = Math.max(...vals, o.zero ? 0 : -Infinity), rg = mx - mn || 1;
+  const pts = vals.map((v, i) => (i / (vals.length - 1) * W).toFixed(1) + ',' + (h - 3 - (v - mn) / rg * (h - 6)).toFixed(1)).join(' ');
+  return '<svg class="spark" viewBox="0 0 ' + W + ' ' + h + '" preserveAspectRatio="none" role="img"><polyline fill="none" stroke="' + color + '" stroke-width="2" points="' + pts + '"/></svg>';
+};
+/* Courbes multiples : series=[{name,color,vals}] */
+H.lineChart = function (series, o) {
+  o = o || {}; const W = 320, Hh = o.h || 130, pl = 42, pr = 8, pt = 8, pb = 18, n = Math.max(...series.map(s => s.vals.length));
+  if (n < 2) return '<p class="muted" style="font-size:12px">Pas encore assez de données.</p>';
+  const all = [].concat(...series.map(s => s.vals)), mn = Math.min(...all, 0), mx = Math.max(...all, 1), rg = mx - mn || 1;
+  const X = i => pl + i / (n - 1) * (W - pl - pr), Y = v => pt + (1 - (v - mn) / rg) * (Hh - pt - pb), f = o.fmt || (v => nf(v));
+  let g = '';
+  for (let k = 0; k <= 3; k++) { const v = mn + rg * k / 3, y = Y(v); g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y + '" y2="' + y + '" stroke="var(--line)" stroke-width="1"/><text x="' + (pl - 4) + '" y="' + (y + 3) + '" text-anchor="end" font-size="9" fill="var(--muted)">' + f(v) + '</text>'; }
+  const lines = series.map(s => '<polyline fill="none" stroke="' + s.color + '" stroke-width="2" points="' + s.vals.map((v, i) => X(i + n - s.vals.length).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ') + '"/>').join('');
+  const leg = series.length > 1 ? '<div class="legend">' + series.map(s => '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>').join('') + '</div>' : '';
+  return '<svg class="chart" viewBox="0 0 ' + W + ' ' + Hh + '" role="img">' + g + lines + '</svg>' + leg;
+};
+H.barChart = function (vals, o) {
+  o = o || {}; const W = 320, Hh = o.h || 110, pl = 42, pb = 16, pt = 6, n = vals.length; if (!n) return '';
+  const mx = Math.max(...vals, 1), mn = Math.min(...vals, 0), rg = mx - mn || 1, bw = (W - pl - 6) / n, Y = v => pt + (1 - (v - mn) / rg) * (Hh - pt - pb), f = o.fmt || (v => nf(v));
+  let s = '<line x1="' + pl + '" x2="' + (W - 6) + '" y1="' + Y(0) + '" y2="' + Y(0) + '" stroke="var(--line)"/><text x="' + (pl - 4) + '" y="' + (Y(mx) + 3) + '" text-anchor="end" font-size="9" fill="var(--muted)">' + f(mx) + '</text>';
+  vals.forEach((v, i) => { const y0 = Y(0), y1 = Y(v); s += '<rect x="' + (pl + i * bw + 1).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + (v < 0 ? 'var(--bad)' : (o.color || 'var(--accent)')) + '" rx="1.5"><title>' + (o.labels ? o.labels[i] + ' : ' : '') + f(v) + '</title></rect>'; });
+  return '<svg class="chart" viewBox="0 0 ' + W + ' ' + Hh + '" role="img">' + s + '</svg>';
+};
+/* Jauge demi-cercle 0-100 */
+H.gauge = function (v, label) {
+  v = clamp(v, 0, 100); const a = -180 + 180 * v / 100, r = 46, cx = 60, cy = 56, P = t => [cx + r * Math.cos(t * Math.PI / 180), cy + r * Math.sin(t * Math.PI / 180)];
+  const p0 = P(-180), p1 = P(a), big = (a + 180) > 180 ? 1 : 0, col = v < 35 ? 'var(--bad)' : v < 60 ? 'var(--warn)' : 'var(--good)';
+  return '<div class="gauge"><svg viewBox="0 0 120 66"><path d="M ' + (cx - r) + ' ' + cy + ' A ' + r + ' ' + r + ' 0 0 1 ' + (cx + r) + ' ' + cy + '" fill="none" stroke="var(--line)" stroke-width="9" stroke-linecap="round"/>' +
+    (v > 0.5 ? '<path d="M ' + p0[0] + ' ' + p0[1] + ' A ' + r + ' ' + r + ' 0 ' + big + ' 1 ' + p1[0].toFixed(1) + ' ' + p1[1].toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round"/>' : '') +
+    '<text x="60" y="54" text-anchor="middle" font-size="18" font-weight="700" fill="var(--ink)">' + Math.round(v) + '</text></svg><small>' + (label || '') + '</small></div>';
+};
+
+/* Curseur de montant : − / + pour ajuster ; le bouton affiche le libellé calculé en direct.
+   o = {k, min, max, step, def, fmt:(v)=>html, act:'borrow', cls, lbl} */
+const AMTM = {};
+H.amt = function (o) {
+  const k = o.k; AMTM[k] = o; const mx = Math.max(o.min, o.max); let v = UI.amt[k];
+  if (v == null || isNaN(v)) v = o.def; v = clamp(v, o.min, mx); UI.amt[k] = v; const off = o.max <= o.min + 1e-12;
+  return '<div class="amt"><div class="row"><button class="btn small sq" data-act="amtstep" data-k="' + k + '" data-v="-1" aria-label="Moins">−</button>' +
+    '<input type="range" data-amt="' + k + '" min="' + o.min + '" max="' + mx + '" step="' + o.step + '" value="' + v + '"' + (off ? ' disabled' : '') + ' aria-label="' + esc(o.lbl || 'Montant') + '">' +
+    '<button class="btn small sq" data-act="amtstep" data-k="' + k + '" data-v="1" aria-label="Plus">+</button></div>' +
+    (o.act ? '<button class="btn small ' + (o.cls || '') + '" data-act="' + o.act + '" data-k="' + k + '"' + (o.attrs || '') + (off && o.why ? ' aria-disabled="true" data-why="' + esc(o.why) + '"' : '') + '><span data-amtl="' + k + '">' + o.fmt(v) + '</span></button>'
+      : '<div class="amtv" data-amtl="' + k + '">' + o.fmt(v) + '</div>') + '</div>';
+};
+function amtRefresh(k) {
+  const o = AMTM[k], v = UI.amt[k];
+  document.querySelectorAll('[data-amtl="' + k + '"]').forEach(x => { x.innerHTML = o ? o.fmt(v) : v; });
+  document.querySelectorAll('[data-amt="' + k + '"]').forEach(x => { if (+x.value !== v) x.value = v; });
+}
+TE.amtVal = (k, d) => (UI.amt[k] == null ? d : UI.amt[k]);
+
+/* =============================== Rendu incrémental =============================== */
+function morph(el, html) { const t = document.createElement('div'); t.innerHTML = html; morphKids(el, t); }
+function morphKids(a, b) {
+  const A = a.childNodes, B = b.childNodes;
+  for (let i = 0; i < B.length; i++) {
+    const nb = B[i], na = A[i];
+    if (!na) { a.appendChild(nb.cloneNode(true)); continue; }
+    if (na.nodeType !== nb.nodeType || na.nodeName !== nb.nodeName) { a.replaceChild(nb.cloneNode(true), na); continue; }
+    if (na.nodeType !== 1) { if (na.nodeValue !== nb.nodeValue) na.nodeValue = nb.nodeValue; continue; }
+    morphNode(na, nb);
+  }
+  while (A.length > B.length) a.removeChild(a.lastChild);
+}
+function morphNode(a, b) {
+  const tag = a.tagName;
+  for (const at of Array.from(a.attributes)) if (!b.hasAttribute(at.name) && !(tag === 'DETAILS' && at.name === 'open')) a.removeAttribute(at.name);
+  for (const at of Array.from(b.attributes)) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  if (tag === 'INPUT' || tag === 'TEXTAREA') { if (document.activeElement !== a) { const v = b.getAttribute('value'); if (v != null && a.value !== v) a.value = v; } return; }
+  if (tag === 'SELECT') { morphKids(a, b); const o = b.querySelector('option[selected]'); if (o && document.activeElement !== a) a.value = o.value; return; }
+  morphKids(a, b);
+}
+TE.morph = morph;
+
+/* =============================== Panneaux intégrés =============================== */
+const P = TE.panels = {};
+
+/* Compte de résultat du dernier mois + emprunts + notation */
+P.finance = function () {
+  const G = TE.G, p = TE.player(), m = p.last || p.m, def = TE.def, lab = def.ledger || {};
+  const rev = TE.revenue(m), cost = TE.costs(m), pr = rev - cost, lim = TE.creditLimit(p), rt = TE.rating(p), rate = TE.loanRate(p);
+  const L = (cat, side) => (lab[side] && lab[side][cat]) || cat;
+  const rows = [];
+  for (const c in m.in) rows.push([L(c, 'in'), TE.signed(m.in[c]), 'pos']);
+  for (const c in m.out) rows.push([L(c, 'out'), '-' + money(m.out[c]), '']);
+  const room = Math.max(0, Math.floor((lim - p.debt) / 1e5) * 1e5), maxRep = Math.min(p.debt, Math.max(0, p.cash));
+  return '<h2>Finances</h2>' +
+    H.tiles([['Trésorerie', money(p.cash), p.cash < 0 ? 'neg' : ''], ['Résultat du mois', TE.signed(pr), TE.cls(pr)], ['Dette', money(p.debt)], ['Notation', TE.RATINGS[rt] + ' · ' + TE.pct(rate, 1)]]) +
+    H.card('Compte de résultat (' + (p.last ? 'dernier mois' : 'mois en cours') + ')', rows.length ? H.kv(rows.concat([['<b>Résultat</b>', TE.signed(pr), TE.cls(pr)]])) : '<p class="muted">Aucun mouvement pour l\'instant.</p>') +
+    (p.hist.length >= 2 ? H.card('Évolution', '<div class="muted" style="font-size:12px">Résultat mensuel</div>' + H.barChart(p.hist.slice(-18), { fmt: v => money(v) }) + '<div class="muted" style="font-size:12px;margin-top:8px">Trésorerie</div>' + H.spark(p.cashH.slice(-36), { zero: true })) : '') +
+    H.card('Emprunt', '<p class="muted" style="font-size:12px">Plafond de crédit : <b>' + money(lim) + '</b>. Taux actuel ' + TE.pct(rate, 1) + ' (notation ' + TE.RATINGS[rt] + ').</p>' +
+      (room >= 1e5 ? H.amt({ k: 'borrow', min: 1e5, max: room, step: 1e5, def: Math.min(room, 2e6), act: 'borrow', cls: 'primary', fmt: v => 'Emprunter ' + money(v), lbl: 'Montant à emprunter' }) : '<p class="muted">Plafond atteint.</p>') +
+      (p.debt > 0 ? H.amt({ k: 'repay', min: Math.min(1e5, maxRep || 1e5), max: Math.max(maxRep, 0), step: 1e5, def: maxRep, act: 'repay', fmt: v => 'Rembourser ' + money(v), lbl: 'Montant à rembourser', why: 'Trésorerie insuffisante' }) : ''));
+};
+
+/* Classement des acteurs : def.rankingCols = [{h, get:(a)=>html, cls}] ; tri par def.rankingSort(a) */
+P.ranking = function () {
+  const G = TE.G, def = TE.def, sorter = def.rankingSort || (a => TE.companyValue(a));
+  const list = G.actors.slice().sort((a, b) => (a.bankrupt - b.bankrupt) || (sorter(b) - sorter(a)));
+  const cols = [{ h: '#', get: a => (list.indexOf(a) + 1), cls: 'num' },
+    { h: 'Nom', get: a => '<i class="dot" style="background:' + a.color + '"></i>' + esc(a.name) + (a.player ? ' <small class="muted">(toi)</small>' : '') + (a.bankrupt ? ' <small class="neg">faillite</small>' : '') }]
+    .concat(def.rankingCols || [{ h: 'Trésorerie', cls: 'num', get: a => money(a.cash) }, { h: 'Valeur', cls: 'num', get: a => money(TE.companyValue(a)) }]);
+  const rows = list.map(a => Object.assign({ _cls: a.player ? 'me' : a.bankrupt ? 'dead' : '' }, a, { _a: a }));
+  return '<h2>' + (def.rankingTitle || 'Classement') + '</h2>' + H.table(cols.map(c => ({ h: c.h, cls: c.cls, get: r => c.get(r._a || r) })), rows) +
+    H.card('Trésorerie comparée', H.lineChart(TE.alive().map(a => ({ name: a.name, color: a.color, vals: a.cashH.slice(-24) })), { fmt: v => money(v) }));
+};
+
+P.news = function () {
+  const G = TE.G;
+  return '<h2>Actualités</h2><div class="news">' + (G.news.length ? G.news.map(n => '<div class="nw ' + n.kind + '"><small>' + TE.shortDate(n.day) + '</small><span>' + esc(n.text) + '</span></div>').join('') : '<p class="muted">Rien à signaler.</p>') + '</div>';
+};
+P.goal = function () {
+  const gi = TE.goalInfo(); if (!gi) return '';
+  return H.card('Objectif : ' + esc(gi.label), H.bar(gi.cur, gi.tgt, gi.met ? 'good' : '') + '<div class="row"><span class="grow muted">' + gi.fmt(gi.cur) + ' / ' + gi.fmt(gi.tgt) + '</span>' + (gi.met ? H.pill('Atteint', 'good') : '') + '</div>');
+};
+
+/* =============================== Coque =============================== */
+TE.navOf = def => def.nav || (def.tabs || []).map(t => ({ id: t.id, label: t.label, icon: t.icon, tabs: [t.id] }));
+function shellHTML(def) {
+  const tabs = def.tabs || [], nav = TE.navOf(def), tb = id => tabs.find(t => t.id === id) || { id, label: id };
+  return '<div id="app"><header id="board"><div class="brand"><span id="brandic">' + (ic(def.icon) || '◆') + '</span><span id="coname">' + esc(def.title || 'Tycoon') + '</span></div>' +
+    '<div class="speed" role="group" aria-label="Vitesse du temps">' +
+    ['❚❚', '▶', '▶▶', '▶▶▶'].map((l, i) => '<button data-act="speed" data-v="' + i + '" aria-label="Vitesse ' + i + '">' + l + '</button>').join('') + '</div>' +
+    '<button class="hsave" data-act="saves" aria-label="Sauvegardes" title="Sauvegardes">' + TE.ico('sauvegarde') + '</button><div id="flaps"></div></header>' +
+    '<nav id="subnav" aria-label="Rubriques" hidden></nav>' +
+    '<main' + (def.map ? ' class="hasmap"' : '') + '>' + (def.map ? '<section id="mapwrap"><canvas id="map"></canvas></section>' : '') + '<section id="panel"></section></main>' +
+    '<div id="fab" hidden></div>' +
+    '<nav id="tabs" class="' + (nav.length > 5 ? 'many' : '') + '" aria-label="Navigation"><div class="sidebrand"><small>' + esc(def.subtitle || '') + '</small><b id="sbname"></b></div>' +
+    nav.map(h => '<div class="hub ' + (h.tabs.length > 1 ? 'multi' : 'single') + '" data-hub="' + h.id + '"><button class="hubbtn" data-act="hub" data-v="' + h.id + '"><span class="ti">' + (ic(h.icon) || '•') + '</span><span class="tl">' + esc(h.label) + '</span><i class="bdg" hidden></i></button><div class="subs">' +
+      h.tabs.map(id => { const t = tb(id); return '<button data-act="tab" data-v="' + id + '"><span class="ti">' + (ic(t.icon) || '•') + '</span>' + esc(t.label) + '<i class="bdg" hidden></i></button>'; }).join('') + '</div></div>').join('') + '</nav></div>' +
+    '<button id="cheatfab" data-act="cheats" aria-label="Menu test" hidden>' + TE.ico('reglages') + '</button><div id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div><div id="start" hidden></div><div id="toast" hidden></div>';
+}
+
+TE.toast = function (t) {
+  const el = $('toast'); el.textContent = t; el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(TE.toast._t); TE.toast._t = setTimeout(() => { el.hidden = true; }, 3200);
+};
+
+function header() {
+  const G = TE.G, def = TE.def, p = TE.player(); if (!G) return;
+  $('coname').textContent = p.name; $('sbname').textContent = p.name;
+  const kp = def.kpis || [
+    { label: 'Date', get: () => TE.dateStr(G.day) },
+    { label: 'Trésorerie', get: p => money(p.cash), cls: p => (p.cash < 0 ? 'neg' : '') },
+    { label: 'Dernier mois', get: p => (p.last ? TE.signed(p.last.profit) : '--'), cls: p => (p.last && p.last.profit < 0 ? 'neg' : '') }];
+  const html = kp.map(k => '<div class="flap"><small>' + k.label + '</small><b class="' + (k.cls ? k.cls(p) : '') + '">' + k.get(p, G) + '</b></div>').join('');
+  if ($('flaps')._h !== html) { $('flaps').innerHTML = html; $('flaps')._h = html; }
+  document.querySelectorAll('.speed button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === UI.speed)));
+  const nav = TE.navOf(def), tabs = def.tabs, hub = nav.find(h => h.tabs.includes(UI.tab)) || nav[0], bd = def.badges ? (def.badges(G, p) || {}) : {};
+  const setB = (el, b) => { if (!el) return; if (!b || !b.n) { el.hidden = true; return; } el.hidden = false; el.textContent = b.n > 9 ? '9+' : b.n; el.className = 'bdg ' + (b.cls || ''); };
+  const agg = h => { let n = 0, cls = 'info'; for (const id of h.tabs) { const b = bd[id]; if (b && b.n) { n += b.n; if (b.cls === 'bad' || (b.cls === 'warn' && cls !== 'bad')) cls = b.cls; } } return { n, cls: cls === 'info' ? '' : cls }; };
+  document.querySelectorAll('#tabs .hub').forEach(el => { const h = nav.find(x => x.id === el.dataset.hub); el.classList.toggle('on', h === hub); const hb = el.querySelector('.hubbtn'); hb.setAttribute('aria-pressed', String(h === hub)); setB(hb.querySelector('.bdg'), agg(h)); });
+  document.querySelectorAll('#tabs .subs button').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.v === UI.tab)); setB(b.querySelector('.bdg'), bd[b.dataset.v]); });
+  const sn = $('subnav');
+  if (hub && hub.tabs.length > 1) {
+    const html = hub.tabs.map(id => { const t = tabs.find(x => x.id === id) || {}, b = bd[id]; return '<button data-act="tab" data-v="' + id + '" aria-pressed="' + (id === UI.tab) + '">' + ic(t.icon) + ' ' + esc(t.label || id) + (b && b.n ? '<i class="bdg ' + (b.cls || '') + '">' + (b.n > 9 ? '9+' : b.n) + '</i>' : '') + '</button>'; }).join('');
+    if (sn._h !== html) { sn.innerHTML = html; sn._h = html; } sn.hidden = false;
+  } else sn.hidden = true;
+  const cur = tabs.find(t => t.id === UI.tab), acts = cur && cur.fab ? cur.fab(G, p, UI) || [] : [], fb = $('fab');
+  if (!acts.length) { fb.hidden = true; fb._h = ''; }
+  else {
+    const at = a => Object.keys(a.data || {}).map(k => ' data-' + k + '="' + esc(a.data[k]) + '"').join(''), one = acts.length === 1;
+    const html = one ? '<button class="fabmain" data-act="' + acts[0].act + '"' + at(acts[0]) + '><span>＋</span>' + esc(acts[0].label) + '</button>'
+      : (UI.fabOpen ? '<div class="fabscrim" data-act="fabtoggle"></div><div class="fablist">' + acts.map(a => '<button data-act="' + a.act + '"' + at(a) + '>' + (a.icon ? '<span>' + ic(a.icon) + '</span>' : '') + esc(a.label) + '</button>').join('') + '</div>' : '') + '<button class="fabmain round" data-act="fabtoggle" aria-label="Actions" aria-expanded="' + !!UI.fabOpen + '">' + (UI.fabOpen ? '✕' : '＋') + '</button>';
+    if (fb._h !== html) { fb.innerHTML = html; fb._h = html; } fb.hidden = false;
+  }
+  document.body.dataset.tab = UI.tab;
+  $('cheatfab').hidden = !(UI.cheats && TE.G);
+  if (UI._tabSeen !== UI.tab) { UI._tabSeen = UI.tab; const on = document.querySelector('#subnav button[aria-pressed="true"]'); if (on && on.scrollIntoView) on.scrollIntoView({ inline: 'center', block: 'nearest' }); }
+}
+
+function tabHTML(t) {
+  if (typeof t.render === 'string') return (P[t.render.replace('@', '')] || (() => ''))();
+  return t.render(TE.G, TE.player(), UI);
+}
+function renderAll(force) {
+  const G = TE.G; if (!G) return;
+  const now = performance.now(), P_ = $('panel');
+  if (!force && (UI.holding || now - UI.lastRender < 450 || (document.activeElement && document.activeElement.dataset && (document.activeElement.dataset.amt != null || document.activeElement.dataset.txt != null) && P_.contains(document.activeElement)))) { UI.dirty = true; return; }
+  UI.lastRender = now; UI.dirty = false; header();
+  const tab = TE.def.tabs.find(t => t.id === UI.tab) || TE.def.tabs[0], key = tab.id + ':' + (UI.sub[tab.id] || '');
+  const html = '<div class="flow">' + tabHTML(tab) + '</div>';
+  if (UI.pkey !== key) {
+    if (UI.pkey) UI.scr[UI.pkey] = P_.scrollTop;
+    P_.innerHTML = html; P_.scrollTop = UI.scr[key] || 0; P_.classList.remove('fadein'); void P_.offsetWidth; P_.classList.add('fadein'); UI.pkey = key;
+  } else morph(P_, html);
+  if (TE.def.map && TE.def.map.onRender) TE.def.map.onRender(G, UI);
+}
+TE.renderAll = renderAll;
+
+/* =============================== Fenêtres =============================== */
+function openModal(kind, data) {
+  UI.modal = Object.assign({ kind, resume: UI.modal ? UI.modal.resume : UI.speed }, data || {});
+  UI.speed = 0; renderModal(); $('modal').hidden = false; $('sheet').scrollTop = 0; if (TE.G) header();
+}
+function closeModal() {
+  const m = UI.modal; UI.modal = null; $('modal').hidden = true;
+  if (!TE.G || !$('start').hidden) { if (!$('start').hidden) showStart(); return; }
+  if (m && m.resume && !TE.G.over) UI.speed = m.resume;
+  renderAll(true);
+}
+TE.openModal = openModal; TE.closeModal = closeModal;
+
+function renderModal() {
+  const M = UI.modal, S = $('sheet'), def = TE.def; let h = '';
+  const close = '<button class="btn small xbtn" data-act="close" aria-label="Fermer">✕</button>';
+  if (M.kind === 'saves') h = savesHTML();
+  else if (M.kind === 'end') h = endHTML(M);
+  else if (M.kind === 'cheats') h = cheatsHTML();
+  else if (def.modals && def.modals[M.kind]) h = def.modals[M.kind](M, TE.G, TE.player());
+  S.dataset.kind = M.kind;
+  S.innerHTML = (M.kind === 'end' ? '' : close) + h;
+}
+function reAll() { renderAll(true); if (UI.modal && !$('modal').hidden) { const st = $('sheet').scrollTop; renderModal(); $('sheet').scrollTop = st; } }
+TE.reAll = reAll;
+
+
+/* --- Menu triche (tests) : déverrouillé par 5 appuis rapides sur la marque, ou #cheat dans l'URL --- */
+function cheatsHTML() {
+  const G = TE.G, def = TE.def, p = TE.player(), b = (l, d) => '<button class="btn small" data-act="cheat"' + d + '>' + l + '</button>';
+  const sec = (t, body) => '<div class="card"><h3>' + t + '</h3><div class="row">' + body + '</div></div>';
+  const gc = def.cheats || [], groups = []; gc.forEach((c, i) => { let g = groups.find(x => x.n === (c.group || 'Jeu')); if (!g) groups.push(g = { n: c.group || 'Jeu', h: '' }); g.h += b(esc(c.label), ' data-k="game" data-i="' + i + '"'); });
+  const ev = (def.events && def.events.random) || [];
+  return '<h2>Menu test</h2><p class="muted" style="font-size:12px">Outils de test : ils modifient la partie en cours. Jour ' + G.day + ' · graine ' + G.seed + '.</p>' +
+    sec('Argent', [1e6, 1e7, 1e8, 1e9, 1e10].map(n => b('+' + money(n), ' data-k="cash" data-n="' + n + '"')).join('') + b('−' + money(1e8), ' data-k="cash" data-n="-100000000"') + b('Effacer la dette', ' data-k="debt"')) +
+    sec('Temps', [[30, '+1 mois'], [90, '+3 mois'], [360, '+1 an'], [1800, '+5 ans']].map(x => b(x[1], ' data-k="skip" data-n="' + x[0] + '"')).join('')) +
+    sec('Partie', b((G.cfg.safe ? '✓ ' : '') + 'Faillite désactivée', ' data-k="safe"') + b('Déclencher la victoire', ' data-k="win"')) +
+    sec('Concurrence', b('Nouvelle entrante', ' data-k="entrant"') + b('+' + money(1e9) + ' aux rivales', ' data-k="rcash"') + TE.rivals().map(a => b('✕ ' + esc(a.name), ' data-k="kill" data-id="' + a.id + '"')).join('')) +
+    (ev.length ? sec('Événements', b('Événement aléatoire', ' data-k="rev"') + ev.map((e, i) => b(esc(e.name || ('#' + (i + 1))), ' data-k="event" data-i="' + i + '"')).join('')) : '') +
+    groups.map(g => sec(esc(g.n), g.h)).join('');
+}
+
+/* --- Sauvegardes --- */
+function savesHTML() {
+  const G = TE.G, rows = TE.SLOTS.map(s => {
+    const mt = TE.slotMeta(s), name = s === 'auto' ? 'Automatique' : 'Emplacement ' + s;
+    return '<div class="slot"><div><b>' + name + '</b><div class="muted" style="font-size:12px">' + (mt ? esc(mt.name) + ' · ' + TE.dateStr(mt.day) + ' · ' + money(mt.cash) + (mt.over ? ' · terminée' : '') : 'vide') + '</div></div><div class="row">' +
+      (G && s !== 'auto' ? '<button class="btn small" data-act="saveslot" data-v="' + s + '">Sauver</button>' : '') +
+      (mt ? '<button class="btn small primary" data-act="loadslot" data-v="' + s + '">Charger</button><button class="btn small" data-act="delslot" data-v="' + s + '" aria-label="Supprimer">🗑</button>' : '') + '</div></div>';
+  }).join('');
+  return '<h2>Sauvegardes</h2>' + rows + '<div class="row" style="margin-top:12px">' + (G ? '<button class="btn" data-act="export">Exporter un fichier</button>' : '') + '<button class="btn" data-act="import">Importer un fichier</button></div>' +
+    '<input type="file" id="fileIn" accept=".json,application/json" hidden>';
+}
+function endHTML(M) {
+  const G = TE.G, p = TE.player(), def = TE.def;
+  const body = def.endText ? def.endText(G, p, M.win) : (M.win ? 'Objectif atteint, bravo !' : 'La partie est terminée.');
+  return '<div class="endwrap">' + H.img(M.win ? 'end-win' : 'end-lose') + '<h2>' + (M.win ? 'Victoire' : 'Fin de partie') + '</h2><p>' + body + '</p><div class="row">' +
+    (M.win ? '<button class="btn primary" data-act="close">Continuer à jouer</button>' : '') + '<button class="btn ' + (M.win ? '' : 'primary') + '" data-act="menu">Nouvelle partie</button></div></div>';
+}
+
+/* =============================== Écran de départ =============================== */
+function field(f) {
+  const id = 'in_' + f.k;
+  if (f.type === 'color') return '<label class="f" for="' + id + '" style="flex:0 0 auto"><span>' + f.label + '</span><input type="color" id="' + id + '" value="' + (f.def || '#b01f6a') + '"></label>';
+  if (f.type === 'select') return '<label class="f" for="' + id + '"><span>' + f.label + '</span><select id="' + id + '">' + f.options.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === f.def ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></label>';
+  if (f.type === 'range') return '<label class="f"><span>' + f.label + ' : <b id="v_' + f.k + '">' + (f.fmt ? f.fmt(f.def) : f.def) + '</b></span><input type="range" id="' + id + '" min="' + f.min + '" max="' + f.max + '" step="' + (f.step || 1) + '" value="' + f.def + '"></label>';
+  if (f.type === 'checkbox') return '<label class="chk"><input type="checkbox" id="' + id + '"' + (f.def ? ' checked' : '') + '> ' + f.label + '</label>';
+  return '<label class="f" for="' + id + '"><span>' + f.label + '</span><input type="text" id="' + id + '" maxlength="' + (f.max || 24) + '" value="' + esc(f.def || '') + '"></label>';
+}
+function startHTML() {
+  const def = TE.def, S = def.setup || [], mt = TE.slotMeta('auto') || TE.slotMeta('auto.prev');
+  const top = S.filter(f => !f.adv), adv = S.filter(f => f.adv);
+  const pre = def.presets || [];
+  const std = (pre.length ? '<label class="f" for="in_diff"><span>Difficulté</span><select id="in_diff">' + pre.map((x, i) => '<option value="' + i + '"' + (i === Math.min(1, pre.length - 1) ? ' selected' : '') + '>' + esc(x.label || ('Niveau ' + (i + 1))) + '</option>').join('') + '</select></label>' : '') +
+    '<label class="f"><span>Rivales : <b id="v_rivals">' + Math.min(4, (def.rivals || []).length) + '</b></span><input type="range" id="in_rivals" min="0" max="' + (def.rivals || []).length + '" step="1" value="' + Math.min(4, (def.rivals || []).length) + '"></label>' +
+    (def.goals ? '<label class="f" for="in_goal"><span>Objectif</span><select id="in_goal"><option value="none">Aucun : partie libre</option>' + Object.keys(def.goals).map(k => '<option value="' + k + '">' + esc(def.goals[k].label) + '</option>').join('') + '</select></label><label class="f" id="fGoalV" hidden><span id="lGoalV">Cible</span><input type="number" id="in_gv" min="1" step="any" value="10"></label>' : '') +
+    '<label class="chk"><input type="checkbox" id="in_entr" checked> Nouvelles concurrentes quand une rivale disparaît</label>' +
+    '<label class="chk"><input type="checkbox" id="in_safe"> Faillite désactivée (pour apprendre)</label>';
+  return '<div class="title"><h1>' + (def.titleHTML || esc(def.title)) + '</h1><p class="lede">' + esc(def.lede || '') + '</p><div class="card">' +
+    top.map(field).join('') + '<details class="setup"><summary>Réglages de la partie</summary><div class="sgrid">' + adv.map(field).join('') + std + '</div></details>' +
+    '<div class="row"><button class="btn primary" data-act="newgame">' + esc(def.startLabel || 'Commencer') + '</button><button class="btn" data-act="continue"' + (mt ? '' : ' hidden') + '>Reprendre la partie</button><button class="btn" data-act="saves">Charger ou importer</button></div>' +
+    '<div class="muted" style="font-size:12px;margin-top:6px">' + (mt ? 'Dernière sauvegarde : ' + esc(mt.name) + ', ' + TE.dateStr(mt.day) + ', ' + money(mt.cash) : '') + '</div></div></div>';
+}
+function showStart() {
+  const S = $('start'); S.innerHTML = startHTML(); S.hidden = false; UI.speed = 0;
+  { const hero = (typeof matchMedia === 'function' && matchMedia('(max-width:700px)').matches && TE.art('hero-portrait')) || TE.art('hero'); S.classList.toggle('hasart', !!hero); S.style.backgroundImage = hero ? 'linear-gradient(180deg,color-mix(in srgb,var(--bg) 8%,transparent),color-mix(in srgb,var(--bg) 82%,transparent) 70%),url(' + hero + ')' : ''; }
+  const g = $('in_goal'), upd = () => {
+    const def = TE.def; if (!g) return; const k = g.value, has = k !== 'none' && def.goals[k];
+    $('fGoalV').hidden = !has; if (has) { $('lGoalV').textContent = 'Cible (' + (def.goals[k].unit || '') + ')'; $('in_gv').value = def.goals[k].def; }
+  };
+  if (g) { g.onchange = upd; upd(); }
+  const rv = $('in_rivals'); if (rv) rv.oninput = () => { $('v_rivals').textContent = rv.value; };
+  for (const f of TE.def.setup || []) if (f.type === 'range') { const el = $('in_' + f.k); if (el) el.oninput = () => { $('v_' + f.k).textContent = f.fmt ? f.fmt(+el.value) : el.value; }; }
+}
+function readSetup() {
+  const def = TE.def, o = { opts: {}, cfg: {} };
+  for (const f of def.setup || []) {
+    const el = $('in_' + f.k); if (!el) continue;
+    const v = f.type === 'checkbox' ? el.checked : f.type === 'range' ? +el.value : el.value;
+    if (f.k === 'name') o.name = v || 'Joueur'; else if (f.k === 'color') o.color = v; else o.opts[f.k] = v;
+  }
+  if ($('in_diff')) o.diff = +$('in_diff').value;
+  o.cfg.rivals = +$('in_rivals').value;
+  if ($('in_goal')) { o.cfg.goal = $('in_goal').value; o.cfg.gv = +$('in_gv').value; }
+  o.cfg.entr = $('in_entr').checked ? 1 : 0; o.cfg.safe = $('in_safe').checked ? 1 : 0;
+  return o;
+}
+
+/* =============================== Actions =============================== */
+const ctx = () => ({ get G() { return TE.G; }, get p() { return TE.G ? TE.player() : null; }, UI, TE, toast: TE.toast, openModal, closeModal, reAll });
+const ACT = {
+  speed(d) { if (TE.G.over) return; const i = +d.v; if (i) UI.lastSpeed = i; UI.speed = i; header(); },
+  hub(d) { const h = TE.navOf(TE.def).find(x => x.id === d.v); if (!h) return false; const t = UI.hubTab[h.id]; ACT.tab({ v: t && h.tabs.includes(t) ? t : h.tabs[0] }); return false; },
+  goto(d) { if (d.open) UI.open[d.open] = true; if (d.tab) ACT.tab({ v: d.tab }); return false; },
+  fold(d) { UI.open[d.k] = !UI.open[d.k]; },
+  fabtoggle() { UI.fabOpen = !UI.fabOpen; header(); return false; },
+  tab(d) { UI.tab = d.v; UI.fabOpen = false; const h = TE.navOf(TE.def).find(x => x.tabs.includes(d.v)); if (h) UI.hubTab[h.id] = d.v; renderAll(true); const t = TE.def.tabs.find(x => x.id === d.v); if (t && t.onOpen) t.onOpen(ctx()); },
+  sub(d) { UI.sub[d.k] = d.v; renderAll(true); },
+  set(d) { UI[d.k] = d.v; renderAll(true); },
+  mset(d) { UI.modal[d.k] = d.v; renderModal(); },
+  close() { closeModal(); },
+  amtstep(d) { const o = AMTM[d.k]; if (!o) return; const v = clamp((UI.amt[d.k] == null ? o.def : UI.amt[d.k]) + (+d.v) * o.step, o.min, Math.max(o.min, o.max)); UI.amt[d.k] = v; amtRefresh(d.k); },
+  borrow(d) { const p = TE.player(), x = UI.amt[d.k]; if (TE.borrow(p, x)) TE.toast('Emprunt de ' + money(x) + ' accordé à ' + TE.pct(TE.loanRate(p), 1) + '.'); else TE.toast('Plafond de crédit dépassé.'); },
+  repay(d) { const p = TE.player(), x = UI.amt[d.k]; if (TE.repay(p, x)) TE.toast(money(x) + ' remboursés.'); else TE.toast('Trésorerie insuffisante.'); },
+  saves() { openModal('saves'); },
+  cheats() { openModal('cheats'); },
+  cheat(d) {
+    const C = TE.cheat, G = TE.G, p = TE.player();
+    switch (d.k) {
+      case 'cash': C.cash(+d.n); break; case 'debt': C.clearDebt(); break;
+      case 'safe': TE.toast(C.safe() ? 'Faillite désactivée.' : 'Faillite réactivée.'); break;
+      case 'skip': C.skip(+d.n); break; case 'win': C.win(); break;
+      case 'entrant': C.entrant(); break; case 'rcash': C.rivalsCash(1e9); break; case 'kill': C.kill(+d.id); break;
+      case 'rev': C.randomEvent(); break; case 'event': C.event(+d.i); break;
+      case 'game': { const c = (TE.def.cheats || [])[+d.i]; if (c) { const r = c.run(G, p, ctx()); if (typeof r === 'string') TE.toast(r); } break; }
+    }
+  },
+  saveslot(d) { TE.writeSlot(d.v) ? TE.toast('Partie sauvegardée.') : TE.toast('Espace de stockage plein : exporte un fichier.'); renderModal(); },
+  loadslot(d) { const g = TE.readSlot(d.v); if (!g) return TE.toast('Sauvegarde illisible.'); TE.G = g; UI.modal = null; $('modal').hidden = true; begin(); },
+  delslot(d) { try { TE.store.removeItem(TE.def.save + '.save.' + d.v); TE.store.removeItem(TE.def.save + '.meta.' + d.v); } catch (e) {} renderModal(); if (!$('start').hidden) showStart(); },
+  export() { const b = new Blob([TE.exportSave()], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = TE.def.save + '-' + TE.player().name.replace(/\W+/g, '-') + '-j' + TE.G.day + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); },
+  import() { const f = $('fileIn'); if (!f) return; f.onchange = () => { const r = new FileReader(); r.onload = () => { try { TE.importSave(r.result); UI.modal = null; $('modal').hidden = true; begin(); } catch (e) { TE.toast('Fichier invalide.'); } }; if (f.files[0]) r.readAsText(f.files[0]); }; f.click(); },
+  newgame() { const o = readSetup(); TE.newGame(o); begin(); },
+  continue() { const g = TE.load(); if (g) { TE.G = g; begin(); } },
+  menu() { UI.modal = null; $('modal').hidden = true; TE.G = null; showStart(); }
+};
+let _tap = [];
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('#board .brand, .title h1')) { const t = Date.now(); _tap = _tap.filter(x => t - x < 3000).concat(t); if (_tap.length >= 5 && !UI.cheats) { UI.cheats = true; _tap = []; TE.toast('Menu test déverrouillé (🛠).'); if (TE.G) { header(); openModal('cheats'); } } }
+  const el = e.target.closest && e.target.closest('[data-act]'); if (!el) return;
+  if (el.getAttribute('aria-disabled') === 'true') { TE.toast(el.dataset.why || 'Action impossible pour l\'instant.'); return; }
+  const a = el.dataset.act, def = TE.def, fn = (def.actions && def.actions[a]) || ACT[a]; if (!fn) return;
+  if (a !== 'fabtoggle') UI.fabOpen = false;
+  const r = fn.call(ACT, el.dataset, ctx(), el);
+  if (r !== false && TE.G && $('start').hidden) reAll();
+});
+let _sw = null;
+document.addEventListener('touchstart', e => { const t = e.touches[0]; _sw = e.target.closest && e.target.closest('#panel') && !e.target.closest('.tbl,.chips,.seg,input,textarea,select,.abar') ? { x: t.clientX, y: t.clientY } : null; }, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!_sw || !TE.G || UI.modal) return; const t = e.changedTouches[0], dx = t.clientX - _sw.x, dy = t.clientY - _sw.y; _sw = null;
+  if (Math.abs(dx) < 80 || Math.abs(dy) > 50 || Math.abs(dx) < 2 * Math.abs(dy)) return;
+  const hub = TE.navOf(TE.def).find(h => h.tabs.includes(UI.tab)); if (!hub || hub.tabs.length < 2) return;
+  const i = hub.tabs.indexOf(UI.tab) + (dx < 0 ? 1 : -1); if (i < 0 || i >= hub.tabs.length) return; ACT.tab({ v: hub.tabs[i] });
+}, { passive: true });
+document.addEventListener('input', e => { const tx = e.target.dataset && e.target.dataset.txt; if (tx != null) { UI.txt[tx] = e.target.value; return; } const k = e.target.dataset && e.target.dataset.amt; if (k == null) return; UI.amt[k] = +e.target.value; amtRefresh(k); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && UI.modal && UI.modal.kind !== 'end') closeModal(); if (e.key === ' ' && !UI.modal && TE.G && $('start').hidden && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { e.preventDefault(); ACT.speed({ v: UI.speed ? 0 : UI.lastSpeed }); } });
+document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#panel')) UI.holding = true; });
+addEventListener('pointerup', () => { setTimeout(() => { UI.holding = false; }, 60); });
+addEventListener('pointercancel', () => { UI.holding = false; });
+
+/* =============================== Boucle =============================== */
+function begin() {
+  $('start').hidden = true; UI.tab = TE.def.tabs[0].id; UI.speed = 0; UI.acc = 0; UI.endShown = 0; UI.pkey = null; UI.lastSave = TE.G.day; UI.amt = {};
+  if (TE.def.onBegin) TE.def.onBegin(TE.G);
+  renderAll(true); if (TE.G.over) UI.endShown = 2;
+}
+let lastT = 0;
+function frame(t) {
+  const dt = Math.min(0.25, (t - lastT) / 1000 || 0); lastT = t; const G = TE.G, def = TE.def;
+  if (G && !G.over && UI.speed && !UI.modal && $('start').hidden) {
+    UI.acc += dt * def.speeds[UI.speed]; let n = 0; const t0 = performance.now();
+    while (UI.acc >= 1 && n < 4 && (n === 0 || performance.now() - t0 < 12)) { TE.step(); UI.acc -= 1; n++; if (TE.G.over) break; }
+    UI.acc = Math.min(UI.acc, 4); G.frac = UI.acc;
+    if (n) { renderAll(); if (G.day - UI.lastSave >= 30 || G.day < UI.lastSave) { UI.lastSave = G.day; TE.save(); } }
+    // pause automatique si le jeu le demande (course, choix à faire…)
+    if (def.autoPause && def.autoPause(G) && !UI.modal) { UI.speed = 0; header(); }
+  } else if (G && UI.dirty && $('start').hidden) renderAll();
+  if (G && $('start').hidden && !UI.modal) {
+    if (G.over && UI.endShown < 2) { UI.endShown = 2; UI.speed = 0; TE.save(); openModal('end', { win: false }); }
+    else if (G.won && !UI.endShown) { UI.endShown = 1; openModal('end', { win: true }); }
+  }
+  if (def.map && G && $('start').hidden && def.map.draw) { const cv = $('map'); if (cv) def.map.draw(cv, G, UI); }
+  requestAnimationFrame(frame);
+}
+const bgSave = () => { if (TE.G && $('start').hidden && !TE.G.over) TE.save(); };
+
+/* Point d'entrée : TE.boot(definition) */
+TE.boot = function (def) {
+  TE.define(def);
+  document.title = def.title;
+  const th = def.theme || {}, r = document.documentElement.style;
+  for (const k in th) r.setProperty('--' + k, th[k]);
+  document.body.innerHTML = shellHTML(def);
+  if (/cheat/.test((location.hash || '') + (location.search || ''))) UI.cheats = true;
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') bgSave(); });
+  addEventListener('pagehide', bgSave);
+  showStart();
+  requestAnimationFrame(frame);
+};
+
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<script>TE.ART = {};</script>
+<script>
+/* =============================================================================
+   MODÈLE DE NOUVEAU JEU — copie ce dossier (games/_modele → games/mon-jeu) puis remplis les « À FAIRE ».
+   Build : node build.mjs mon-jeu   →   dist/mon-jeu.html
+   Le moteur gère déjà : temps, vitesses, sauvegardes, finances/emprunts, rivales IA (hebdo), faillites,
+   nouveaux entrants, événements, objectifs, fil d'actus, classement, écran de départ, fenêtres.
+   ============================================================================= */
+(function (root) {
+'use strict';
+const TE = root.TE, H = TE.h, money = TE.money;
+
+const DEF = {
+  id: 'mon-jeu', title: 'Mon Jeu', icon: '🎮', subtitle: 'Sous-titre', currency: '€',     // À FAIRE : identité
+  lede: 'Une phrase qui donne envie.',
+  theme: { accent: '#0a7f5a', flap: '#7ee8c1' },
+  calendar: { startYear: 2030 },                          // 1 tick = 1 jour, 30 j/mois, 12 mois/an (modifiable)
+  setup: [{ k: 'name', type: 'text', label: 'Nom', def: 'Ma structure' }, { k: 'color', type: 'color', label: 'Couleur', def: '#0a7f5a' }],
+  presets: [{ label: 'Facile', cash: 20e6 }, { label: 'Normal', cash: 10e6 }, { label: 'Difficile', cash: 5e6, rich: 1.4, aggr: 1.4 }],
+
+  /* À FAIRE : les concurrents (profil = personnalité de l'IA) */
+  profiles: { prudent: { appetite: 0.15, reserve: 4e6 }, offensif: { appetite: 0.35, reserve: 2e6 } },
+  rivals: [{ name: 'Rival A', profile: 'prudent', color: '#c62828', cash: 10e6 }, { name: 'Rival B', profile: 'offensif', color: '#1565c0', cash: 8e6 }],
+  entrants: [{ name: 'Nouvelle C', profile: 'prudent', color: '#6a1b9a', cash: 8e6 }],
+
+  /* À FAIRE : métiers du personnel (facultatif) */
+  staff: { employes: { label: 'Employés', sal: 3e3, hire: 4e3 } },
+  ledger: { in: { ventes: 'Ventes' }, out: { achats: 'Achats', salaires: 'Salaires', 'intérêts': 'Intérêts' } },   // libellés du compte de résultat
+  assets: a => 0,                                         // valeur des actifs (sert au plafond de crédit et à la valeur d'entreprise)
+  goals: { value: { label: 'Valeur de l\'entreprise', unit: 'M€', def: 100, value: a => TE.companyValue(a) / 1e6, fmt: v => TE.nf(v) + ' M€' } },
+
+  init(G) { /* À FAIRE : monde partagé (catalogue, villes, circuits…) dans G.game */ },
+  initActor(G, a, R) { /* À FAIRE : état de départ de CHAQUE acteur (joueur : R === null). Champs libres sur `a`. */ a.stock = 0; },
+
+  onTick(G) { /* À FAIRE : simulation quotidienne (production, ventes…). Utilise TE.earn / TE.spend, TE.splitMarket, TE.modFactor */ },
+  onMonth(G, a) { /* À FAIRE : recettes/charges mensuelles de l'acteur `a` (joueur ET rivales : mêmes règles) */ TE.earn(a, 'ventes', 1e6 * (1 + a.rep / 100)); TE.spend(a, 'achats', 6e5); },
+  onYear(G) {},
+
+  ai: { week(G, a, P) { if (!TE.ai.willing(P)) return; /* À FAIRE : une décision d'IA (investir, embaucher…) avec les MÊMES fonctions que le joueur */ } },
+  events: { rate: 0.04, random: [{ w: 1, run(G) { TE.addMod({ tag: 'demande', mult: 1.2, until: G.day + 60 }); TE.news('Un coup de projecteur sur le secteur : demande +20 % pendant 2 mois.', 'good'); } }] },
+
+  tabs: [
+    { id: 'accueil', label: 'Accueil', icon: '🏠', render: (G, p) => '<h2>Accueil</h2>' + H.tiles([['Trésorerie', money(p.cash)], ['Réputation', Math.round(p.rep)]]) + TE.panels.goal() },
+    { id: 'finances', label: 'Finances', icon: '💶', render: '@finance' },
+    { id: 'classement', label: 'Marché', icon: '🏆', render: '@ranking' },
+    { id: 'actus', label: 'Actus', icon: '📰', render: '@news' }
+  ],
+  actions: { /* nomAction(d, ctx) : appelé par <button data-act="nomAction" data-xxx="…"> ; d = data-*, ctx = {G, p, UI, toast, openModal, …} */ }
+};
+
+TE.GAMES['mon-jeu'] = DEF;
+if (typeof document !== 'undefined' && !root.__TE_TEST) TE.boot(DEF);
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+</body></html>

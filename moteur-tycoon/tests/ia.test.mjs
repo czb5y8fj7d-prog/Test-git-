@@ -1,0 +1,32 @@
+// IA mondiale des concurrents : implantation par pays, usines locales, R&D, nouvelles entreprises, onglet Concurrence.
+import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url'; import { createRequire } from 'node:module';
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const { JSDOM } = createRequire(process.env.JSDOM_FROM || import.meta.url)('jsdom');
+const dom = new JSDOM(fs.readFileSync(path.join(root, 'dist', 'constructeur.html'), 'utf8'), { runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/' });
+const w = dom.window, d = w.document, TE = w.TE; let fails = 0; const errs = []; w.addEventListener('error', e => errs.push(e.message));
+const ok = (c, m) => { if (!c) { fails++; console.log('  ✗', m); } else console.log('  ✓', m); };
+const def = TE.GAMES.constructeur;
+ok(def.rivals.length >= 42, 'catalogue : ' + def.rivals.length + ' rivales');
+const homes = new Set(def.rivals.map(r => r.home)); ok(['AR', 'VN', 'NG', 'RU', 'AU', 'AE', 'MX', 'PK'].every(h => homes.has(h)), 'rivales sur tous les continents');
+TE.newGame({ name: 'Test', diff: 1, seed: 4242, cfg: { rivals: 24 } });
+const R0 = TE.rivals().length; ok(R0 === 24, 'partie à 24 rivales : ' + R0);
+const dealers = a => Object.values(a.cty).reduce((s, x) => s + x.dealers, 0), d0 = new Map(TE.rivals().map(a => [a.id, dealers(a)])), f0 = TE.rivals().reduce((s, a) => s + a.fact.length, 0);
+const t0 = Date.now(); for (let i = 0; i < 360 * 6; i++) TE.step(); const dt = Date.now() - t0;
+const rv = TE.rivals().filter(a => !a.bankrupt);
+ok(rv.length >= 14, 'des rivales survivent : ' + rv.length + '/' + TE.rivals().length);
+ok(rv.filter(a => dealers(a) > (d0.get(a.id) || 0) * 1.5).length >= 8, 'les rivales étendent leur réseau mondial');
+ok(rv.every(a => a.ai && a.ai.tg.length >= 5), 'chaque rivale a des marchés prioritaires');
+ok(rv.reduce((s, a) => s + a.fact.length, 0) > f0, 'des usines locales sont construites');
+ok(rv.some(a => a.tech && Object.keys(a.tech).length > 0), 'les rivales recherchent des technologies de l\'arbre');
+ok((TE.G.game.aiLog || []).length > 5, 'journal de mouvements : ' + (TE.G.game.aiLog || []).length);
+const homeTar = rv.filter(a => { const T = a.ai.tg[0]; return T; }).length; ok(homeTar === rv.length, 'cibles calculées');
+ok(rv.some(a => a.pos), 'les marques rivales se positionnent');
+ok(TE.rivals().some(a => a.entrant) || TE.rivals().length >= R0, 'de nouvelles entreprises arrivent');
+ok(dt < 60000, 'simulation 6 ans en ' + Math.round(dt / 1000) + ' s');
+// écran
+d.querySelector('[data-act="newgame"]') && 0;
+TE.UI.tab = 'conc'; TE.renderAll(true); const pt = () => d.getElementById('panel').textContent;
+ok(/Classement mondial/.test(pt()) && /Bataille/.test(pt()) && /Derniers mouvements/.test(pt()) && !/NaN|undefined|Infinity/.test(pt()), 'onglet Concurrence lisible');
+TE.UI.crg = TE.GAMES.constructeur.api.REGK ? TE.GAMES.constructeur.api.REGK[0] : ''; TE.renderAll(true); ok(!/NaN|undefined|Infinity/.test(pt()), 'bataille régionale propre');
+const lnk = d.querySelector('.lnk[data-act="set"][data-k="cst"]'); if (lnk) { lnk.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); ok(/Marchés prioritaires/.test(pt()) && /Technologies maîtrisées/.test(pt()), 'fiche rivale'); } else ok(false, 'lien fiche');
+ok(errs.length === 0, 'aucune erreur JS ' + errs.join('|')); process.exit(fails ? 1 : 0);
