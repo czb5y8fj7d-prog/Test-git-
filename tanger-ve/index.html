@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tanger — profils de trajets pour voiture électrique</title>
+<style>
+:root{--bg:#fafaf8;--fg:#1c1c1a;--mut:#6b6b66;--card:#fff;--bd:#e3e2dc;--ac:#0f6e56;--g0:#2e9e6b;--g1:#e0a823;--g2:#e8702a;--g3:#cc2f3a;--area:rgba(15,110,86,.12)}
+@media(prefers-color-scheme:dark){:root{--bg:#161614;--fg:#eeeee8;--mut:#9a9a92;--card:#201f1d;--bd:#34332f;--ac:#4fc3a1;--area:rgba(79,195,161,.15)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:14px 12px 40px;max-width:760px;margin-inline:auto}
+h1{font-size:20px;margin:4px 0 2px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 12px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;-webkit-overflow-scrolling:touch}
+.chip{flex:0 0 auto;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:18px;padding:7px 12px;font-size:13px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ac);border-color:var(--ac);color:#fff}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h2{font-size:14px;margin:0 0 6px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.desc{margin:0 0 8px;font-size:14px}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;color:#fff;margin-right:6px;vertical-align:1px}
+svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--bg);border-radius:8px;padding:8px}
+.stat b{display:block;font-size:17px}
+.stat span{font-size:11px;color:var(--mut)}
+.read{min-height:20px;font-size:13px;color:var(--mut);margin-top:4px}
+.read b{color:var(--fg)}
+.leg{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.inp{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.inp label{font-size:12px;color:var(--mut);display:block}
+.inp input{width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font-size:14px}
+.note{font-size:12px;color:var(--mut)}
+.warn{border-left:3px solid var(--g1);padding-left:10px}
+</style>
+</head>
+<body>
+<h1>Tanger — profils de trajets (VE)</h1>
+<p class="sub">Trajets types et extrêmes : profil altimétrique, carte schématique et surcoût énergétique.</p>
+
+<div class="card warn note">
+<b>Données estimées.</b> Je n'ai pas pu accéder à un modèle numérique de terrain : les altitudes sont mes estimations (±20 à 30 m) et les tracés relient des points de passage, pas la route exacte. Les pentes affichées sont des moyennes entre points, donc les pentes locales réelles sont plus fortes. À valider avec une vraie trace GPX avant décision.
+</div>
+
+<div class="chips" id="chips"></div>
+
+<div class="card">
+<h2>Charger un vrai tracé GPX</h2>
+<p class="note" style="margin:0 0 8px">Exporte ton itinéraire en .gpx avec altitudes (gpx.studio, Komoot, Strava, Garmin…), puis charge-le ici : il s'ajoute à la liste ci-dessus avec son profil, sa carte et son calcul d'énergie. Un export Google Maps n'a pas d'altitudes.</p>
+<input id="gf" type="file" accept=".gpx,application/gpx+xml,text/xml" multiple>
+<div class="read" id="gmsg"></div>
+</div>
+
+<div class="card">
+<p class="desc" id="desc"></p>
+<h2>Profil altimétrique</h2>
+<div id="chart"></div>
+<div class="read" id="read">Touche ou survole le profil pour lire altitude et pente.</div>
+<div class="leg">
+<span><i style="background:var(--g0)"></i>&lt; 3 %</span>
+<span><i style="background:var(--g1)"></i>3–6 %</span>
+<span><i style="background:var(--g2)"></i>6–10 %</span>
+<span><i style="background:var(--g3)"></i>&gt; 10 %</span>
+<span>Échelle verticale exagérée</span>
+</div>
+</div>
+
+<div class="card">
+<h2>Carte schématique</h2>
+<div id="map"></div>
+<p class="note" style="margin:6px 0 0">Fond : littoral (bleu) et grands axes (pointillés), données Natural Earth. Pas de rues : les pages publiées ne peuvent pas charger de tuiles. Couleur du tracé = pente du tronçon.</p>
+</div>
+
+<div class="card">
+<h2>Chiffres clés</h2>
+<div class="stats" id="stats"></div>
+</div>
+
+<div class="card">
+<h2>Impact énergétique estimé</h2>
+<div class="inp">
+<div><label>Masse du véhicule (kg)</label><input id="m" type="number" value="1800" min="800" max="3500"></div>
+<div><label>Conso sur plat (kWh/100 km)</label><input id="c" type="number" value="16" min="8" max="30" step="0.5"></div>
+<div><label>Récupération en descente (%)</label><input id="rg" type="number" value="60" min="0" max="90"></div>
+<div><label>Batterie utile (kWh)</label><input id="b" type="number" value="60" min="20" max="120"></div>
+</div>
+<div class="stats" id="en"></div>
+<p class="note" style="margin:8px 0 0">Modèle simple : énergie de montée = m·g·Δh / 0,9, moins la part récupérée en descente. Vitesse, vent, climatisation et température ne sont pas pris en compte.</p>
+</div>
+
+<script>
+const R=[
+{id:'cor',name:'Corniche → Port',tag:'Plat',col:'#2e9e6b',f:1.1,
+ desc:'Trajet côtier de référence : quasiment au niveau de la mer, effet de pente négligeable.',
+ p:[['Plage Malabata',35.7870,-5.7790,3],['Plage municipale',35.7850,-5.7950,3],['Port',35.7895,-5.8090,4]]},
+{id:'apt',name:'Centre → Aéroport',tag:'Typique',col:'#e0a823',f:1.25,
+ desc:'Trajet quotidien classique vers l\'aéroport Ibn Battouta : relief ondulé, quelques montées modérées.',
+ p:[['Grand Socco',35.7868,-5.8135,22],['Av. Mohammed V',35.7770,-5.8180,45],['Charf',35.7570,-5.8600,80],['Boukhalef',35.7380,-5.8980,65],['Aéroport',35.7269,-5.9169,20]]},
+{id:'med',name:'Médina–Kasbah–Hafa',tag:'Extrême urbain',col:'#e8702a',f:1.3,
+ desc:'Courte boucle dans les ruelles de la médina et de la Kasbah : très raide, peu de kilomètres mais des pentes soutenues.',
+ p:[['Port',35.7895,-5.8090,4],['Petit Socco',35.7880,-5.8110,12],['Kasbah',35.7913,-5.8143,70],['Marshan',35.7898,-5.8180,55],['Café Hafa',35.7886,-5.8245,60]]},
+{id:'mal',name:'Corniche → Cap Malabata',tag:'Modéré',col:'#e0a823',f:1.2,
+ desc:'Route côtière qui monte vers le phare de Malabata : une longue rampe régulière.',
+ p:[['Plage Malabata',35.7870,-5.7790,3],['Route de Malabata',35.7960,-5.7640,45],['Cap Malabata',35.8070,-5.7440,95]]},
+{id:'spa',name:'Centre → Cap Spartel',tag:'Extrême',col:'#cc2f3a',f:1.3,
+ desc:'Excursion classique par la Montagne : environ 250 m de montée continue, puis descente au retour (bon test de la régénération).',
+ p:[['Grand Socco',35.7868,-5.8135,22],['Marshan',35.7898,-5.8180,55],['Montagne',35.7860,-5.8350,110],['Rmilat',35.7900,-5.8750,140],['Route du phare',35.7930,-5.9050,210],['Cap Spartel',35.7920,-5.9220,270]]},
+{id:'chf',name:'Tanger → Chefchaouen',tag:'Extrême long',col:'#cc2f3a',f:1.2,
+ desc:'Long trajet de montagne. Seuls trois points sont modélisés : le relief intermédiaire (cols, vallées) n\'est pas pris en compte, donc le dénivelé réel est nettement supérieur.',
+ p:[['Tanger',35.7868,-5.8135,22],['Tétouan',35.5785,-5.3684,40],['Chefchaouen',35.1688,-5.2636,590]]}
+];
+const rad=Math.PI/180;
+const BASE={"coast":[[[-5.0082,35.3992],[-5.0264,35.404],[-5.0509,35.4075],[-5.0663,35.4175],[-5.1508,35.5161],[-5.1862,35.5438],[-5.2284,35.5685],[-5.2494,35.5846],[-5.26,35.6047],[-5.2768,35.6579],[-5.2775,35.6642],[-5.2754,35.6794],[-5.2768,35.6852],[-5.2819,35.6865],[-5.2989,35.6843],[-5.3048,35.6852],[-5.3127,35.6925],[-5.3188,35.7017],[-5.3226,35.7138],[-5.3274,35.7558],[-5.3424,35.8077],[-5.3457,35.8326],[-5.3356,35.8624],[-5.2919,35.8905],[-5.2831,35.9117],[-5.3093,35.9008],[-5.3274,35.9042],[-5.3441,35.9147],[-5.3662,35.9248],[-5.3852,35.9262],[-5.3993,35.9245],[-5.4055,35.9265],[-5.408,35.9247],[-5.4104,35.9171],[-5.4142,35.9094],[-5.4235,35.909],[-5.4355,35.9144],[-5.44,35.9181],[-5.4481,35.9185],[-5.4689,35.9103],[-5.4875,35.897],[-5.5233,35.8633],[-5.54,35.851],[-5.599,35.8223],[-5.616,35.8315],[-5.6397,35.8364],[-5.6634,35.8359],[-5.6809,35.8292],[-5.6935,35.8343],[-5.7117,35.8306],[-5.7299,35.8227],[-5.7423,35.8149],[-5.7693,35.7928],[-5.7814,35.7909],[-5.8734,35.802],[-5.908,35.7973],[-5.9272,35.7807],[-5.9362,35.7656],[-5.9431,35.7424],[-5.949,35.6954],[-5.9521,35.6855],[-5.9652,35.6702],[-5.9683,35.661],[-5.97,35.6525],[-5.9908,35.5985],[-6.0123,35.5588],[-6.0167,35.5446],[-6.0185,35.5202],[-6.0239,35.5012]],[[-5.4372,36.0987],[-5.4316,36.0889],[-5.4287,36.0808],[-5.4318,36.0696],[-5.4386,36.0628],[-5.4455,36.0574],[-5.4665,36.0507],[-5.5666,36.0216],[-5.581,36.014],[-5.6118,36.0065],[-5.6297,36.0368],[-5.6717,36.056],[-5.6894,36.0671],[-5.7131,36.06],[-5.7339,36.0657],[-5.7537,36.0756],[-5.7961,36.0855],[-5.8113,36.0968]]],"roads":[[[-5.6841,36.096],[-5.6756,36.0837],[-5.6658,36.0725],[-5.6546,36.0629],[-5.6418,36.0553],[-5.6298,36.0508],[-5.617,36.0479],[-5.6039,36.0465],[-5.5814,36.0468],[-5.562,36.0495],[-5.5527,36.0522],[-5.5345,36.0602],[-5.5174,36.0706],[-5.5114,36.0756],[-5.5059,36.0816],[-5.5011,36.0881],[-5.495,36.0985]],[[-5.3709,35.8644],[-5.4039,35.8685],[-5.4163,35.8644],[-5.4286,35.852],[-5.4534,35.8644],[-5.4864,35.8726],[-5.54,35.8314],[-5.5606,35.8273],[-5.5771,35.8273],[-5.6184,35.8108],[-5.6637,35.819],[-5.6926,35.819],[-5.7215,35.8149],[-5.738,35.7984],[-5.7586,35.7695],[-5.7833,35.7695]],[[-5.3709,35.8644],[-5.375,35.8438],[-5.3792,35.8149],[-5.375,35.7489],[-5.3709,35.7283],[-5.3503,35.7077],[-5.3255,35.6747],[-5.3297,35.6252],[-5.3338,35.6045],[-5.3544,35.5757]],[[-5.7792,35.7571],[-5.771,35.7365],[-5.7339,35.7242],[-5.7174,35.687],[-5.6885,35.6334],[-5.6761,35.6087],[-5.6555,35.5922],[-5.639,35.5715],[-5.6142,35.5592],[-5.5771,35.5551],[-5.5565,35.5386],[-5.507,35.5427],[-5.4658,35.5592],[-5.4245,35.5633],[-5.375,35.5839],[-5.3544,35.5757]],[[-5.3544,35.5757],[-5.342,35.5509],[-5.3544,35.5468],[-5.375,35.5468],[-5.3998,35.5427],[-5.4121,35.5344],[-5.4163,35.5138],[-5.4204,35.4973],[-5.4121,35.4849],[-5.3998,35.4808],[-5.3998,35.4519],[-5.3915,35.4437],[-5.3915,35.4148],[-5.3874,35.3818],[-5.3503,35.287],[-5.3379,35.2622],[-5.3214,35.2086],[-5.3214,35.1756],[-5.3132,35.1302],[-5.2967,35.1055]],[[-5.2967,35.1055],[-5.2843,35.1014],[-5.2472,35.0931],[-5.2224,35.0807],[-5.21,35.0601],[-5.1853,35.056],[-5.1441,35.0642],[-5.1234,35.056],[-5.0987,35.0601],[-5.0739,35.0766],[-5.0286,35.056],[-5.0203,35.0436],[-5.0203,35.023],[-5.008,35.0147]],[[-5.2967,35.1055],[-5.3338,35.0684],[-5.3379,35.056],[-5.3503,35.0519],[-5.3709,35.0354],[-5.3956,35.0354],[-5.4245,35.0271],[-5.4658,35.0312],[-5.4823,35.023],[-5.5153,34.99],[-5.54,34.9859],[-5.5524,34.9653],[-5.54,34.9446],[-5.5441,34.9199]],[[-5.7792,35.7571],[-5.8081,35.7283],[-5.8617,35.6912],[-5.903,35.6664],[-5.9524,35.6334],[-5.9772,35.5922],[-5.9896,35.5551],[-6.0143,35.5138],[-6.0308,35.4602],[-6.0349,35.4396],[-6.0102,35.4066],[-6.0102,35.3777],[-6.0226,35.3365],[-6.0267,35.3035],[-6.0473,35.2911],[-6.0927,35.2457],[-6.0886,35.221],[-6.0927,35.2086]],[[-6.0556,35.0436],[-6.0184,35.0354],[-5.9978,35.0147],[-5.9854,35.0065],[-5.9607,35.0106],[-5.9401,35.0065],[-5.9277,34.9983],[-5.9236,34.99],[-5.9277,34.957],[-5.9153,34.924]]]};
+
+function hav(a,b){const dl=(b[1]-a[1])*rad,dn=(b[2]-a[2])*rad;const x=Math.sin(dl/2)**2+Math.cos(a[1]*rad)*Math.cos(b[1]*rad)*Math.sin(dn/2)**2;return 12742*Math.asin(Math.sqrt(x));}
+function gcol(g){g=Math.abs(g);return g<3?'var(--g0)':g<6?'var(--g1)':g<10?'var(--g2)':'var(--g3)';}
+function prep(r){
+  let d=0;r.s=[];r.d=[0];r.gain=0;r.loss=0;r.maxg=0;r.steep=0;
+  for(let i=1;i<r.p.length;i++){
+    const L=hav(r.p[i-1],r.p[i])*r.f,dh=r.p[i][3]-r.p[i-1][3],g=dh/(L*1000)*100;
+    r.s.push({d0:d,d1:d+L,e0:r.p[i-1][3],e1:r.p[i][3],g:g,L:L});
+    d+=L;r.d.push(d);
+    if(dh>0)r.gain+=dh;else r.loss-=dh;
+    r.maxg=Math.max(r.maxg,Math.abs(g));
+    if(Math.abs(g)>=6)r.steep+=L;
+  }
+  r.tot=d;r.emin=Math.min(...r.p.map(x=>x[3]));r.emax=Math.max(...r.p.map(x=>x[3]));
+}
+R.forEach(prep);
+let cur=0,hoverD=null;
+const $=id=>document.getElementById(id);
+const chips=$('chips');
+function addChip(r,i){const b=document.createElement('button');b.className='chip';b.textContent=r.name;b.onclick=()=>{cur=i;hoverD=null;render();};chips.appendChild(b);}
+R.forEach(addChip);
+function loadGPX(txt,name){
+  const m=$('gmsg'),x=new DOMParser().parseFromString(txt,'application/xml');
+  let n=[...x.getElementsByTagName('trkpt')];if(!n.length)n=[...x.getElementsByTagName('rtept')];
+  let raw=n.map(e=>{const el=e.getElementsByTagName('ele')[0];return['',+e.getAttribute('lat'),+e.getAttribute('lon'),el?+el.textContent:NaN];}).filter(a=>isFinite(a[1])&&isFinite(a[2]));
+  if(raw.length<2){m.textContent=name+' : aucun point de tracé trouvé.';return;}
+  if(raw.filter(a=>isFinite(a[3])).length<raw.length*.9){m.textContent=name+' : ce GPX n\'a pas d\'altitudes. Réexporte-le avec les altitudes (gpx.studio les ajoute).';return;}
+  let last=raw.find(a=>isFinite(a[3]))[3];raw.forEach(a=>{if(isFinite(a[3]))last=a[3];else a[3]=last;});
+  const cd=[0];for(let i=1;i<raw.length;i++)cd.push(cd[i-1]+hav(raw[i-1],raw[i]));
+  const tot=cd[cd.length-1];if(tot<0.05){m.textContent=name+' : tracé trop court.';return;}
+  const step=Math.max(0.03,tot/350),N=Math.max(2,Math.round(tot/step)),pts=[];let j=0;
+  for(let k=0;k<=N;k++){const s=tot*k/N;while(j<raw.length-2&&cd[j+1]<s)j++;const t=(s-cd[j])/((cd[j+1]-cd[j])||1);const a=raw[j],b=raw[j+1];pts.push(['',a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t]);}
+  const sm=pts.map((p,i)=>{let s=0,c=0;for(let q=Math.max(0,i-2);q<=Math.min(pts.length-1,i+2);q++){s+=pts[q][3];c++;}return['',p[1],p[2],s/c];});
+  sm.forEach(p=>p[3]=Math.round(p[3]*10)/10);
+  let hi=0;sm.forEach((p,i)=>{if(p[3]>sm[hi][3])hi=i;});
+  sm[0][0]='Départ';sm[sm.length-1][0]='Arrivée';if(hi>0&&hi<sm.length-1)sm[hi][0]='Point haut';
+  const r={id:'gpx'+Date.now(),name:name.replace(/\.gpx$/i,''),tag:'GPX réel',col:'#0f6e56',f:1,desc:'Trace chargée depuis ton fichier ('+raw.length+' points, altitudes lissées sur ~5 points).',p:sm,nolab:true,lab:new Set([0,sm.length-1,hi])};
+  prep(r);R.push(r);addChip(r,R.length-1);cur=R.length-1;m.textContent=name+' chargé : '+fmt(r.tot,1)+' km.';render();
+}
+$('gf').addEventListener('change',e=>{[...e.target.files].forEach(f=>{const fr=new FileReader();fr.onload=()=>{try{loadGPX(fr.result,f.name);}catch(err){$('gmsg').textContent=f.name+' : lecture impossible.';}};fr.readAsText(f);});e.target.value='';});
+function elevAt(r,d){for(const s of r.s){if(d<=s.d1+1e-9){const t=(d-s.d0)/(s.d1-s.d0||1);return{e:s.e0+(s.e1-s.e0)*t,g:s.g};}}const s=r.s[r.s.length-1];return{e:s.e1,g:s.g};}
+function fmt(x,n=1){return x.toFixed(n).replace('.',',');}
+function render(){
+  const r=R[cur];
+  [...chips.children].forEach((c,i)=>c.setAttribute('aria-pressed',i===cur));
+  $('desc').innerHTML='<span class="tag" style="background:'+r.col+'">'+r.tag+'</span>'+r.desc;
+  drawChart(r);drawMap(r);stats(r);energy();
+}
+function drawChart(r){
+  const W=Math.max(300,$('chart').clientWidth||340),H=230,l=40,rr=10,t=26,b=26;
+  const lo=Math.max(0,Math.floor((r.emin-10)/10)*10),hi=Math.ceil((r.emax+10)/10)*10;
+  const X=d=>l+d/r.tot*(W-l-rr),Y=e=>t+(hi-e)/(hi-lo)*(H-t-b);
+  let o='<svg id="csvg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Profil altimétrique">';
+  for(let k=0;k<=4;k++){const e=lo+(hi-lo)*k/4,y=Y(e);o+='<line x1="'+l+'" x2="'+(W-rr)+'" y1="'+y+'" y2="'+y+'" stroke="var(--bd)"/><text x="'+(l-5)+'" y="'+(y+4)+'" font-size="10" fill="var(--mut)" text-anchor="end">'+Math.round(e)+'</text>';}
+  for(let k=0;k<=4;k++){const d=r.tot*k/4,x=X(d);o+='<text x="'+x+'" y="'+(H-8)+'" font-size="10" fill="var(--mut)" text-anchor="'+(k===0?'start':k===4?'end':'middle')+'">'+(r.tot<10?fmt(d,1):Math.round(d))+' km</text>';}
+  o+='<text x="4" y="12" font-size="10" fill="var(--mut)">m</text>';
+  let a='M'+X(0)+' '+Y(lo);r.p.forEach((p,i)=>{a+=' L'+X(r.d[i])+' '+Y(p[3]);});a+=' L'+X(r.tot)+' '+Y(lo)+' Z';
+  o+='<path d="'+a+'" fill="var(--area)"/>';
+  r.s.forEach(s=>{o+='<line x1="'+X(s.d0)+'" y1="'+Y(s.e0)+'" x2="'+X(s.d1)+'" y2="'+Y(s.e1)+'" stroke="'+gcol(s.g)+'" stroke-width="4" stroke-linecap="round"/>';});
+  r.p.forEach((p,i)=>{
+    if(r.nolab&&!r.lab.has(i))return;
+    const x=X(r.d[i]),y=Y(p[3]),an=i===0?'start':i===r.p.length-1?'end':'middle',dy=i%2?-20:-9;
+    o+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="var(--card)" stroke="var(--fg)" stroke-width="1.5"/>';
+    o+='<text x="'+x+'" y="'+Math.max(10,y+dy)+'" font-size="10" fill="var(--fg)" text-anchor="'+an+'">'+p[0]+' · '+p[3]+' m</text>';
+  });
+  o+='<g id="cross" style="display:none"><line id="cl" y1="'+t+'" y2="'+(H-b)+'" stroke="var(--fg)" stroke-dasharray="3 3"/><circle id="cc" r="5" fill="var(--ac)" stroke="#fff" stroke-width="2"/></g>';
+  o+='<rect x="'+l+'" y="0" width="'+(W-l-rr)+'" height="'+H+'" fill="transparent" id="hit"/></svg>';
+  $('chart').innerHTML=o;
+  const svg=$('csvg'),hit=$('hit');
+  function mv(ev){
+    const pt=svg.getBoundingClientRect(),sc=W/pt.width,x=(ev.clientX-pt.left)*sc;
+    const d=Math.min(r.tot,Math.max(0,(x-l)/(W-l-rr)*r.tot));
+    const q=elevAt(r,d);hoverD=d;
+    $('cross').style.display='';$('cl').setAttribute('x1',X(d));$('cl').setAttribute('x2',X(d));
+    $('cc').setAttribute('cx',X(d));$('cc').setAttribute('cy',Y(q.e));
+    $('read').innerHTML='km <b>'+fmt(d,1)+'</b> · altitude <b>'+Math.round(q.e)+' m</b> · pente moyenne du tronçon <b>'+fmt(q.g,1)+' %</b>';
+    mapMark(r,d);
+  }
+  hit.addEventListener('pointermove',mv);hit.addEventListener('pointerdown',mv);
+}
+function drawMap(r){
+  const W=400,pad=34;
+  const la=r.p.map(p=>p[1]),lo=r.p.map(p=>p[2]),c=Math.cos((Math.min(...la)+Math.max(...la))/2*rad);
+  const dx=(Math.max(...lo)-Math.min(...lo))*c||.001,dy=(Math.max(...la)-Math.min(...la))||.001;
+  const sc=Math.min((W-2*pad)/dx,(320-2*pad)/dy),H=Math.max(150,dy*sc+2*pad);
+  const ox=(W-dx*sc)/2,oy=(H-dy*sc)/2;
+  const PX=p=>ox+(p[2]-Math.min(...lo))*c*sc,PY=p=>H-oy-(p[1]-Math.min(...la))*sc;
+  r.pj=r.p.map(p=>[PX(p),PY(p)]);
+  let o='<svg id="msvg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Carte schématique"><rect width="'+W+'" height="'+H+'" rx="8" fill="var(--bg)"/>';
+  const BX=(lo_,la_)=>ox+(lo_-Math.min(...lo))*c*sc,BY=la_=>H-oy-(la_-Math.min(...la))*sc;
+  const pl=ls=>ls.map(l=>l.map(q=>BX(q[0],q[1]).toFixed(1)+','+BY(q[1]).toFixed(1)).join(' '));
+  pl(BASE.roads).forEach(s_=>{o+='<polyline points="'+s_+'" fill="none" stroke="var(--mut)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>';});
+  pl(BASE.coast).forEach(s_=>{o+='<polyline points="'+s_+'" fill="none" stroke="#3b82c4" stroke-width="1.6" opacity=".85"/>';});
+  o+='<text x="'+(W-14)+'" y="20" font-size="11" fill="var(--mut)" text-anchor="end">N ↑</text>';
+  r.s.forEach((s,i)=>{o+='<line x1="'+r.pj[i][0]+'" y1="'+r.pj[i][1]+'" x2="'+r.pj[i+1][0]+'" y2="'+r.pj[i+1][1]+'" stroke="'+gcol(s.g)+'" stroke-width="5" stroke-linecap="round"/>';});
+  r.p.forEach((p,i)=>{
+    if(r.nolab&&!r.lab.has(i))return;
+    const [x,y]=r.pj[i],an=x>W*0.65?'end':x<W*0.35?'start':'middle',ox2=an==='end'?-8:an==='start'?8:0,oy2=an==='middle'?(i%2?-12:18):4;
+    o+='<circle cx="'+x+'" cy="'+y+'" r="4.5" fill="var(--card)" stroke="var(--fg)" stroke-width="1.5"/><text x="'+(x+ox2)+'" y="'+(y+oy2)+'" font-size="10.5" fill="var(--fg)" text-anchor="'+an+'">'+p[0]+'</text>';
+  });
+  o+='<circle id="mk" r="7" cx="-20" cy="-20" fill="var(--ac)" stroke="#fff" stroke-width="2.5"/></svg>';
+  $('map').innerHTML=o;
+}
+function mapMark(r,d){
+  let i=0;while(i<r.s.length-1&&d>r.s[i].d1)i++;
+  const s=r.s[i],t=(d-s.d0)/(s.d1-s.d0||1),a=r.pj[i],b=r.pj[i+1];
+  const m=$('mk');if(m){m.setAttribute('cx',a[0]+(b[0]-a[0])*t);m.setAttribute('cy',a[1]+(b[1]-a[1])*t);}
+}
+function stats(r){
+  const it=[[fmt(r.tot,1)+' km','Distance estimée'],['+'+Math.round(r.gain)+' m','Dénivelé positif'],['−'+Math.round(r.loss)+' m','Dénivelé négatif'],[fmt(r.maxg,1)+' %','Pente moyenne max (tronçon)'],[Math.round(100*r.steep/r.tot)+' %','Distance à ≥ 6 %'],[Math.round(r.emax)+' m','Altitude max']];
+  $('stats').innerHTML=it.map(x=>'<div class="stat"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>').join('');
+}
+function energy(){
+  const r=R[cur],m=+$('m').value||1800,c=+$('c').value||16,rg=(+$('rg').value||0)/100,bat=+$('b').value||60;
+  const k=m*9.81/3.6e6,up=k*r.gain/0.9,back=k*r.loss*rg,net=up-back,base=c*r.tot/100,tot=base+net;
+  const it=[[fmt(base,1)+' kWh','Sur plat (même distance)'],[(net>=0?'+':'−')+fmt(Math.abs(net),1)+' kWh','Surcoût net dû au relief'],[fmt(tot,1)+' kWh','Total estimé'],[(net>=0?'+':'')+fmt(100*net/base,0)+' %','Écart vs plat'],[fmt(100*tot/bat,0)+' %','Part de la batterie utilisée'],[fmt(Math.abs(net)/c*100,1)+' km','Autonomie '+(net>=0?'perdue':'gagnée')]];
+  $('en').innerHTML=it.map(x=>'<div class="stat"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>').join('');
+}
+['m','c','rg','b'].forEach(id=>$(id).addEventListener('input',energy));
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,150);});
+render();
+// Charge automatiquement les tracés réels déposés dans routes/ (liste dans routes/index.json)
+fetch('routes/index.json').then(r=>r.ok?r.json():[]).then(async list=>{
+  for(const n of list){const t=await (await fetch('routes/'+n)).text();loadGPX(t,n);}
+  if(list.length){cur=R.length-list.length;render();}
+}).catch(()=>{});
+</script>
+</body>
+</html>
